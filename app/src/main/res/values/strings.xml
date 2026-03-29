@@ -1,0 +1,45 @@
+<resources>
+    <string name="app_name">Zejios Cafe Management System</string>
+
+    <string name="dashboard">Dashboard</string>
+    <string name="pos">POS</string>
+    <string name="orders">Orders</string>
+    <string name="inventory">Inventory</string>
+    <string name="reports">Reports</string>
+    <string name="staff">Staff</string>
+    <string name="settings">Settings</string>
+
+    <string name="pos_title">Point of Sale</string>
+    <string name="pos_subtitle">Fast order processing for cafe operations</string>
+    <string name="search_hint">Search by Order ID, customer name...</string>
+    <string name="filter_sort">Filter / Sort</string>
+    <string name="current_order">Current Order</string>
+    <string name="order_number_format">Order %1$s</string>
+    <string name="no_items_added">No items added yet</string>
+
+    <string name="subtotal">Subtotal</string>
+    <string name="tax">Tax (12%%)</string>
+    <string name="total">Total</string>
+
+    <string name="cash">Cash</string>
+    <string name="gcash">GCash</string>
+    <string name="card">Card</string>
+    <string name="clear">Clear</string>
+    <string name="checkout">Checkout</string>
+
+    <string name="toggle_sidebar">Toggle sidebar</string>
+    <string name="notifications">Notifications</string>
+    <string name="cart">Cart</string>
+    <string name="profile_name">Admin User</string>
+    <string name="profile_role">Cafe Administrator</string>
+
+    <string name="category_drinks">Drinks</string>
+    <string name="category_meals">Meals</string>
+    <string name="category_desserts">Desserts</string>
+    <string name="category_snacks">Snacks</string>
+    <string name="category_specials">Specials</string>
+
+    <string name="currency_format">PHP %1$.2f</string>
+    <string name="quantity_format">x%1$d</string>
+    <string name="notification_count">3</string>
+</resources>

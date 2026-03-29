@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="pos_primary">#6B5435</color>
+    <color name="pos_primary_dark">#58462C</color>
+    <color name="pos_secondary">#2E7D32</color>
+    <color name="pos_secondary_dark">#1F5A24</color>
+    <color name="pos_background">#F4F5F7</color>
+    <color name="pos_surface">#FFFFFFFF</color>
+    <color name="pos_border">#FFD9DCE1</color>
+    <color name="pos_text_primary">#FF1F2933</color>
+    <color name="pos_text_secondary">#FF667085</color>
+    <color name="pos_chip_bg">#FFE9ECEF</color>
+    <color name="pos_checkout_text">#FFFFFFFF</color>
+    <color name="pos_clear_bg">#FFE5E7EB</color>
+    <color name="pos_badge">#FFEF4444</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>
