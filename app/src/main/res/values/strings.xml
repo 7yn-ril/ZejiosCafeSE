@@ -42,4 +42,29 @@
     <string name="currency_format">PHP %1$.2f</string>
     <string name="quantity_format">x%1$d</string>
     <string name="notification_count">3</string>
+
+    <!-- Inventory screen -->
+    <string name="inv_title">Inventory</string>
+    <string name="inv_subtitle">Track and manage your stock items</string>
+    <string name="inv_add_item">+ Add Item</string>
+    <string name="inv_search_hint">Search items by name…</string>
+    <string name="inv_filter_all">All</string>
+    <string name="inv_filter_drinks">Drinks</string>
+    <string name="inv_filter_meals">Meals</string>
+    <string name="inv_filter_desserts">Desserts</string>
+    <string name="inv_filter_snacks">Snacks</string>
+    <string name="inv_col_item">Item Name</string>
+    <string name="inv_col_category">Category</string>
+    <string name="inv_col_stock">Stock Qty</string>
+    <string name="inv_col_unit">Unit</string>
+    <string name="inv_col_alert">Low Stock Alert</string>
+    <string name="inv_col_actions">Actions</string>
+    <string name="inv_card_total">Total Items</string>
+    <string name="inv_card_low">Low Stock</string>
+    <string name="inv_card_out">Out of Stock</string>
+    <string name="inv_card_categories">Categories</string>
+    <string name="inv_empty_title">No items found</string>
+    <string name="inv_empty_subtitle">Try adjusting your search or filter</string>
+    <string name="inv_edit">Edit</string>
+    <string name="inv_delete">Delete</string>
 </resources>

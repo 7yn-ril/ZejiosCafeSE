@@ -9,11 +9,13 @@ import com.example.zejioscafese.R
 import com.example.zejioscafese.databinding.ItemOrderBinding
 import com.example.zejioscafese.pos.data.model.OrderItem
 
-class OrderItemAdapter : ListAdapter<OrderItem, OrderItemAdapter.OrderItemViewHolder>(DiffCallback) {
+class OrderItemAdapter(
+    private val onItemLongClick: (OrderItem) -> Unit = {}
+) : ListAdapter<OrderItem, OrderItemAdapter.OrderItemViewHolder>(DiffCallback) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): OrderItemViewHolder {
         val binding = ItemOrderBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return OrderItemViewHolder(binding)
+        return OrderItemViewHolder(binding, onItemLongClick)
     }
 
     override fun onBindViewHolder(holder: OrderItemViewHolder, position: Int) {
@@ -21,7 +23,8 @@ class OrderItemAdapter : ListAdapter<OrderItem, OrderItemAdapter.OrderItemViewHo
     }
 
     class OrderItemViewHolder(
-        private val binding: ItemOrderBinding
+        private val binding: ItemOrderBinding,
+        private val onItemLongClick: (OrderItem) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(item: OrderItem) {
@@ -34,6 +37,10 @@ class OrderItemAdapter : ListAdapter<OrderItem, OrderItemAdapter.OrderItemViewHo
                 R.string.currency_format,
                 item.lineTotal
             )
+            binding.root.setOnLongClickListener {
+                onItemLongClick(item)
+                true
+            }
         }
     }
 
@@ -47,4 +54,3 @@ class OrderItemAdapter : ListAdapter<OrderItem, OrderItemAdapter.OrderItemViewHo
         }
     }
 }
-

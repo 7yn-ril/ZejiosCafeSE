@@ -38,7 +38,7 @@
                 android:id="@+id/tvSidebarTitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="12dp"
                 android:text="Zejios Cafe"
                 android:textColor="@color/pos_text_primary"
                 android:textSize="18sp"
@@ -49,15 +49,23 @@
                 android:id="@+id/tvSidebarSubtitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
                 android:text="Management"
-                android:textColor="@color/pos_text_secondary"
-                android:textSize="13sp"
+                android:textColor="@color/pos_text_muted"
+                android:textSize="12sp"
                 android:visibility="gone" />
+
+            <!-- Divider after header (hidden when collapsed) -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="14dp"
+                android:layout_marginBottom="6dp"
+                android:background="@color/pos_divider" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_marginTop="16dp"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
@@ -79,7 +87,7 @@
                         android:id="@+id/tvSidebarDashboard"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
+                        android:layout_marginStart="14dp"
                         android:layout_weight="1"
                         android:text="@string/dashboard"
                         android:textColor="@color/pos_text_primary"
@@ -91,7 +99,7 @@
                     android:id="@+id/itemPos"
                     android:layout_width="match_parent"
                     android:layout_height="@dimen/menu_item_height"
-                    android:layout_marginTop="6dp"
+                    android:layout_marginTop="4dp"
                     android:background="@drawable/bg_sidebar_item_selected"
                     android:gravity="center"
                     android:orientation="horizontal"
@@ -107,7 +115,7 @@
                         android:id="@+id/tvSidebarPos"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
+                        android:layout_marginStart="14dp"
                         android:layout_weight="1"
                         android:text="@string/pos"
                         android:textColor="@color/white"
@@ -120,7 +128,7 @@
                     android:id="@+id/itemOrders"
                     android:layout_width="match_parent"
                     android:layout_height="@dimen/menu_item_height"
-                    android:layout_marginTop="6dp"
+                    android:layout_marginTop="4dp"
                     android:gravity="center"
                     android:orientation="horizontal"
                     android:paddingHorizontal="10dp">
@@ -135,7 +143,7 @@
                         android:id="@+id/tvSidebarOrders"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
+                        android:layout_marginStart="14dp"
                         android:layout_weight="1"
                         android:text="@string/orders"
                         android:textColor="@color/pos_text_primary"
@@ -147,7 +155,7 @@
                     android:id="@+id/itemInventory"
                     android:layout_width="match_parent"
                     android:layout_height="@dimen/menu_item_height"
-                    android:layout_marginTop="6dp"
+                    android:layout_marginTop="4dp"
                     android:gravity="center"
                     android:orientation="horizontal"
                     android:paddingHorizontal="10dp">
@@ -162,7 +170,7 @@
                         android:id="@+id/tvSidebarInventory"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
+                        android:layout_marginStart="14dp"
                         android:layout_weight="1"
                         android:text="@string/inventory"
                         android:textColor="@color/pos_text_primary"
@@ -170,11 +178,18 @@
                         android:visibility="gone" />
                 </LinearLayout>
 
+                <!-- Divider between nav groups -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginVertical="10dp"
+                    android:layout_marginHorizontal="4dp"
+                    android:background="@color/pos_divider" />
+
                 <LinearLayout
                     android:id="@+id/itemReports"
                     android:layout_width="match_parent"
                     android:layout_height="@dimen/menu_item_height"
-                    android:layout_marginTop="6dp"
                     android:gravity="center"
                     android:orientation="horizontal"
                     android:paddingHorizontal="10dp">
@@ -189,7 +204,7 @@
                         android:id="@+id/tvSidebarReports"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
+                        android:layout_marginStart="14dp"
                         android:layout_weight="1"
                         android:text="@string/reports"
                         android:textColor="@color/pos_text_primary"
@@ -201,7 +216,7 @@
                     android:id="@+id/itemStaff"
                     android:layout_width="match_parent"
                     android:layout_height="@dimen/menu_item_height"
-                    android:layout_marginTop="6dp"
+                    android:layout_marginTop="4dp"
                     android:gravity="center"
                     android:orientation="horizontal"
                     android:paddingHorizontal="10dp">
@@ -216,7 +231,7 @@
                         android:id="@+id/tvSidebarStaff"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
+                        android:layout_marginStart="14dp"
                         android:layout_weight="1"
                         android:text="@string/staff"
                         android:textColor="@color/pos_text_primary"
@@ -228,7 +243,7 @@
                     android:id="@+id/itemSettings"
                     android:layout_width="match_parent"
                     android:layout_height="@dimen/menu_item_height"
-                    android:layout_marginTop="6dp"
+                    android:layout_marginTop="4dp"
                     android:gravity="center"
                     android:orientation="horizontal"
                     android:paddingHorizontal="10dp">
@@ -243,7 +258,7 @@
                         android:id="@+id/tvSidebarSettings"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
+                        android:layout_marginStart="14dp"
                         android:layout_weight="1"
                         android:text="@string/settings"
                         android:textColor="@color/pos_text_primary"
@@ -266,6 +281,7 @@
         app:layout_constraintStart_toEndOf="@id/sidebarContainer"
         app:layout_constraintTop_toTopOf="parent">
 
+        <!-- Header bar -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/topBar"
             android:layout_width="0dp"
@@ -288,7 +304,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/pos_title"
                     android:textColor="@color/pos_text_primary"
-                    android:textSize="20sp"
+                    android:textSize="18sp"
                     android:textStyle="bold"
                     app:layout_constraintEnd_toStartOf="@+id/notificationFrame"
                     app:layout_constraintStart_toStartOf="parent"
@@ -298,9 +314,9 @@
                     android:id="@+id/tvTopSubtitle"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
+                    android:layout_marginTop="2dp"
                     android:text="@string/pos_subtitle"
-                    android:textColor="@color/pos_text_secondary"
+                    android:textColor="@color/pos_text_muted"
                     android:textSize="12sp"
                     app:layout_constraintEnd_toStartOf="@+id/notificationFrame"
                     app:layout_constraintStart_toStartOf="parent"
@@ -310,38 +326,39 @@
                     android:id="@+id/notificationFrame"
                     android:layout_width="40dp"
                     android:layout_height="40dp"
-                    android:layout_marginEnd="12dp"
+                    android:layout_marginEnd="8dp"
                     app:layout_constraintBottom_toBottomOf="@id/avatar"
                     app:layout_constraintEnd_toStartOf="@id/avatar"
                     app:layout_constraintTop_toTopOf="@id/avatar">
 
                     <ImageView
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
                         android:layout_gravity="center"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:contentDescription="@string/notifications"
                         android:src="@android:drawable/ic_dialog_info"
-                        app:tint="@color/pos_text_primary" />
+                        app:tint="@color/pos_text_secondary" />
 
                     <TextView
                         android:layout_width="18dp"
                         android:layout_height="18dp"
                         android:layout_gravity="end"
-                        android:background="@drawable/bg_sidebar_item_selected"
+                        android:background="@drawable/bg_notification_badge"
                         android:gravity="center"
                         android:text="@string/notification_count"
                         android:textColor="@color/white"
-                        android:textSize="10sp" />
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
                 </FrameLayout>
 
                 <ImageView
                     android:id="@+id/avatar"
                     android:layout_width="@dimen/topbar_avatar_size"
                     android:layout_height="@dimen/topbar_avatar_size"
-                    android:background="@drawable/bg_product_placeholder"
+                    android:background="@drawable/bg_avatar_circle"
                     android:contentDescription="@string/profile_name"
-                    android:padding="8dp"
+                    android:padding="7dp"
                     android:src="@android:drawable/ic_menu_myplaces"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
@@ -356,6 +373,7 @@
             android:orientation="horizontal"
             app:layout_constraintGuide_percent="0.62" />
 
+        <!-- Left panel: search + categories + products -->
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/leftPanel"
             android:layout_width="0dp"
@@ -372,20 +390,25 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:hint="@string/search_hint"
-                app:boxCornerRadiusBottomEnd="16dp"
-                app:boxCornerRadiusBottomStart="16dp"
-                app:boxCornerRadiusTopEnd="16dp"
-                app:boxCornerRadiusTopStart="16dp"
+                app:boxCornerRadiusBottomEnd="8dp"
+                app:boxCornerRadiusBottomStart="8dp"
+                app:boxCornerRadiusTopEnd="8dp"
+                app:boxCornerRadiusTopStart="8dp"
+                app:boxStrokeColor="@color/pos_border"
+                app:boxStrokeWidth="1dp"
+                app:hintTextColor="@color/pos_text_muted"
                 app:layout_constraintEnd_toStartOf="@+id/btnFilterSort"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:startIconDrawable="@android:drawable/ic_menu_search">
+                app:startIconDrawable="@android:drawable/ic_menu_search"
+                app:startIconTint="@color/pos_text_secondary">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etSearch"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:singleLine="true" />
+                    android:singleLine="true"
+                    android:textSize="14sp" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.button.MaterialButton
@@ -397,6 +420,8 @@
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
                 android:text="@string/filter_sort"
+                android:textSize="13sp"
+                app:cornerRadius="8dp"
                 app:icon="@android:drawable/ic_menu_sort_alphabetically"
                 app:layout_constraintBottom_toBottomOf="@id/searchInputLayout"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -429,6 +454,7 @@
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
+        <!-- Right panel (bottom in portrait): Current Order -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/rightPanel"
             android:layout_width="0dp"
@@ -446,7 +472,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:orientation="vertical"
-                android:padding="@dimen/section_spacing">
+                android:padding="14dp">
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -461,8 +487,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
-                    android:textColor="@color/pos_text_secondary"
-                    android:textSize="13sp"
+                    android:textColor="@color/pos_text_muted"
+                    android:textSize="12sp"
                     tools:text="Order #POS-1452" />
 
                 <LinearLayout
@@ -475,18 +501,18 @@
                     android:orientation="vertical">
 
                     <ImageView
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
                         android:src="@android:drawable/ic_menu_info_details"
-                        app:tint="@color/pos_text_secondary" />
+                        app:tint="@color/pos_text_muted" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
                         android:text="@string/no_items_added"
-                        android:textColor="@color/pos_text_secondary"
-                        android:textSize="14sp" />
+                        android:textColor="@color/pos_text_muted"
+                        android:textSize="13sp" />
                 </LinearLayout>
 
                 <androidx.recyclerview.widget.RecyclerView
@@ -498,10 +524,18 @@
                     android:visibility="gone"
                     tools:listitem="@layout/item_order" />
 
+                <!-- Divider above totals -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp"
+                    android:background="@color/pos_divider" />
+
+                <!-- Totals section -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
                     android:orientation="vertical">
 
                     <LinearLayout
@@ -514,13 +548,15 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="@string/subtotal"
-                            android:textColor="@color/pos_text_secondary" />
+                            android:textColor="@color/pos_text_secondary"
+                            android:textSize="13sp" />
 
                         <TextView
                             android:id="@+id/tvSubtotal"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:textColor="@color/pos_text_primary"
+                            android:textSize="13sp"
                             tools:text="PHP 235.00" />
                     </LinearLayout>
 
@@ -535,20 +571,28 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="@string/tax"
-                            android:textColor="@color/pos_text_secondary" />
+                            android:textColor="@color/pos_text_secondary"
+                            android:textSize="13sp" />
 
                         <TextView
                             android:id="@+id/tvTax"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:textColor="@color/pos_text_primary"
+                            android:textSize="13sp"
                             tools:text="PHP 28.20" />
                     </LinearLayout>
+
+                    <!-- Divider before total -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginVertical="8dp"
+                        android:background="@color/pos_divider" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
                         android:orientation="horizontal">
 
                         <TextView
@@ -564,13 +608,14 @@
                             android:id="@+id/tvTotal"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:textColor="@color/pos_text_primary"
+                            android:textColor="@color/pos_secondary"
                             android:textSize="20sp"
                             android:textStyle="bold"
                             tools:text="PHP 263.20" />
                     </LinearLayout>
                 </LinearLayout>
 
+                <!-- Payment method toggle buttons -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -580,31 +625,53 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnCash"
-                        style="@style/Widget.Material3.Button"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="0dp"
                         android:layout_height="40dp"
                         android:layout_weight="1"
-                        android:text="@string/cash" />
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text="@string/cash"
+                        android:textColor="@color/pos_secondary"
+                        android:textSize="13sp"
+                        app:cornerRadius="10dp"
+                        app:strokeColor="@color/pos_secondary"
+                        app:strokeWidth="1.5dp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnGcash"
-                        style="@style/Widget.Material3.Button"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="0dp"
                         android:layout_height="40dp"
                         android:layout_marginStart="8dp"
                         android:layout_weight="1"
-                        android:text="@string/gcash" />
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text="@string/gcash"
+                        android:textColor="@color/pos_secondary"
+                        android:textSize="13sp"
+                        app:cornerRadius="10dp"
+                        app:strokeColor="@color/pos_secondary"
+                        app:strokeWidth="1.5dp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnCard"
-                        style="@style/Widget.Material3.Button"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="0dp"
                         android:layout_height="40dp"
                         android:layout_marginStart="8dp"
                         android:layout_weight="1"
-                        android:text="@string/card" />
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text="@string/card"
+                        android:textColor="@color/pos_secondary"
+                        android:textSize="13sp"
+                        app:cornerRadius="10dp"
+                        app:strokeColor="@color/pos_secondary"
+                        app:strokeWidth="1.5dp" />
                 </LinearLayout>
 
+                <!-- Clear + Checkout row -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -613,21 +680,33 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnClear"
-                        style="@style/Widget.Material3.Button"
+                        style="@style/Widget.Material3.Button.UnelevatedButton"
                         android:layout_width="0dp"
                         android:layout_height="44dp"
                         android:layout_weight="1"
-                        android:text="@string/clear" />
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text="@string/clear"
+                        android:textColor="@color/pos_text_primary"
+                        android:textSize="14sp"
+                        app:backgroundTint="@color/pos_clear_bg"
+                        app:cornerRadius="12dp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnCheckout"
-                        style="@style/Widget.Material3.Button"
+                        style="@style/Widget.Material3.Button.UnelevatedButton"
                         android:layout_width="0dp"
                         android:layout_height="48dp"
                         android:layout_marginStart="10dp"
                         android:layout_weight="1.35"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
                         android:text="@string/checkout"
-                        android:textStyle="bold" />
+                        android:textColor="@color/white"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        app:backgroundTint="@color/pos_secondary"
+                        app:cornerRadius="12dp" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -644,7 +723,17 @@
             app:maxImageSize="24dp"
             app:tint="@color/white" />
 
+        <!-- Fragment host container (overlays POS content when visible) -->
+        <FrameLayout
+            android:id="@+id/fragmentContainer"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
-

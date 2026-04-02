@@ -20,13 +20,18 @@ class PosViewModel : ViewModel() {
         Product("d1", "Iced Caramel Latte", "Drinks", 165.0),
         Product("d2", "Cold Brew", "Drinks", 145.0),
         Product("d3", "Matcha Latte", "Drinks", 175.0),
+        Product("d4", "Hot Americano", "Drinks", 120.0),
+        Product("d5", "Vanilla Frappe", "Drinks", 185.0),
         Product("m1", "Chicken Pesto Panini", "Meals", 235.0),
         Product("m2", "Beef Tapa Bowl", "Meals", 265.0),
         Product("m3", "Creamy Mushroom Pasta", "Meals", 250.0),
+        Product("m4", "Chicken Adobo Rice Bowl", "Meals", 195.0),
         Product("de1", "New York Cheesecake", "Desserts", 180.0),
         Product("de2", "Chocolate Brownie", "Desserts", 120.0),
+        Product("de3", "Mango Cheesecake Slice", "Desserts", 160.0),
         Product("s1", "Truffle Fries", "Snacks", 135.0),
         Product("s2", "Nacho Bites", "Snacks", 150.0),
+        Product("s3", "French Fries Basket", "Snacks", 110.0),
         Product("sp1", "Seasonal Signature Latte", "Specials", 195.0),
         Product("sp2", "Weekend Combo Set", "Specials", 320.0)
     )
@@ -59,8 +64,14 @@ class PosViewModel : ViewModel() {
     private val _selectedPaymentMethod = MutableLiveData(PaymentMethod.CASH)
     val selectedPaymentMethod: LiveData<PaymentMethod> = _selectedPaymentMethod
 
+    private var orderCounter = 1024
+
     private val _orderNumber = MutableLiveData("#POS-1024")
     val orderNumber: LiveData<String> = _orderNumber
+
+    /** Emits a one-shot event: formatted order number string after successful checkout */
+    private val _checkoutEvent = MutableLiveData<String?>()
+    val checkoutEvent: LiveData<String?> = _checkoutEvent
 
     private val orderQuantities = linkedMapOf<String, Int>()
 
@@ -83,6 +94,11 @@ class PosViewModel : ViewModel() {
         syncOrderItems()
     }
 
+    fun removeProduct(productId: String) {
+        orderQuantities.remove(productId)
+        syncOrderItems()
+    }
+
     fun clearOrder() {
         orderQuantities.clear()
         syncOrderItems()
@@ -90,6 +106,23 @@ class PosViewModel : ViewModel() {
 
     fun setPaymentMethod(method: PaymentMethod) {
         _selectedPaymentMethod.value = method
+    }
+
+    /**
+     * Performs checkout: clears the current order, increments the order counter,
+     * and posts a one-shot event with the completed order number.
+     */
+    fun checkout() {
+        val completedOrderNumber = _orderNumber.value ?: "#POS-$orderCounter"
+        clearOrder()
+        orderCounter++
+        _orderNumber.value = "#POS-$orderCounter"
+        _checkoutEvent.value = completedOrderNumber
+    }
+
+    /** Call after the checkout event has been consumed to avoid re-delivery */
+    fun onCheckoutEventConsumed() {
+        _checkoutEvent.value = null
     }
 
     private fun refreshProductList() {
@@ -124,4 +157,3 @@ class PosViewModel : ViewModel() {
         return round(this * 100) / 100
     }
 }
-

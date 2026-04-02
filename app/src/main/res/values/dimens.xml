@@ -11,5 +11,6 @@
     <dimen name="product_image_height">120dp</dimen>
     <dimen name="topbar_avatar_size">38dp</dimen>
     <dimen name="fab_size">56dp</dimen>
+    <dimen name="chip_stroke_width">1.5dp</dimen>
 </resources>
 

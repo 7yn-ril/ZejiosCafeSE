@@ -4,15 +4,61 @@
     <color name="pos_primary_dark">#58462C</color>
     <color name="pos_secondary">#2E7D32</color>
     <color name="pos_secondary_dark">#1F5A24</color>
+    <color name="pos_secondary_light">#E8F5E9</color>
     <color name="pos_background">#F4F5F7</color>
     <color name="pos_surface">#FFFFFFFF</color>
     <color name="pos_border">#FFD9DCE1</color>
     <color name="pos_text_primary">#FF1F2933</color>
     <color name="pos_text_secondary">#FF667085</color>
+    <color name="pos_text_muted">#FF9CA3AF</color>
     <color name="pos_chip_bg">#FFE9ECEF</color>
     <color name="pos_checkout_text">#FFFFFFFF</color>
     <color name="pos_clear_bg">#FFE5E7EB</color>
     <color name="pos_badge">#FFEF4444</color>
+    <color name="pos_placeholder_bg">#FFF0E7D9</color>
+    <color name="pos_placeholder_icon">#FFB8A58A</color>
+    <color name="pos_divider">#FFEEEFF2</color>
+    <color name="pos_price_green">#2E7D32</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- Inventory screen colors -->
+    <color name="inv_low_stock_bg">#FFF3E0</color>
+    <color name="inv_low_stock_text">#E65100</color>
+    <color name="inv_out_of_stock_bg">#FFEBEE</color>
+    <color name="inv_out_of_stock_text">#C62828</color>
+    <color name="inv_row_alt">#F9F9F9</color>
+    <color name="inv_table_header_bg">#F4F5F7</color>
+    <color name="inv_action_edit">#1565C0</color>
+    <color name="inv_action_delete">#C62828</color>
+    <color name="inv_card_icon_bg">#E8F5E9</color>
+    <color name="inv_card_icon_amber">#FFF8E1</color>
+    <color name="inv_card_icon_red">#FFEBEE</color>
+    <color name="inv_card_icon_blue">#E3F2FD</color>
+    <color name="inv_amber_dark">#F57F17</color>
+    <color name="inv_red_dark">#D32F2F</color>
+    <color name="inv_blue_dark">#1565C0</color>
+
+    <!-- Dashboard screen colors -->
+    <color name="dash_green_primary">#2E7D32</color>
+    <color name="dash_green_light">#E8F5E9</color>
+    <color name="dash_blue_primary">#1565C0</color>
+    <color name="dash_blue_light">#E3F2FD</color>
+    <color name="dash_red_primary">#C62828</color>
+    <color name="dash_red_light">#FFEBEE</color>
+    <color name="dash_amber_primary">#F57F17</color>
+    <color name="dash_amber_light">#FFF8E1</color>
+    <color name="dash_amber_chip">#FFA000</color>
+    <color name="dash_charcoal">#37474F</color>
+    <color name="dash_outlined_stroke">#BDBDBD</color>
+    <color name="dash_olive">#558B2F</color>
+    <color name="dash_brown_tint">#8D6E63</color>
+    <color name="dash_brown_bg">#FFF3E0</color>
+    <color name="dash_amber_tint">#FFB300</color>
+    <color name="dash_green_trend">#2E7D32</color>
+    <color name="dash_completed_bg">#4CAF50</color>
+    <color name="dash_preparing_bg">#FFC107</color>
+    <color name="dash_preparing_text">#3E2723</color>
+    <color name="dash_table_header_bg">#F5F5F5</color>
+    <color name="dash_divider">#E0E0E0</color>
 </resources>
