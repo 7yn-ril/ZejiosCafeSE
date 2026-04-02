@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="@color/pos_surface"
+            app:cardCornerRadius="@dimen/card_corner_radius"
+            app:strokeColor="@color/pos_border"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="24dp">
+
+                <TextView
+                    android:id="@+id/tvPlaceholderChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_hint_chip"
+                    android:paddingStart="12dp"
+                    android:paddingTop="6dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="6dp"
+                    android:text="@string/section_ready_chip"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
+                    android:textColor="@color/pos_text_secondary"
+                    android:textStyle="normal" />
+
+                <TextView
+                    android:id="@+id/tvPlaceholderTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.Display"
+                    android:textColor="@color/pos_text_primary"
+                    android:textStyle="normal"
+                    tools:text="Orders Workspace" />
+
+                <TextView
+                    android:id="@+id/tvPlaceholderMessage"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/section_ready_message"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyLarge"
+                    android:textColor="@color/pos_text_secondary"
+                    android:textStyle="normal" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="@color/pos_surface"
+            app:cardCornerRadius="@dimen/card_corner_radius"
+            app:strokeColor="@color/pos_border"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/section_ready_card_one_title"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.SectionTitle"
+                    android:textColor="@color/pos_text_primary"
+                    android:textStyle="normal" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/section_ready_card_one_body"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyLarge"
+                    android:textColor="@color/pos_text_secondary"
+                    android:textStyle="normal" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="@color/pos_surface"
+            app:cardCornerRadius="@dimen/card_corner_radius"
+            app:strokeColor="@color/pos_border"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/section_ready_card_two_title"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.SectionTitle"
+                    android:textColor="@color/pos_text_primary"
+                    android:textStyle="normal" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/section_ready_card_two_body"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyLarge"
+                    android:textColor="@color/pos_text_secondary"
+                    android:textStyle="normal" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>
