@@ -474,6 +474,17 @@
             app:layout_constraintTop_toBottomOf="@id/topBar" />
 
         <include
+            android:id="@+id/staffContent"
+            layout="@layout/content_staff"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <include
             android:id="@+id/placeholderContent"
             layout="@layout/content_placeholder"
             android:layout_width="0dp"
@@ -603,23 +614,46 @@
                 android:orientation="vertical"
                 android:padding="@dimen/content_panel_padding">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/current_order"
-                    android:textAppearance="@style/TextAppearance.ZejiosCafe.Headline"
-                    android:textColor="@color/pos_text_primary"
-                    android:textStyle="normal" />
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
 
-                <TextView
-                    android:id="@+id/tvOrderNumber"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
-                    android:textColor="@color/pos_text_secondary"
-                    android:textStyle="normal"
-                    tools:text="Order #POS-1452" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="44dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/current_order"
+                            android:textAppearance="@style/TextAppearance.ZejiosCafe.Headline"
+                            android:textColor="@color/pos_text_primary"
+                            android:textStyle="normal" />
+
+                        <TextView
+                            android:id="@+id/tvOrderNumber"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
+                            android:textColor="@color/pos_text_secondary"
+                            android:textStyle="normal"
+                            tools:text="Order #POS-1452" />
+                    </LinearLayout>
+
+                    <ImageButton
+                        android:id="@+id/btnCloseCheckout"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_gravity="top|end"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/close_checkout"
+                        android:padding="6dp"
+                        android:src="@drawable/ic_close_24"
+                        app:tint="@color/pos_text_secondary" />
+                </FrameLayout>
 
                 <LinearLayout
                     android:id="@+id/emptyOrderState"

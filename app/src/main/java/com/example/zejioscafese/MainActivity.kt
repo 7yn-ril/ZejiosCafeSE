@@ -2,6 +2,8 @@
 package com.example.zejioscafese
 
 import android.animation.ValueAnimator
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.Rect
@@ -20,6 +22,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePaddingRelative
 import androidx.core.widget.doAfterTextChanged
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
 import androidx.recyclerview.widget.GridLayoutManager
@@ -48,6 +51,7 @@ import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
+import kotlin.math.abs
 
 class MainActivity : AppCompatActivity(), NavigationHost {
 
@@ -85,6 +89,15 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
     private var isSidebarExpanded: Boolean = true
     private var currentSection: Section = Section.POS
+    private var isCheckoutExpanded: Boolean = false
+    private var checkoutExpandedGuidePercent: Float = 0.70f
+    private var checkoutAnimator: ValueAnimator? = null
+
+    companion object {
+        private const val STATE_CURRENT_SECTION = "current_section"
+        private const val STATE_CHECKOUT_EXPANDED = "checkout_expanded"
+        private const val CHECKOUT_COLLAPSED_GUIDE_PERCENT = 1f
+    }
 
     private val sidebarTextViews by lazy {
         listOf<View>(
@@ -120,6 +133,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         setContentView(binding.root)
 
         isSidebarExpanded = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        captureCheckoutExpandedGuidePercent()
+        isCheckoutExpanded = savedInstanceState?.getBoolean(STATE_CHECKOUT_EXPANDED) ?: false
 
         setupRecyclerViews()
         setupDashboard()
@@ -128,7 +143,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         setupInteractions()
         observeViewModel()
         val initialSection = savedInstanceState
-            ?.getInt("current_section")
+            ?.getInt(STATE_CURRENT_SECTION)
             ?.let { restoredOrdinal -> Section.entries.getOrNull(restoredOrdinal) }
             ?: Section.POS
         renderSection(initialSection)
@@ -138,7 +153,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        outState.putInt("current_section", currentSection.ordinal)
+        outState.putInt(STATE_CURRENT_SECTION, currentSection.ordinal)
+        outState.putBoolean(STATE_CHECKOUT_EXPANDED, isCheckoutExpanded)
     }
 
     private fun setupRecyclerViews() {
@@ -425,7 +441,15 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
         binding.btnClear.setOnClickListener { viewModel.clearOrder() }
         binding.btnCheckout.setOnClickListener { }
-        binding.fabCart.setOnClickListener { renderSection(Section.POS) }
+        binding.btnCloseCheckout.setOnClickListener {
+            setCheckoutExpanded(expanded = false, animate = true)
+        }
+        binding.fabCart.setOnClickListener {
+            if (currentSection != Section.POS) {
+                renderSection(Section.POS)
+            }
+            setCheckoutExpanded(expanded = true, animate = true)
+        }
 
         binding.btnCash.setOnClickListener {
             viewModel.setPaymentMethod(PosViewModel.PaymentMethod.CASH)
@@ -535,16 +559,28 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val showPos = section == Section.POS
         val showDashboard = section == Section.DASHBOARD
         val showOrders = section == Section.ORDERS
-        val showPlaceholder = !showPos && !showDashboard && !showOrders && !showFragmentScreen
+        val showStaff = section == Section.STAFF
+        val showPlaceholder = !showPos && !showDashboard && !showOrders && !showStaff && !showFragmentScreen
 
-        binding.topBar.visibility = if (showFragmentScreen) View.GONE else View.VISIBLE
+        binding.topBar.visibility = if (showFragmentScreen || showStaff) View.GONE else View.VISIBLE
         binding.leftPanel.visibility = if (showPos) View.VISIBLE else View.GONE
-        binding.rightPanel.visibility = if (showPos) View.VISIBLE else View.GONE
-        binding.fabCart.visibility = if (showPos) View.VISIBLE else View.GONE
+        binding.rightPanel.visibility = if (showPos && isCheckoutExpanded) View.VISIBLE else View.GONE
         binding.dashboardContent.root.visibility = if (showDashboard) View.VISIBLE else View.GONE
         binding.ordersContent.root.visibility = if (showOrders) View.VISIBLE else View.GONE
+        binding.staffContent.root.visibility = if (showStaff) View.VISIBLE else View.GONE
         binding.placeholderContent.root.visibility = if (showPlaceholder) View.VISIBLE else View.GONE
         binding.fragmentContainer.visibility = if (showFragmentScreen) View.VISIBLE else View.GONE
+
+        if (showPos) {
+            applyCheckoutPanelState(expanded = isCheckoutExpanded, animate = false)
+        } else {
+            checkoutAnimator?.cancel()
+            binding.rightPanel.visibility = View.GONE
+            binding.fabCart.visibility = View.GONE
+            binding.rightPanel.alpha = 1f
+            binding.rightPanel.translationX = 0f
+            binding.rightPanel.translationY = 0f
+        }
 
         if (showPlaceholder) {
             binding.placeholderContent.tvPlaceholderTitle.text = getString(
@@ -555,6 +591,99 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
         updateHostedFragment(section)
         applySidebarAppearance(isSidebarExpanded)
+    }
+
+    private fun captureCheckoutExpandedGuidePercent() {
+        val layoutParams = binding.contentGuide.layoutParams as? ConstraintLayout.LayoutParams ?: return
+        if (layoutParams.guidePercent in 0f..1f) {
+            checkoutExpandedGuidePercent = layoutParams.guidePercent
+        }
+    }
+
+    private fun setCheckoutExpanded(expanded: Boolean, animate: Boolean) {
+        if (isCheckoutExpanded == expanded && currentSection == Section.POS) {
+            return
+        }
+        isCheckoutExpanded = expanded
+        if (currentSection == Section.POS) {
+            applyCheckoutPanelState(expanded = expanded, animate = animate)
+        }
+    }
+
+    private fun applyCheckoutPanelState(expanded: Boolean, animate: Boolean) {
+        val guideParams = binding.contentGuide.layoutParams as? ConstraintLayout.LayoutParams ?: return
+        val targetPercent = if (expanded) checkoutExpandedGuidePercent else CHECKOUT_COLLAPSED_GUIDE_PERCENT
+        val startPercent = guideParams.guidePercent
+        val checkoutPanel = binding.rightPanel
+        val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        val slideOffset = resources.getDimension(R.dimen.checkout_panel_slide_offset)
+
+        checkoutAnimator?.cancel()
+
+        if (!animate || abs(startPercent - targetPercent) < 0.001f) {
+            binding.contentGuide.updateLayoutParams<ConstraintLayout.LayoutParams> {
+                guidePercent = targetPercent
+            }
+            checkoutPanel.visibility = if (expanded) View.VISIBLE else View.GONE
+            binding.fabCart.visibility = if (!expanded && currentSection == Section.POS) View.VISIBLE else View.GONE
+            checkoutPanel.alpha = 1f
+            checkoutPanel.translationX = 0f
+            checkoutPanel.translationY = 0f
+            return
+        }
+
+        if (expanded) {
+            binding.fabCart.visibility = View.GONE
+            checkoutPanel.visibility = View.VISIBLE
+            checkoutPanel.alpha = 0f
+            if (isLandscape) {
+                checkoutPanel.translationX = slideOffset
+                checkoutPanel.translationY = 0f
+            } else {
+                checkoutPanel.translationY = slideOffset
+                checkoutPanel.translationX = 0f
+            }
+        }
+
+        checkoutAnimator = ValueAnimator.ofFloat(startPercent, targetPercent).apply {
+            duration = 260L
+            addUpdateListener { animator ->
+                val progress = animator.animatedFraction
+                val panelProgress = if (expanded) progress else 1f - progress
+
+                binding.contentGuide.updateLayoutParams<ConstraintLayout.LayoutParams> {
+                    guidePercent = animator.animatedValue as Float
+                }
+
+                checkoutPanel.alpha = panelProgress
+                if (isLandscape) {
+                    checkoutPanel.translationX = (1f - panelProgress) * slideOffset
+                    checkoutPanel.translationY = 0f
+                } else {
+                    checkoutPanel.translationY = (1f - panelProgress) * slideOffset
+                    checkoutPanel.translationX = 0f
+                }
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                private fun settleCheckoutPanel() {
+                    checkoutPanel.visibility = if (expanded) View.VISIBLE else View.GONE
+                    binding.fabCart.visibility = if (!expanded && currentSection == Section.POS) View.VISIBLE else View.GONE
+                    checkoutPanel.alpha = 1f
+                    checkoutPanel.translationX = 0f
+                    checkoutPanel.translationY = 0f
+                    checkoutAnimator = null
+                }
+
+                override fun onAnimationCancel(animation: Animator) {
+                    settleCheckoutPanel()
+                }
+
+                override fun onAnimationEnd(animation: Animator) {
+                    settleCheckoutPanel()
+                }
+            })
+            start()
+        }
     }
 
     private fun updateHostedFragment(section: Section) {

@@ -33,6 +33,7 @@
     <dimen name="content_inline_gap">12dp</dimen>
     <dimen name="content_card_padding">20dp</dimen>
     <dimen name="content_panel_padding">18dp</dimen>
+    <dimen name="checkout_panel_slide_offset">28dp</dimen>
     <dimen name="image_placeholder_padding">18dp</dimen>
 
     <dimen name="product_card_elevation">4dp</dimen>

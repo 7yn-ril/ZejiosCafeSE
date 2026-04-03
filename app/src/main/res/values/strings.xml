@@ -26,6 +26,37 @@
     <string name="settings_title">Settings</string>
     <string name="settings_subtitle">Adjust system preferences and cafe operations tools</string>
 
+    <string name="staff_management_title">Staff Management</string>
+    <string name="staff_management_subtitle">Manage your cafe team</string>
+    <string name="add_staff">Add Staff</string>
+    <string name="staff_search_hint">Search staff by name...</string>
+    <string name="all_roles">All Roles</string>
+    <string name="all_status">All Status</string>
+    <string name="total_staff">Total Staff</string>
+    <string name="active_today">Active Today</string>
+    <string name="on_break">On Break</string>
+    <string name="off_duty">Off Duty</string>
+    <string name="staff_metric_total_value">24</string>
+    <string name="staff_metric_active_value">18</string>
+    <string name="staff_metric_break_value">4</string>
+    <string name="staff_metric_off_value">2</string>
+    <string name="staff_member_avatar">Staff member icon</string>
+    <string name="staff_member_name_one">Michael Chen</string>
+    <string name="staff_member_name_two">Sarah Johnson</string>
+    <string name="staff_member_name_three">Daniel Reyes</string>
+    <string name="staff_member_id_one">ID: #EMP-2401</string>
+    <string name="staff_member_id_two">ID: #EMP-2402</string>
+    <string name="staff_member_id_three">ID: #EMP-2403</string>
+    <string name="staff_status_active">Active</string>
+    <string name="staff_role_manager">Manager</string>
+    <string name="staff_role_barista">Barista</string>
+    <string name="staff_role_cashier">Cashier</string>
+    <string name="shift_time">Shift time</string>
+    <string name="staff_shift_one">08:00 - 16:00</string>
+    <string name="staff_shift_two">06:00 - 14:00</string>
+    <string name="staff_shift_three">11:00 - 19:00</string>
+    <string name="edit">Edit</string>
+
     <string name="search_hint">Search menu items, categories, or favorites...</string>
     <string name="filter_sort">Sort</string>
     <string name="current_order">Checkout</string>
@@ -48,6 +79,7 @@
     <string name="toggle_sidebar">Toggle sidebar</string>
     <string name="notifications">Notifications</string>
     <string name="cart">Cart</string>
+    <string name="close_checkout">Close checkout</string>
     <string name="profile_name">April Santos</string>
     <string name="profile_email">april@zejioscafe.com</string>
     <string name="profile_role">Cafe Administrator</string>
