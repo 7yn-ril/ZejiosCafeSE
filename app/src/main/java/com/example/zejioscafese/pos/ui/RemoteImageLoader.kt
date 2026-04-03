@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import android.util.LruCache
 import android.widget.ImageView
 import androidx.annotation.DrawableRes
+import com.example.zejioscafese.R
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
@@ -21,13 +22,15 @@ object RemoteImageLoader {
         imageUrl: String?,
         @DrawableRes fallbackResId: Int
     ) {
-        imageView.setImageResource(fallbackResId)
+        showFallback(imageView, fallbackResId)
         val normalizedUrl = imageUrl.orEmpty().trim()
         imageView.tag = normalizedUrl
 
         if (normalizedUrl.isEmpty()) return
 
         cache.get(normalizedUrl)?.let { cachedBitmap ->
+            imageView.scaleType = ImageView.ScaleType.CENTER_CROP
+            imageView.setPadding(0, 0, 0, 0)
             imageView.setImageBitmap(cachedBitmap)
             return
         }
@@ -37,10 +40,19 @@ object RemoteImageLoader {
             cache.put(normalizedUrl, bitmap)
             imageView.post {
                 if (imageView.tag == normalizedUrl) {
+                    imageView.scaleType = ImageView.ScaleType.CENTER_CROP
+                    imageView.setPadding(0, 0, 0, 0)
                     imageView.setImageBitmap(bitmap)
                 }
             }
         }
+    }
+
+    private fun showFallback(imageView: ImageView, @DrawableRes fallbackResId: Int) {
+        val inset = imageView.resources.getDimensionPixelSize(R.dimen.image_placeholder_padding)
+        imageView.scaleType = ImageView.ScaleType.CENTER_INSIDE
+        imageView.setPadding(inset, inset, inset, inset)
+        imageView.setImageResource(fallbackResId)
     }
 
     private fun String.downloadBitmap(): Bitmap? {

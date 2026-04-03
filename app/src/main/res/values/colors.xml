@@ -37,6 +37,24 @@
     <color name="pos_success_soft">#EAF7EC</color>
     <color name="pos_page_button">#F4ECE2</color>
 
+    <color name="chip_selected_bg">#6B5435</color>
+    <color name="stock_good">#58B66A</color>
+    <color name="stock_bar_bg">#E8DCCD</color>
+    <color name="pos_divider">#E8DCCD</color>
+    <color name="stock_critical">#D32F2F</color>
+
+    <color name="chip_selected_text">#FFFFFF</color>
+    <color name="stock_warning">#D97706</color>
+
+    <color name="cat_drinks">#6B5435</color>
+    <color name="cat_meals">#CC6A49</color>
+    <color name="cat_desserts">#D97706</color>
+    <color name="cat_snacks">#58B66A</color>
+    <color name="cat_specials">#4A7CE0</color>
+
+    <color name="chart_bar">#B87944</color>
+    <color name="chart_bar_light">#E8D0B6</color>
+
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>

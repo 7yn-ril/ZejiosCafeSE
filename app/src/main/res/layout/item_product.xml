@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="6dp">
+    android:padding="8dp">
 
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/productCard"
@@ -20,7 +20,7 @@
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:padding="12dp">
+            android:padding="@dimen/content_card_padding">
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/ivProduct"
@@ -57,7 +57,7 @@
                 android:id="@+id/tvProductCategory"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
+                android:layout_marginTop="@dimen/content_section_gap"
                 android:background="@drawable/bg_hint_chip"
                 android:paddingStart="10dp"
                 android:paddingTop="5dp"
@@ -74,7 +74,9 @@
                 android:id="@+id/tvProductName"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
+                android:layout_marginTop="@dimen/content_inline_gap"
+                android:ellipsize="end"
+                android:minLines="2"
                 android:maxLines="2"
                 android:textColor="@color/pos_text_primary"
                 android:textSize="16sp"
@@ -100,7 +102,7 @@
                 android:id="@+id/tvTapToAdd"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="@dimen/content_section_gap"
                 android:background="@drawable/bg_hint_chip"
                 android:paddingStart="10dp"
                 android:paddingTop="6dp"
@@ -117,7 +119,7 @@
                 android:id="@+id/tvQuantityBadge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="@dimen/content_section_gap"
                 android:background="@drawable/bg_quantity_badge"
                 android:paddingStart="12dp"
                 android:paddingTop="6dp"

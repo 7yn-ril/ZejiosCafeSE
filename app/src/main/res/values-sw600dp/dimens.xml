@@ -5,13 +5,26 @@
     <dimen name="card_corner_radius">24dp</dimen>
 
     <dimen name="sidebar_expanded_width">258dp</dimen>
-    <dimen name="sidebar_collapsed_width">90dp</dimen>
+    <dimen name="sidebar_collapsed_width">96dp</dimen>
     <dimen name="sidebar_padding">20dp</dimen>
     <dimen name="sidebar_item_height">56dp</dimen>
+    <dimen name="sidebar_row_horizontal_padding">16dp</dimen>
+    <dimen name="sidebar_row_collapsed_padding">10dp</dimen>
+    <dimen name="sidebar_row_collapsed_margin">10dp</dimen>
+    <dimen name="main_content_gap_collapsed">16dp</dimen>
 
     <dimen name="search_height">60dp</dimen>
     <dimen name="category_tab_height">50dp</dimen>
     <dimen name="product_image_height">164dp</dimen>
     <dimen name="quantity_button_size">34dp</dimen>
     <dimen name="order_item_thumbnail_size">66dp</dimen>
+    <dimen name="product_grid_spacing">14dp</dimen>
+    <dimen name="order_list_spacing">18dp</dimen>
+
+    <dimen name="content_screen_padding">18dp</dimen>
+    <dimen name="content_section_gap">18dp</dimen>
+    <dimen name="content_inline_gap">14dp</dimen>
+    <dimen name="content_card_padding">22dp</dimen>
+    <dimen name="content_panel_padding">20dp</dimen>
+    <dimen name="image_placeholder_padding">20dp</dimen>
 </resources>

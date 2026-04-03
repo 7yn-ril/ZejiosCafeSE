@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="12dp"
+    android:layout_marginBottom="@dimen/content_section_gap"
     app:cardBackgroundColor="@color/pos_surface_soft"
     app:cardCornerRadius="22dp"
     app:cardElevation="0dp"
@@ -14,7 +14,7 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="14dp">
+        android:padding="16dp">
 
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/ivOrderItem"
@@ -33,7 +33,7 @@
             android:id="@+id/tvOrderItemName"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
+            android:layout_marginStart="@dimen/content_inline_gap"
             android:ellipsize="end"
             android:maxLines="1"
             android:textColor="@color/pos_text_primary"
@@ -48,7 +48,7 @@
             android:id="@+id/tvOrderItemUnitPrice"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
+            android:layout_marginStart="@dimen/content_inline_gap"
             android:layout_marginTop="4dp"
             android:textColor="@color/pos_text_secondary"
             android:textSize="12sp"
@@ -72,7 +72,7 @@
             android:id="@+id/orderQuantityContainer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="@dimen/content_inline_gap"
             android:background="@drawable/bg_stepper_container"
             android:gravity="center_vertical"
             android:orientation="horizontal"

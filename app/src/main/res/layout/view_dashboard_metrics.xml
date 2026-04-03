@@ -5,7 +5,7 @@
     <com.google.android.material.card.MaterialCardView
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="12dp"
+        android:layout_marginEnd="@dimen/content_inline_gap"
         android:layout_weight="1"
         app:cardBackgroundColor="@color/pos_warning_soft"
         app:cardCornerRadius="@dimen/card_corner_radius"
@@ -17,7 +17,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="18dp">
+            android:padding="@dimen/content_card_padding">
 
             <ImageView
                 android:layout_width="20dp"
@@ -56,7 +56,7 @@
     <com.google.android.material.card.MaterialCardView
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="12dp"
+        android:layout_marginEnd="@dimen/content_inline_gap"
         android:layout_weight="1"
         app:cardBackgroundColor="@color/pos_surface_soft"
         app:cardCornerRadius="@dimen/card_corner_radius"
@@ -68,7 +68,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="18dp">
+            android:padding="@dimen/content_card_padding">
 
             <ImageView
                 android:layout_width="20dp"
@@ -107,7 +107,7 @@
     <com.google.android.material.card.MaterialCardView
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="12dp"
+        android:layout_marginEnd="@dimen/content_inline_gap"
         android:layout_weight="1"
         app:cardBackgroundColor="@color/pos_surface"
         app:cardCornerRadius="@dimen/card_corner_radius"
@@ -119,7 +119,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="18dp">
+            android:padding="@dimen/content_card_padding">
 
             <ImageView
                 android:layout_width="20dp"
@@ -158,7 +158,7 @@
     <com.google.android.material.card.MaterialCardView
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="12dp"
+        android:layout_marginEnd="@dimen/content_inline_gap"
         android:layout_weight="1"
         app:cardBackgroundColor="@color/pos_surface"
         app:cardCornerRadius="@dimen/card_corner_radius"
@@ -170,7 +170,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="18dp">
+            android:padding="@dimen/content_card_padding">
 
             <ImageView
                 android:layout_width="20dp"
@@ -220,7 +220,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="18dp">
+            android:padding="@dimen/content_card_padding">
 
             <ImageView
                 android:layout_width="20dp"

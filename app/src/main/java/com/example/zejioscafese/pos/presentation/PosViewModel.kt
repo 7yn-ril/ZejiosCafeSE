@@ -174,6 +174,9 @@ class PosViewModel : ViewModel() {
     private val _orderNumber = MutableLiveData("#POS-1024")
     val orderNumber: LiveData<String> = _orderNumber
 
+    private val _checkoutEvent = MutableLiveData<String?>(null)
+    val checkoutEvent: LiveData<String?> = _checkoutEvent
+
     private val orderQuantitiesStore = linkedMapOf<String, Int>()
 
     init {
@@ -212,8 +215,8 @@ class PosViewModel : ViewModel() {
     }
 
     fun removeProduct(productId: String) {
-        orderQuantities.remove(productId)
-        syncOrderItems()
+        orderQuantitiesStore.remove(productId)
+        syncOrderState()
     }
 
     fun clearOrder() {

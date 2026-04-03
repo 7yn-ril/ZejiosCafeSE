@@ -6,12 +6,14 @@
     <dimen name="chip_corner_radius">22dp</dimen>
 
     <dimen name="sidebar_expanded_width">252dp</dimen>
-    <dimen name="sidebar_collapsed_width">86dp</dimen>
+    <dimen name="sidebar_collapsed_width">92dp</dimen>
     <dimen name="sidebar_icon_size">22dp</dimen>
     <dimen name="sidebar_item_height">54dp</dimen>
     <dimen name="sidebar_padding">18dp</dimen>
     <dimen name="sidebar_row_horizontal_padding">14dp</dimen>
-    <dimen name="sidebar_row_collapsed_padding">0dp</dimen>
+    <dimen name="sidebar_row_collapsed_padding">8dp</dimen>
+    <dimen name="sidebar_row_collapsed_margin">8dp</dimen>
+    <dimen name="main_content_gap_collapsed">14dp</dimen>
 
     <dimen name="menu_item_height">54dp</dimen>
     <dimen name="topbar_avatar_size">44dp</dimen>
@@ -23,8 +25,15 @@
     <dimen name="quantity_button_size">32dp</dimen>
     <dimen name="order_item_thumbnail_size">62dp</dimen>
     <dimen name="payment_button_stroke_width">1dp</dimen>
-    <dimen name="product_grid_spacing">8dp</dimen>
-    <dimen name="order_list_spacing">12dp</dimen>
+    <dimen name="product_grid_spacing">12dp</dimen>
+    <dimen name="order_list_spacing">16dp</dimen>
+
+    <dimen name="content_screen_padding">16dp</dimen>
+    <dimen name="content_section_gap">16dp</dimen>
+    <dimen name="content_inline_gap">12dp</dimen>
+    <dimen name="content_card_padding">20dp</dimen>
+    <dimen name="content_panel_padding">18dp</dimen>
+    <dimen name="image_placeholder_padding">18dp</dimen>
 
     <dimen name="product_card_elevation">4dp</dimen>
     <dimen name="product_card_elevation_pressed">8dp</dimen>

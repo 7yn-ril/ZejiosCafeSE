@@ -20,9 +20,12 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePaddingRelative
 import androidx.core.widget.doAfterTextChanged
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.commit
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.snackbar.Snackbar
 import com.example.zejioscafese.dashboard.data.DashboardSampleData
 import com.example.zejioscafese.dashboard.model.AlertLevel
 import com.example.zejioscafese.dashboard.model.DashboardPeriod
@@ -36,13 +39,17 @@ import com.example.zejioscafese.pos.presentation.PosViewModel
 import com.example.zejioscafese.pos.ui.CategoryAdapter
 import com.example.zejioscafese.pos.ui.OrderItemAdapter
 import com.example.zejioscafese.pos.ui.ProductAdapter
+import com.example.zejioscafese.ui.InventoryFragment
+import com.example.zejioscafese.ui.NavigationHost
+import com.example.zejioscafese.ui.ReportsFragment
+import com.example.zejioscafese.ui.Screen
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), NavigationHost {
 
     private enum class Section(
         @StringRes val labelRes: Int,
@@ -120,24 +127,18 @@ class MainActivity : AppCompatActivity() {
         setupSidebar()
         setupInteractions()
         observeViewModel()
-        renderSection(Section.POS)
+        val initialSection = savedInstanceState
+            ?.getInt("current_section")
+            ?.let { restoredOrdinal -> Section.entries.getOrNull(restoredOrdinal) }
+            ?: Section.POS
+        renderSection(initialSection)
         applySidebarState(isSidebarExpanded, animate = false)
         viewModel.setPaymentMethod(PosViewModel.PaymentMethod.CASH)
-
-        // Restore or default to POS
-        if (savedInstanceState != null) {
-            val restored = savedInstanceState.getString(KEY_CURRENT_SCREEN, SCREEN_POS)
-            currentScreen = "" // force navigateTo to proceed
-            navigateTo(restored)
-        } else {
-            // Default: POS screen is shown inline, no fragment needed
-            applySidebarHighlight(SCREEN_POS)
-        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        outState.putString(KEY_CURRENT_SCREEN, currentScreen)
+        outState.putInt("current_section", currentSection.ordinal)
     }
 
     private fun setupRecyclerViews() {
@@ -512,22 +513,38 @@ class MainActivity : AppCompatActivity() {
         }.show()
     }
 
+    override fun navigateTo(screen: Screen) {
+        val section = when (screen) {
+            Screen.DASHBOARD -> Section.DASHBOARD
+            Screen.POS -> Section.POS
+            Screen.ORDERS -> Section.ORDERS
+            Screen.INVENTORY -> Section.INVENTORY
+            Screen.REPORTS -> Section.REPORTS
+            Screen.STAFF -> Section.STAFF
+            Screen.SETTINGS -> Section.SETTINGS
+        }
+        renderSection(section)
+    }
+
     private fun renderSection(section: Section) {
         currentSection = section
         binding.tvTopTitle.text = getString(section.titleRes)
         binding.tvTopSubtitle.text = getString(section.subtitleRes)
 
+        val showFragmentScreen = section == Section.INVENTORY || section == Section.REPORTS
         val showPos = section == Section.POS
         val showDashboard = section == Section.DASHBOARD
         val showOrders = section == Section.ORDERS
-        val showPlaceholder = !showPos && !showDashboard && !showOrders
+        val showPlaceholder = !showPos && !showDashboard && !showOrders && !showFragmentScreen
 
+        binding.topBar.visibility = if (showFragmentScreen) View.GONE else View.VISIBLE
         binding.leftPanel.visibility = if (showPos) View.VISIBLE else View.GONE
         binding.rightPanel.visibility = if (showPos) View.VISIBLE else View.GONE
         binding.fabCart.visibility = if (showPos) View.VISIBLE else View.GONE
         binding.dashboardContent.root.visibility = if (showDashboard) View.VISIBLE else View.GONE
         binding.ordersContent.root.visibility = if (showOrders) View.VISIBLE else View.GONE
         binding.placeholderContent.root.visibility = if (showPlaceholder) View.VISIBLE else View.GONE
+        binding.fragmentContainer.visibility = if (showFragmentScreen) View.VISIBLE else View.GONE
 
         if (showPlaceholder) {
             binding.placeholderContent.tvPlaceholderTitle.text = getString(
@@ -536,7 +553,37 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
+        updateHostedFragment(section)
         applySidebarAppearance(isSidebarExpanded)
+    }
+
+    private fun updateHostedFragment(section: Section) {
+        val fragment = when (section) {
+            Section.INVENTORY -> InventoryFragment()
+            Section.REPORTS -> ReportsFragment()
+            else -> null
+        }
+
+        val currentFragment = supportFragmentManager.findFragmentById(R.id.fragmentContainer)
+        if (fragment == null) {
+            if (currentFragment != null) {
+                supportFragmentManager.commit {
+                    setReorderingAllowed(true)
+                    remove(currentFragment)
+                }
+            }
+            return
+        }
+
+        val tag = section.name
+        if (currentFragment?.tag == tag) {
+            return
+        }
+
+        supportFragmentManager.commit {
+            setReorderingAllowed(true)
+            replace(R.id.fragmentContainer, fragment, tag)
+        }
     }
 
     private fun applySidebarState(expanded: Boolean, animate: Boolean) {
@@ -551,12 +598,26 @@ class MainActivity : AppCompatActivity() {
         val horizontalPadding = resources.getDimensionPixelSize(
             if (expanded) R.dimen.sidebar_row_horizontal_padding else R.dimen.sidebar_row_collapsed_padding
         )
+        val collapsedRowMargin = resources.getDimensionPixelSize(R.dimen.sidebar_row_collapsed_margin)
+        val rowMargin = if (expanded) 0 else collapsedRowMargin
         sidebarItems.forEach { item ->
             item.row.gravity = if (expanded) Gravity.CENTER_VERTICAL else Gravity.CENTER
             item.row.updatePaddingRelative(start = horizontalPadding, end = horizontalPadding)
+            item.row.updateLayoutParams<LinearLayout.LayoutParams> {
+                marginStart = rowMargin
+                marginEnd = rowMargin
+            }
         }
 
         binding.profileCard.gravity = if (expanded) Gravity.CENTER_VERTICAL else Gravity.CENTER
+        binding.profileCard.updateLayoutParams<LinearLayout.LayoutParams> {
+            marginStart = rowMargin
+            marginEnd = rowMargin
+        }
+        val contentGap = if (expanded) 0 else resources.getDimensionPixelSize(R.dimen.main_content_gap_collapsed)
+        binding.mainContainer.updateLayoutParams<androidx.constraintlayout.widget.ConstraintLayout.LayoutParams> {
+            marginStart = contentGap
+        }
         binding.btnToggleSidebar.rotation = if (expanded) 0f else 180f
         applySidebarAppearance(expanded)
 

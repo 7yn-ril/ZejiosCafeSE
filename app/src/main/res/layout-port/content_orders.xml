@@ -4,14 +4,18 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/pos_background"
     android:clipToPadding="false"
-    android:fillViewport="true">
+    android:fillViewport="true"
+    android:paddingStart="@dimen/content_screen_padding"
+    android:paddingTop="@dimen/content_screen_padding"
+    android:paddingEnd="@dimen/content_screen_padding"
+    android:paddingBottom="@dimen/content_screen_padding">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingBottom="8dp">
+        android:orientation="vertical">
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/ordersSearchInputLayout"
@@ -38,7 +42,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="@dimen/content_section_gap"
             android:orientation="horizontal">
 
             <com.google.android.material.button.MaterialButton
@@ -56,6 +60,7 @@
                 app:backgroundTint="@color/pos_surface"
                 app:cornerRadius="16dp"
                 app:icon="@drawable/ic_filter_24"
+                app:iconSize="18dp"
                 app:iconPadding="6dp"
                 app:iconTint="@color/pos_primary"
                 app:strokeColor="@color/pos_border"
@@ -66,7 +71,7 @@
                 style="@style/Widget.Material3.Button"
                 android:layout_width="0dp"
                 android:layout_height="46dp"
-                android:layout_marginStart="10dp"
+                android:layout_marginStart="@dimen/content_inline_gap"
                 android:layout_weight="1"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
@@ -76,6 +81,7 @@
                 app:backgroundTint="@color/pos_secondary"
                 app:cornerRadius="16dp"
                 app:icon="@drawable/ic_add_18"
+                app:iconSize="18dp"
                 app:iconPadding="6dp"
                 app:iconTint="@color/white" />
         </LinearLayout>
@@ -83,7 +89,7 @@
         <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="@dimen/content_section_gap"
             android:scrollbars="none">
 
             <LinearLayout
@@ -225,14 +231,14 @@
             android:id="@+id/rvOrders"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="@dimen/content_section_gap"
             android:nestedScrollingEnabled="false"
             tools:listitem="@layout/item_management_order" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="@dimen/content_section_gap"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
