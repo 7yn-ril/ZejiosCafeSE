@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/pos_background"
+    android:background="@drawable/bg_app_canvas"
     tools:context=".MainActivity">
 
     <com.google.android.material.card.MaterialCardView
@@ -12,58 +12,80 @@
         android:layout_width="@dimen/sidebar_expanded_width"
         android:layout_height="0dp"
         android:layout_margin="@dimen/screen_padding"
-        app:cardBackgroundColor="@color/pos_surface"
-        app:cardCornerRadius="@dimen/card_corner_radius"
-        app:cardElevation="2dp"
+        app:cardBackgroundColor="@android:color/transparent"
+        app:cardCornerRadius="18dp"
+        app:cardElevation="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
         <LinearLayout
+            android:id="@+id/sidebarSurface"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:background="@drawable/bg_sidebar_surface"
             android:orientation="vertical"
-            android:padding="@dimen/section_spacing">
+            android:padding="@dimen/sidebar_padding">
 
-            <ImageButton
-                android:id="@+id/btnToggleSidebar"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/toggle_sidebar"
-                android:src="@android:drawable/ic_menu_sort_by_size"
-                app:tint="@color/pos_primary" />
-
-            <TextView
-                android:id="@+id/tvSidebarTitle"
+            <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="Zejios Cafe"
-                android:textColor="@color/pos_text_primary"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+                android:layout_height="wrap_content">
 
-            <TextView
-                android:id="@+id/tvSidebarSubtitle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="Management"
-                android:textColor="@color/pos_text_muted"
-                android:textSize="12sp" />
+                <ImageView
+                    android:id="@+id/ivSidebarLogo"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:contentDescription="@string/app_name"
+                    android:src="@drawable/ic_pos_24"
+                    app:layout_constraintBottom_toBottomOf="@id/tvSidebarTitle"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="@id/tvSidebarTitle"
+                    app:tint="@color/white" />
 
-            <!-- Divider after header -->
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginTop="14dp"
-                android:layout_marginBottom="6dp"
-                android:background="@color/pos_divider" />
+                <TextView
+                    android:id="@+id/tvSidebarTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:text="@string/sidebar_cafe_name"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.SidebarTitle"
+                    android:textColor="@color/white"
+                    android:textStyle="normal"
+                    app:layout_constraintEnd_toStartOf="@id/btnToggleSidebar"
+                    app:layout_constraintStart_toEndOf="@id/ivSidebarLogo"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <TextView
+                    android:id="@+id/tvSidebarSubtitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/sidebar_cafe_subtitle"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
+                    android:textColor="@color/pos_text_on_sidebar_muted"
+                    android:textStyle="normal"
+                    app:layout_constraintEnd_toStartOf="@id/btnToggleSidebar"
+                    app:layout_constraintStart_toEndOf="@id/ivSidebarLogo"
+                    app:layout_constraintTop_toBottomOf="@id/tvSidebarTitle" />
+
+                <ImageButton
+                    android:id="@+id/btnToggleSidebar"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/toggle_sidebar"
+                    android:src="@drawable/ic_menu_24"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:tint="@color/white" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
+                android:layout_marginTop="20dp"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
@@ -71,16 +93,17 @@
                 <LinearLayout
                     android:id="@+id/itemDashboard"
                     android:layout_width="match_parent"
-                    android:layout_height="@dimen/menu_item_height"
+                    android:layout_height="@dimen/sidebar_item_height"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:paddingHorizontal="12dp">
 
                     <ImageView
+                        android:id="@+id/ivSidebarDashboard"
                         android:layout_width="@dimen/sidebar_icon_size"
                         android:layout_height="@dimen/sidebar_icon_size"
-                        android:src="@android:drawable/ic_menu_view"
-                        app:tint="@color/pos_text_secondary" />
+                        android:src="@drawable/ic_dashboard_24"
+                        app:tint="@color/pos_text_on_sidebar" />
 
                     <TextView
                         android:id="@+id/tvSidebarDashboard"
@@ -89,24 +112,26 @@
                         android:layout_marginStart="14dp"
                         android:layout_weight="1"
                         android:text="@string/dashboard"
-                        android:textColor="@color/pos_text_primary"
-                        android:textSize="14sp" />
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.SidebarItem"
+                        android:textColor="@color/pos_text_on_sidebar"
+                        android:textStyle="normal" />
                 </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/itemPos"
                     android:layout_width="match_parent"
-                    android:layout_height="@dimen/menu_item_height"
-                    android:layout_marginTop="4dp"
+                    android:layout_height="@dimen/sidebar_item_height"
+                    android:layout_marginTop="8dp"
                     android:background="@drawable/bg_sidebar_item_selected"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:paddingHorizontal="12dp">
 
                     <ImageView
+                        android:id="@+id/ivSidebarPos"
                         android:layout_width="@dimen/sidebar_icon_size"
                         android:layout_height="@dimen/sidebar_icon_size"
-                        android:src="@android:drawable/ic_menu_agenda"
+                        android:src="@drawable/ic_pos_24"
                         app:tint="@color/white" />
 
                     <TextView
@@ -116,25 +141,26 @@
                         android:layout_marginStart="14dp"
                         android:layout_weight="1"
                         android:text="@string/pos"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.SidebarItem"
                         android:textColor="@color/white"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
+                        android:textStyle="normal" />
                 </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/itemOrders"
                     android:layout_width="match_parent"
-                    android:layout_height="@dimen/menu_item_height"
-                    android:layout_marginTop="4dp"
+                    android:layout_height="@dimen/sidebar_item_height"
+                    android:layout_marginTop="8dp"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:paddingHorizontal="12dp">
 
                     <ImageView
+                        android:id="@+id/ivSidebarOrders"
                         android:layout_width="@dimen/sidebar_icon_size"
                         android:layout_height="@dimen/sidebar_icon_size"
-                        android:src="@android:drawable/ic_menu_recent_history"
-                        app:tint="@color/pos_text_secondary" />
+                        android:src="@drawable/ic_orders_24"
+                        app:tint="@color/pos_text_on_sidebar" />
 
                     <TextView
                         android:id="@+id/tvSidebarOrders"
@@ -143,24 +169,26 @@
                         android:layout_marginStart="14dp"
                         android:layout_weight="1"
                         android:text="@string/orders"
-                        android:textColor="@color/pos_text_primary"
-                        android:textSize="14sp" />
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.SidebarItem"
+                        android:textColor="@color/pos_text_on_sidebar"
+                        android:textStyle="normal" />
                 </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/itemInventory"
                     android:layout_width="match_parent"
-                    android:layout_height="@dimen/menu_item_height"
-                    android:layout_marginTop="4dp"
+                    android:layout_height="@dimen/sidebar_item_height"
+                    android:layout_marginTop="8dp"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:paddingHorizontal="12dp">
 
                     <ImageView
+                        android:id="@+id/ivSidebarInventory"
                         android:layout_width="@dimen/sidebar_icon_size"
                         android:layout_height="@dimen/sidebar_icon_size"
-                        android:src="@android:drawable/ic_menu_manage"
-                        app:tint="@color/pos_text_secondary" />
+                        android:src="@drawable/ic_inventory_24"
+                        app:tint="@color/pos_text_on_sidebar" />
 
                     <TextView
                         android:id="@+id/tvSidebarInventory"
@@ -169,8 +197,9 @@
                         android:layout_marginStart="14dp"
                         android:layout_weight="1"
                         android:text="@string/inventory"
-                        android:textColor="@color/pos_text_primary"
-                        android:textSize="14sp" />
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.SidebarItem"
+                        android:textColor="@color/pos_text_on_sidebar"
+                        android:textStyle="normal" />
                 </LinearLayout>
 
                 <!-- Divider between nav groups -->
@@ -184,16 +213,18 @@
                 <LinearLayout
                     android:id="@+id/itemReports"
                     android:layout_width="match_parent"
-                    android:layout_height="@dimen/menu_item_height"
+                    android:layout_height="@dimen/sidebar_item_height"
+                    android:layout_marginTop="8dp"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:paddingHorizontal="12dp">
 
                     <ImageView
+                        android:id="@+id/ivSidebarReports"
                         android:layout_width="@dimen/sidebar_icon_size"
                         android:layout_height="@dimen/sidebar_icon_size"
-                        android:src="@android:drawable/ic_menu_sort_alphabetically"
-                        app:tint="@color/pos_text_secondary" />
+                        android:src="@drawable/ic_reports_24"
+                        app:tint="@color/pos_text_on_sidebar" />
 
                     <TextView
                         android:id="@+id/tvSidebarReports"
@@ -202,24 +233,26 @@
                         android:layout_marginStart="14dp"
                         android:layout_weight="1"
                         android:text="@string/reports"
-                        android:textColor="@color/pos_text_primary"
-                        android:textSize="14sp" />
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.SidebarItem"
+                        android:textColor="@color/pos_text_on_sidebar"
+                        android:textStyle="normal" />
                 </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/itemStaff"
                     android:layout_width="match_parent"
-                    android:layout_height="@dimen/menu_item_height"
-                    android:layout_marginTop="4dp"
+                    android:layout_height="@dimen/sidebar_item_height"
+                    android:layout_marginTop="8dp"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:paddingHorizontal="12dp">
 
                     <ImageView
+                        android:id="@+id/ivSidebarStaff"
                         android:layout_width="@dimen/sidebar_icon_size"
                         android:layout_height="@dimen/sidebar_icon_size"
-                        android:src="@android:drawable/ic_menu_myplaces"
-                        app:tint="@color/pos_text_secondary" />
+                        android:src="@drawable/ic_staff_24"
+                        app:tint="@color/pos_text_on_sidebar" />
 
                     <TextView
                         android:id="@+id/tvSidebarStaff"
@@ -228,24 +261,26 @@
                         android:layout_marginStart="14dp"
                         android:layout_weight="1"
                         android:text="@string/staff"
-                        android:textColor="@color/pos_text_primary"
-                        android:textSize="14sp" />
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.SidebarItem"
+                        android:textColor="@color/pos_text_on_sidebar"
+                        android:textStyle="normal" />
                 </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/itemSettings"
                     android:layout_width="match_parent"
-                    android:layout_height="@dimen/menu_item_height"
-                    android:layout_marginTop="4dp"
+                    android:layout_height="@dimen/sidebar_item_height"
+                    android:layout_marginTop="8dp"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:paddingHorizontal="12dp">
 
                     <ImageView
+                        android:id="@+id/ivSidebarSettings"
                         android:layout_width="@dimen/sidebar_icon_size"
                         android:layout_height="@dimen/sidebar_icon_size"
-                        android:src="@android:drawable/ic_menu_preferences"
-                        app:tint="@color/pos_text_secondary" />
+                        android:src="@drawable/ic_settings_24"
+                        app:tint="@color/pos_text_on_sidebar" />
 
                     <TextView
                         android:id="@+id/tvSidebarSettings"
@@ -254,8 +289,55 @@
                         android:layout_marginStart="14dp"
                         android:layout_weight="1"
                         android:text="@string/settings"
-                        android:textColor="@color/pos_text_primary"
-                        android:textSize="14sp" />
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.SidebarItem"
+                        android:textColor="@color/pos_text_on_sidebar"
+                        android:textStyle="normal" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/profileCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_profile_card"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="12dp">
+
+                <ImageView
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:background="@drawable/bg_avatar_circle"
+                    android:contentDescription="@string/profile_name"
+                    android:padding="7dp"
+                    android:src="@drawable/ic_staff_24"
+                    app:tint="@color/pos_primary" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvProfileName"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/profile_name"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
+                        android:textColor="@color/white"
+                        android:textStyle="normal" />
+
+                    <TextView
+                        android:id="@+id/tvProfileEmail"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/profile_email"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
+                        android:textColor="@color/pos_text_on_sidebar_muted"
+                        android:textStyle="normal" />
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>
@@ -283,7 +365,9 @@
             app:cardElevation="2dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent">
+            app:layout_constraintTop_toTopOf="parent"
+            app:strokeColor="@color/pos_border"
+            app:strokeWidth="1dp">
 
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
@@ -295,9 +379,9 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:text="@string/pos_title"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.Title"
                     android:textColor="@color/pos_text_primary"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
+                    android:textStyle="normal"
                     app:layout_constraintEnd_toStartOf="@+id/notificationFrame"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent" />
@@ -308,38 +392,38 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
                     android:text="@string/pos_subtitle"
-                    android:textColor="@color/pos_text_muted"
-                    android:textSize="12sp"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyLarge"
+                    android:textColor="@color/pos_text_secondary"
+                    android:textStyle="normal"
                     app:layout_constraintEnd_toStartOf="@+id/notificationFrame"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@id/tvTopTitle" />
 
                 <FrameLayout
                     android:id="@+id/notificationFrame"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:layout_marginEnd="8dp"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:layout_marginEnd="12dp"
+                    android:background="@drawable/bg_notification_container"
                     app:layout_constraintBottom_toBottomOf="@id/avatar"
                     app:layout_constraintEnd_toStartOf="@id/avatar"
                     app:layout_constraintTop_toTopOf="@id/avatar">
 
                     <ImageView
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
                         android:layout_gravity="center"
-                        android:background="?attr/selectableItemBackgroundBorderless"
                         android:contentDescription="@string/notifications"
-                        android:src="@android:drawable/ic_dialog_info"
-                        app:tint="@color/pos_text_secondary" />
+                        android:src="@drawable/ic_notification_24" />
 
                     <TextView
                         android:layout_width="18dp"
                         android:layout_height="18dp"
-                        android:layout_gravity="end"
+                        android:layout_gravity="end|top"
                         android:background="@drawable/bg_notification_badge"
                         android:gravity="center"
                         android:text="@string/notification_count"
-                        android:textColor="@color/white"
+                        android:textColor="@color/pos_text_primary"
                         android:textSize="10sp"
                         android:textStyle="bold" />
                 </FrameLayout>
@@ -350,13 +434,49 @@
                     android:layout_height="@dimen/topbar_avatar_size"
                     android:background="@drawable/bg_avatar_circle"
                     android:contentDescription="@string/profile_name"
-                    android:padding="7dp"
-                    android:src="@android:drawable/ic_menu_myplaces"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_staff_24"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
                     app:tint="@color/pos_primary" />
             </androidx.constraintlayout.widget.ConstraintLayout>
         </com.google.android.material.card.MaterialCardView>
+
+        <include
+            android:id="@+id/dashboardContent"
+            layout="@layout/content_dashboard"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginTop="@dimen/section_spacing"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/topBar" />
+
+        <include
+            android:id="@+id/ordersContent"
+            layout="@layout/content_orders"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginTop="@dimen/section_spacing"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/topBar" />
+
+        <include
+            android:id="@+id/placeholderContent"
+            layout="@layout/content_placeholder"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginTop="@dimen/section_spacing"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/topBar" />
 
         <androidx.constraintlayout.widget.Guideline
             android:id="@+id/contentGuide"
@@ -371,6 +491,8 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_marginTop="@dimen/section_spacing"
+            android:background="@drawable/bg_order_summary"
+            android:padding="@dimen/section_spacing"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@id/contentGuide"
             app:layout_constraintStart_toStartOf="parent"
@@ -381,19 +503,18 @@
                 android:id="@+id/searchInputLayout"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="@dimen/search_height"
                 android:hint="@string/search_hint"
-                app:boxCornerRadiusBottomEnd="8dp"
-                app:boxCornerRadiusBottomStart="8dp"
-                app:boxCornerRadiusTopEnd="8dp"
-                app:boxCornerRadiusTopStart="8dp"
+                app:boxBackgroundColor="@color/pos_surface_soft"
+                app:boxCornerRadiusBottomEnd="18dp"
+                app:boxCornerRadiusBottomStart="18dp"
+                app:boxCornerRadiusTopEnd="18dp"
+                app:boxCornerRadiusTopStart="18dp"
                 app:boxStrokeColor="@color/pos_border"
-                app:boxStrokeWidth="1dp"
-                app:hintTextColor="@color/pos_text_muted"
                 app:layout_constraintEnd_toStartOf="@+id/btnFilterSort"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:startIconDrawable="@android:drawable/ic_menu_search"
+                app:startIconDrawable="@drawable/ic_search_24"
                 app:startIconTint="@color/pos_text_secondary">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -409,25 +530,30 @@
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="wrap_content"
                 android:layout_height="0dp"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="10dp"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
                 android:text="@string/filter_sort"
-                android:textSize="13sp"
-                app:cornerRadius="8dp"
-                app:icon="@android:drawable/ic_menu_sort_alphabetically"
+                android:textAllCaps="false"
+                android:textColor="@color/pos_text_primary"
+                app:backgroundTint="@color/pos_surface"
+                app:cornerRadius="16dp"
+                app:icon="@drawable/ic_filter_24"
                 app:iconPadding="6dp"
+                app:iconTint="@color/pos_primary"
                 app:layout_constraintBottom_toBottomOf="@id/searchInputLayout"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="@id/searchInputLayout" />
+                app:layout_constraintTop_toTopOf="@id/searchInputLayout"
+                app:strokeColor="@color/pos_border"
+                app:strokeWidth="1dp" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvCategories"
                 android:layout_width="0dp"
-                android:layout_height="48dp"
+                android:layout_height="@dimen/category_tab_height"
                 android:layout_marginTop="@dimen/section_spacing"
                 android:clipToPadding="false"
-                android:paddingEnd="12dp"
+                android:paddingEnd="10dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/searchInputLayout"
@@ -439,7 +565,7 @@
                 android:layout_height="0dp"
                 android:layout_marginTop="@dimen/section_spacing"
                 android:clipToPadding="false"
-                android:paddingBottom="80dp"
+                android:paddingBottom="78dp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -461,7 +587,9 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="@id/contentGuide"
-            app:layout_constraintTop_toBottomOf="@id/topBar">
+            app:layout_constraintTop_toBottomOf="@id/topBar"
+            app:strokeColor="@color/pos_border"
+            app:strokeWidth="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -473,17 +601,18 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/current_order"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.Headline"
                     android:textColor="@color/pos_text_primary"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                    android:textStyle="normal" />
 
                 <TextView
                     android:id="@+id/tvOrderNumber"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
-                    android:textColor="@color/pos_text_muted"
-                    android:textSize="12sp"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
+                    android:textColor="@color/pos_text_secondary"
+                    android:textStyle="normal"
                     tools:text="Order #POS-1452" />
 
                 <LinearLayout
@@ -496,18 +625,18 @@
                     android:orientation="vertical">
 
                     <ImageView
-                        android:layout_width="40dp"
-                        android:layout_height="40dp"
-                        android:src="@android:drawable/ic_menu_info_details"
-                        app:tint="@color/pos_text_muted" />
+                        android:layout_width="38dp"
+                        android:layout_height="38dp"
+                        android:src="@drawable/ic_cart_empty_24" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
                         android:text="@string/no_items_added"
-                        android:textColor="@color/pos_text_muted"
-                        android:textSize="13sp" />
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyLarge"
+                        android:textColor="@color/pos_text_secondary"
+                        android:textStyle="normal" />
                 </LinearLayout>
 
                 <androidx.recyclerview.widget.RecyclerView
@@ -531,7 +660,10 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_order_summary"
+                    android:orientation="vertical"
+                    android:padding="16dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -543,13 +675,14 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="@string/subtotal"
-                            android:textColor="@color/pos_text_secondary"
-                            android:textSize="13sp" />
+                            android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyLarge"
+                            android:textColor="@color/pos_text_secondary" />
 
                         <TextView
                             android:id="@+id/tvSubtotal"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
                             android:textColor="@color/pos_text_primary"
                             android:textSize="13sp"
                             tools:text="PHP 235.00" />
@@ -566,13 +699,14 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="@string/tax"
-                            android:textColor="@color/pos_text_secondary"
-                            android:textSize="13sp" />
+                            android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyLarge"
+                            android:textColor="@color/pos_text_secondary" />
 
                         <TextView
                             android:id="@+id/tvTax"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
                             android:textColor="@color/pos_text_primary"
                             android:textSize="13sp"
                             tools:text="PHP 28.20" />
@@ -595,17 +729,17 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="@string/total"
+                            android:textAppearance="@style/TextAppearance.ZejiosCafe.SectionTitle"
                             android:textColor="@color/pos_text_primary"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
+                            android:textStyle="normal" />
 
                         <TextView
                             android:id="@+id/tvTotal"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:textColor="@color/pos_secondary"
-                            android:textSize="20sp"
-                            android:textStyle="bold"
+                            android:textAppearance="@style/TextAppearance.ZejiosCafe.KpiValue"
+                            android:textColor="@color/pos_text_primary"
+                            android:textStyle="normal"
                             tools:text="PHP 263.20" />
                     </LinearLayout>
                 </LinearLayout>
@@ -615,55 +749,39 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="14dp"
-                    android:gravity="center"
                     android:orientation="horizontal">
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnCash"
                         style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="0dp"
-                        android:layout_height="42dp"
+                        android:layout_height="44dp"
                         android:layout_weight="1"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
                         android:text="@string/cash"
-                        android:textColor="@color/pos_secondary"
-                        android:textSize="13sp"
-                        app:cornerRadius="10dp"
-                        app:strokeColor="@color/pos_secondary"
-                        app:strokeWidth="1.5dp" />
+                        android:textAllCaps="false"
+                        app:cornerRadius="14dp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnGcash"
                         style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="0dp"
-                        android:layout_height="42dp"
+                        android:layout_height="44dp"
                         android:layout_marginStart="8dp"
                         android:layout_weight="1"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
                         android:text="@string/gcash"
-                        android:textColor="@color/pos_secondary"
-                        android:textSize="13sp"
-                        app:cornerRadius="10dp"
-                        app:strokeColor="@color/pos_secondary"
-                        app:strokeWidth="1.5dp" />
+                        android:textAllCaps="false"
+                        app:cornerRadius="14dp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnCard"
                         style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="0dp"
-                        android:layout_height="42dp"
+                        android:layout_height="44dp"
                         android:layout_marginStart="8dp"
                         android:layout_weight="1"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
                         android:text="@string/card"
-                        android:textColor="@color/pos_secondary"
-                        android:textSize="13sp"
-                        app:cornerRadius="10dp"
-                        app:strokeColor="@color/pos_secondary"
-                        app:strokeWidth="1.5dp" />
+                        android:textAllCaps="false"
+                        app:cornerRadius="14dp" />
                 </LinearLayout>
 
                 <!-- Clear + Checkout row -->
@@ -679,29 +797,23 @@
                         android:layout_width="0dp"
                         android:layout_height="48dp"
                         android:layout_weight="1"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
                         android:text="@string/clear"
-                        android:textColor="@color/pos_text_primary"
-                        android:textSize="14sp"
-                        app:backgroundTint="@color/pos_clear_bg"
-                        app:cornerRadius="12dp" />
+                        android:textAllCaps="false"
+                        app:cornerRadius="14dp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnCheckout"
                         style="@style/Widget.Material3.Button.UnelevatedButton"
                         android:layout_width="0dp"
-                        android:layout_height="52dp"
+                        android:layout_height="54dp"
                         android:layout_marginStart="10dp"
                         android:layout_weight="1.35"
                         android:insetTop="0dp"
                         android:insetBottom="0dp"
                         android:text="@string/checkout"
-                        android:textColor="@color/white"
-                        android:textSize="15sp"
+                        android:textAllCaps="false"
                         android:textStyle="bold"
-                        app:backgroundTint="@color/pos_secondary"
-                        app:cornerRadius="12dp" />
+                        app:cornerRadius="14dp" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -710,8 +822,10 @@
             android:id="@+id/fabCart"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:layout_marginBottom="4dp"
             android:contentDescription="@string/cart"
-            android:src="@android:drawable/ic_menu_add"
+            android:src="@drawable/ic_cart_outline_24"
             app:backgroundTint="@color/pos_secondary"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"

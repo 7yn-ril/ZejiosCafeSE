@@ -4,54 +4,126 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="6dp"
-    app:cardBackgroundColor="@color/pos_background"
-    app:cardCornerRadius="10dp"
-    app:cardElevation="0dp">
+    android:layout_marginBottom="12dp"
+    app:cardBackgroundColor="@color/pos_surface_soft"
+    app:cardCornerRadius="22dp"
+    app:cardElevation="0dp"
+    app:strokeColor="@color/pos_border"
+    app:strokeWidth="1dp">
 
-    <LinearLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingHorizontal="12dp"
-        android:paddingVertical="10dp">
+        android:padding="14dp">
 
-        <LinearLayout
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/ivOrderItem"
+            android:layout_width="@dimen/order_item_thumbnail_size"
+            android:layout_height="@dimen/order_item_thumbnail_size"
+            android:background="@drawable/bg_product_placeholder"
+            android:contentDescription="@string/order_item_thumbnail"
+            android:scaleType="centerCrop"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.ZejiosCafe.Thumbnail"
+            tools:src="@drawable/ic_coffee_24" />
+
+        <TextView
+            android:id="@+id/tvOrderItemName"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:layout_marginStart="12dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/pos_text_primary"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toStartOf="@id/tvOrderItemPrice"
+            app:layout_constraintStart_toEndOf="@id/ivOrderItem"
+            app:layout_constraintTop_toTopOf="@id/ivOrderItem"
+            tools:text="Aloha Fruit Punch" />
 
-            <TextView
-                android:id="@+id/tvOrderItemName"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:maxLines="1"
-                android:ellipsize="end"
-                android:textColor="@color/pos_text_primary"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                tools:text="Cappuccino" />
-
-            <TextView
-                android:id="@+id/tvOrderItemQty"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:textColor="@color/pos_text_secondary"
-                android:textSize="12sp"
-                tools:text="x2" />
-        </LinearLayout>
+        <TextView
+            android:id="@+id/tvOrderItemUnitPrice"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/pos_text_secondary"
+            android:textSize="12sp"
+            app:layout_constraintEnd_toStartOf="@id/tvOrderItemPrice"
+            app:layout_constraintStart_toEndOf="@id/ivOrderItem"
+            app:layout_constraintTop_toBottomOf="@id/tvOrderItemName"
+            tools:text="PHP 141.75 each" />
 
         <TextView
             android:id="@+id/tvOrderItemPrice"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/pos_text_primary"
-            android:textSize="14sp"
+            android:textColor="@color/pos_primary"
+            android:textSize="16sp"
             android:textStyle="bold"
-            tools:text="PHP 220.00" />
-    </LinearLayout>
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@id/tvOrderItemName"
+            tools:text="PHP 141.75" />
 
+        <LinearLayout
+            android:id="@+id/orderQuantityContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_stepper_container"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="4dp"
+            app:layout_constraintBottom_toBottomOf="@id/ivOrderItem"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tvOrderItemPrice">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnOrderItemDecrease"
+                style="@style/Widget.Material3.Button"
+                android:layout_width="@dimen/quantity_button_size"
+                android:layout_height="@dimen/quantity_button_size"
+                android:contentDescription="@string/decrease_quantity"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:padding="0dp"
+                app:backgroundTint="@color/white"
+                app:cornerRadius="12dp"
+                app:elevation="0dp"
+                app:icon="@drawable/ic_remove_18"
+                app:iconTint="@color/pos_primary"
+                app:strokeColor="@color/pos_stepper_border"
+                app:strokeWidth="1dp" />
+
+            <TextView
+                android:id="@+id/tvOrderItemQty"
+                android:layout_width="36dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textColor="@color/pos_text_primary"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                tools:text="1" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnOrderItemIncrease"
+                style="@style/Widget.Material3.Button"
+                android:layout_width="@dimen/quantity_button_size"
+                android:layout_height="@dimen/quantity_button_size"
+                android:contentDescription="@string/increase_quantity"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:padding="0dp"
+                app:backgroundTint="@color/pos_primary"
+                app:cornerRadius="12dp"
+                app:elevation="0dp"
+                app:icon="@drawable/ic_add_18"
+                app:iconTint="@color/white" />
+        </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </com.google.android.material.card.MaterialCardView>

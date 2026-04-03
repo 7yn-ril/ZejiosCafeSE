@@ -3,4 +3,3 @@
     <item android:state_selected="true" android:color="@color/white" />
     <item android:color="@color/pos_text_primary" />
 </selector>
-

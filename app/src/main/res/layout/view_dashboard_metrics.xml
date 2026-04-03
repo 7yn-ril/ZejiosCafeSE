@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="12dp"
+        android:layout_weight="1"
+        app:cardBackgroundColor="@color/pos_warning_soft"
+        app:cardCornerRadius="@dimen/card_corner_radius"
+        app:cardElevation="2dp"
+        app:strokeColor="@color/pos_warning"
+        app:strokeWidth="1dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="18dp">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_inventory_24"
+                app:tint="@color/pos_primary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/low_stock_items"
+                android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
+                android:textColor="@color/pos_text_secondary"
+                android:textStyle="normal" />
+
+            <TextView
+                android:id="@+id/tvMetricLowStockValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textAppearance="@style/TextAppearance.ZejiosCafe.KpiValue"
+                android:textColor="@color/pos_text_primary"
+                android:textStyle="normal" />
+
+            <TextView
+                android:id="@+id/tvMetricLowStockDelta"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
+                android:textStyle="normal" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="12dp"
+        android:layout_weight="1"
+        app:cardBackgroundColor="@color/pos_surface_soft"
+        app:cardCornerRadius="@dimen/card_corner_radius"
+        app:cardElevation="2dp"
+        app:strokeColor="@color/pos_border"
+        app:strokeWidth="1dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="18dp">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_cart_outline_24"
+                app:tint="@color/pos_primary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/active_orders"
+                android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
+                android:textColor="@color/pos_text_secondary"
+                android:textStyle="normal" />
+
+            <TextView
+                android:id="@+id/tvMetricActiveOrdersValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textAppearance="@style/TextAppearance.ZejiosCafe.KpiValue"
+                android:textColor="@color/pos_text_primary"
+                android:textStyle="normal" />
+
+            <TextView
+                android:id="@+id/tvMetricActiveOrdersDelta"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
+                android:textStyle="normal" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="12dp"
+        android:layout_weight="1"
+        app:cardBackgroundColor="@color/pos_surface"
+        app:cardCornerRadius="@dimen/card_corner_radius"
+        app:cardElevation="2dp"
+        app:strokeColor="@color/pos_border"
+        app:strokeWidth="1dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="18dp">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_reports_24"
+                app:tint="@color/pos_primary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/total_sales_today"
+                android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
+                android:textColor="@color/pos_text_secondary"
+                android:textStyle="normal" />
+
+            <TextView
+                android:id="@+id/tvMetricSalesValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textAppearance="@style/TextAppearance.ZejiosCafe.KpiValue"
+                android:textColor="@color/pos_text_primary"
+                android:textStyle="normal" />
+
+            <TextView
+                android:id="@+id/tvMetricSalesDelta"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
+                android:textStyle="normal" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="12dp"
+        android:layout_weight="1"
+        app:cardBackgroundColor="@color/pos_surface"
+        app:cardCornerRadius="@dimen/card_corner_radius"
+        app:cardElevation="2dp"
+        app:strokeColor="@color/pos_border"
+        app:strokeWidth="1dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="18dp">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_orders_24"
+                app:tint="@color/pos_primary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/total_orders_today"
+                android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
+                android:textColor="@color/pos_text_secondary"
+                android:textStyle="normal" />
+
+            <TextView
+                android:id="@+id/tvMetricOrdersValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textAppearance="@style/TextAppearance.ZejiosCafe.KpiValue"
+                android:textColor="@color/pos_text_primary"
+                android:textStyle="normal" />
+
+            <TextView
+                android:id="@+id/tvMetricOrdersDelta"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
+                android:textStyle="normal" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        app:cardBackgroundColor="@color/pos_surface"
+        app:cardCornerRadius="@dimen/card_corner_radius"
+        app:cardElevation="2dp"
+        app:strokeColor="@color/pos_border"
+        app:strokeWidth="1dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="18dp">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_dashboard_24"
+                app:tint="@color/pos_primary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/metric_net_profit"
+                android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
+                android:textColor="@color/pos_text_secondary"
+                android:textStyle="normal" />
+
+            <TextView
+                android:id="@+id/tvMetricProfitValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textAppearance="@style/TextAppearance.ZejiosCafe.KpiValue"
+                android:textColor="@color/pos_text_primary"
+                android:textStyle="normal" />
+
+            <TextView
+                android:id="@+id/tvMetricProfitDelta"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
+                android:textStyle="normal" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+</merge>

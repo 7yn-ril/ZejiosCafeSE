@@ -3,6 +3,7 @@ package com.example.zejioscafese.pos.presentation
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.example.zejioscafese.R
 import com.example.zejioscafese.pos.data.model.OrderItem
 import com.example.zejioscafese.pos.data.model.Product
 import java.util.Locale
@@ -16,41 +17,145 @@ class PosViewModel : ViewModel() {
         CARD
     }
 
+    enum class SortOption {
+        NAME_ASC,
+        NAME_DESC,
+        PRICE_ASC,
+        PRICE_DESC
+    }
+
     private val allProducts: List<Product> = listOf(
-        Product("d1", "Iced Caramel Latte", "Drinks", 165.0),
-        Product("d2", "Cold Brew", "Drinks", 145.0),
-        Product("d3", "Matcha Latte", "Drinks", 175.0),
-        Product("d4", "Hot Americano", "Drinks", 120.0),
-        Product("d5", "Vanilla Frappe", "Drinks", 185.0),
-        Product("m1", "Chicken Pesto Panini", "Meals", 235.0),
-        Product("m2", "Beef Tapa Bowl", "Meals", 265.0),
-        Product("m3", "Creamy Mushroom Pasta", "Meals", 250.0),
-        Product("m4", "Chicken Adobo Rice Bowl", "Meals", 195.0),
-        Product("de1", "New York Cheesecake", "Desserts", 180.0),
-        Product("de2", "Chocolate Brownie", "Desserts", 120.0),
-        Product("de3", "Mango Cheesecake Slice", "Desserts", 160.0),
-        Product("s1", "Truffle Fries", "Snacks", 135.0),
-        Product("s2", "Nacho Bites", "Snacks", 150.0),
-        Product("s3", "French Fries Basket", "Snacks", 110.0),
-        Product("sp1", "Seasonal Signature Latte", "Specials", 195.0),
-        Product("sp2", "Weekend Combo Set", "Specials", 320.0)
+        Product(
+            id = "d1",
+            name = "Iced Caramel Latte",
+            category = "Drinks",
+            price = 165.0,
+            stockLeft = 18,
+            imageUrl = "https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=1200&q=80",
+            imageResId = R.drawable.ic_coffee_24
+        ),
+        Product(
+            id = "d2",
+            name = "Cold Brew",
+            category = "Drinks",
+            price = 145.0,
+            stockLeft = 24,
+            imageUrl = "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1200&q=80",
+            imageResId = R.drawable.ic_coffee_24
+        ),
+        Product(
+            id = "d3",
+            name = "Matcha Latte",
+            category = "Drinks",
+            price = 175.0,
+            stockLeft = 9,
+            imageUrl = "https://images.unsplash.com/photo-1515823064-d6e0c04616a7?auto=format&fit=crop&w=1200&q=80",
+            imageResId = R.drawable.ic_coffee_24
+        ),
+        Product(
+            id = "d4",
+            name = "Espresso",
+            category = "Drinks",
+            price = 110.0,
+            stockLeft = 32,
+            imageUrl = "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=1200&q=80",
+            imageResId = R.drawable.ic_coffee_24
+        ),
+        Product(
+            id = "d5",
+            name = "Cappuccino",
+            category = "Drinks",
+            price = 150.0,
+            stockLeft = 15,
+            imageUrl = "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1200&q=80",
+            imageResId = R.drawable.ic_coffee_24
+        ),
+        Product(
+            id = "d6",
+            name = "Americano",
+            category = "Drinks",
+            price = 120.0,
+            stockLeft = 27,
+            imageUrl = "https://images.unsplash.com/photo-1498804103079-a6351b050096?auto=format&fit=crop&w=1200&q=80",
+            imageResId = R.drawable.ic_coffee_24
+        ),
+        Product(
+            id = "d7",
+            name = "Mocha Frappe",
+            category = "Drinks",
+            price = 185.0,
+            stockLeft = 7,
+            imageUrl = "https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=1200&q=80",
+            imageResId = R.drawable.ic_coffee_24
+        ),
+        Product(
+            id = "d8",
+            name = "Hot Chocolate",
+            category = "Drinks",
+            price = 155.0,
+            stockLeft = 14,
+            imageUrl = "https://images.unsplash.com/photo-1542990253-0d0f5be5f44b?auto=format&fit=crop&w=1200&q=80",
+            imageResId = R.drawable.ic_coffee_24
+        ),
+        Product(
+            id = "m1",
+            name = "Chicken Pesto Panini",
+            category = "Meals",
+            price = 235.0,
+            stockLeft = 11,
+            imageUrl = "https://images.unsplash.com/photo-1550317138-10000687a72b?auto=format&fit=crop&w=1200&q=80",
+            imageResId = R.drawable.ic_meal_24
+        ),
+        Product(
+            id = "de1",
+            name = "Blueberry Cheesecake",
+            category = "Desserts",
+            price = 180.0,
+            stockLeft = 6,
+            imageUrl = "https://images.unsplash.com/photo-1533134242443-d4fd215305ad?auto=format&fit=crop&w=1200&q=80",
+            imageResId = R.drawable.ic_dessert_24
+        ),
+        Product(
+            id = "s1",
+            name = "Butter Croissant",
+            category = "Snacks",
+            price = 95.0,
+            stockLeft = 21,
+            imageUrl = "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=1200&q=80",
+            imageResId = R.drawable.ic_snack_24
+        ),
+        Product(
+            id = "sp1",
+            name = "Seasonal Signature Latte",
+            category = "Specials",
+            price = 195.0,
+            stockLeft = 5,
+            imageUrl = "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=1200&q=80",
+            imageResId = R.drawable.ic_star_24
+        )
     )
 
     private val _categories = MutableLiveData(
-        listOf("Drinks", "Meals", "Desserts", "Snacks", "Specials")
+        listOf("All", "Drinks", "Meals", "Desserts", "Snacks", "Specials")
     )
     val categories: LiveData<List<String>> = _categories
 
-    private val _selectedCategory = MutableLiveData("Drinks")
+    private val _selectedCategory = MutableLiveData("All")
     val selectedCategory: LiveData<String> = _selectedCategory
 
     private val _searchQuery = MutableLiveData("")
+
+    private val _selectedSortOption = MutableLiveData(SortOption.NAME_ASC)
+    val selectedSortOption: LiveData<SortOption> = _selectedSortOption
 
     private val _products = MutableLiveData<List<Product>>(emptyList())
     val products: LiveData<List<Product>> = _products
 
     private val _orderItems = MutableLiveData<List<OrderItem>>(emptyList())
     val orderItems: LiveData<List<OrderItem>> = _orderItems
+
+    private val _orderQuantities = MutableLiveData<Map<String, Int>>(emptyMap())
+    val orderQuantities: LiveData<Map<String, Int>> = _orderQuantities
 
     private val _subtotal = MutableLiveData(0.0)
     val subtotal: LiveData<Double> = _subtotal
@@ -69,11 +174,7 @@ class PosViewModel : ViewModel() {
     private val _orderNumber = MutableLiveData("#POS-1024")
     val orderNumber: LiveData<String> = _orderNumber
 
-    /** Emits a one-shot event: formatted order number string after successful checkout */
-    private val _checkoutEvent = MutableLiveData<String?>()
-    val checkoutEvent: LiveData<String?> = _checkoutEvent
-
-    private val orderQuantities = linkedMapOf<String, Int>()
+    private val orderQuantitiesStore = linkedMapOf<String, Int>()
 
     init {
         refreshProductList()
@@ -89,9 +190,25 @@ class PosViewModel : ViewModel() {
         refreshProductList()
     }
 
-    fun addProduct(product: Product) {
-        orderQuantities[product.id] = (orderQuantities[product.id] ?: 0) + 1
-        syncOrderItems()
+    fun setSortOption(option: SortOption) {
+        _selectedSortOption.value = option
+        refreshProductList()
+    }
+
+    fun increaseProduct(product: Product) {
+        updateQuantity(product, 1)
+    }
+
+    fun decreaseProduct(product: Product) {
+        updateQuantity(product, -1)
+    }
+
+    fun increaseOrderItem(item: OrderItem) {
+        updateQuantity(item.product, 1)
+    }
+
+    fun decreaseOrderItem(item: OrderItem) {
+        updateQuantity(item.product, -1)
     }
 
     fun removeProduct(productId: String) {
@@ -100,8 +217,8 @@ class PosViewModel : ViewModel() {
     }
 
     fun clearOrder() {
-        orderQuantities.clear()
-        syncOrderItems()
+        orderQuantitiesStore.clear()
+        syncOrderState()
     }
 
     fun setPaymentMethod(method: PaymentMethod) {
@@ -130,20 +247,39 @@ class PosViewModel : ViewModel() {
         val query = _searchQuery.value.orEmpty().trim().lowercase(Locale.getDefault())
 
         val filtered = allProducts.filter { product ->
-            val categoryMatch = selected.isBlank() || product.category == selected
-            val queryMatch = query.isBlank() || product.name.lowercase(Locale.getDefault()).contains(query)
+            val categoryMatch = selected.isBlank() || selected == "All" || product.category == selected
+            val queryMatch = query.isBlank() ||
+                product.name.lowercase(Locale.getDefault()).contains(query) ||
+                product.category.lowercase(Locale.getDefault()).contains(query)
             categoryMatch && queryMatch
         }
 
-        _products.value = filtered
+        _products.value = when (_selectedSortOption.value ?: SortOption.NAME_ASC) {
+            SortOption.NAME_ASC -> filtered.sortedBy { it.name.lowercase(Locale.getDefault()) }
+            SortOption.NAME_DESC -> filtered.sortedByDescending { it.name.lowercase(Locale.getDefault()) }
+            SortOption.PRICE_ASC -> filtered.sortedBy { it.price }
+            SortOption.PRICE_DESC -> filtered.sortedByDescending { it.price }
+        }
     }
 
-    private fun syncOrderItems() {
-        val items = orderQuantities.mapNotNull { (productId, quantity) ->
+    private fun updateQuantity(product: Product, delta: Int) {
+        val updatedQuantity = (orderQuantitiesStore[product.id] ?: 0) + delta
+        if (updatedQuantity <= 0) {
+            orderQuantitiesStore.remove(product.id)
+        } else {
+            orderQuantitiesStore[product.id] = updatedQuantity
+        }
+        syncOrderState()
+    }
+
+    private fun syncOrderState() {
+        val items = orderQuantitiesStore.mapNotNull { (productId, quantity) ->
             allProducts.firstOrNull { it.id == productId }?.let { product ->
                 OrderItem(product = product, quantity = quantity)
             }
         }
+
+        _orderQuantities.value = LinkedHashMap(orderQuantitiesStore)
         _orderItems.value = items
 
         val subtotalAmount = items.sumOf { it.lineTotal }

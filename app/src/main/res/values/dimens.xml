@@ -1,16 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <dimen name="screen_padding">16dp</dimen>
-    <dimen name="section_spacing">12dp</dimen>
-    <dimen name="card_corner_radius">16dp</dimen>
-    <dimen name="chip_corner_radius">20dp</dimen>
-    <dimen name="sidebar_expanded_width">220dp</dimen>
-    <dimen name="sidebar_collapsed_width">72dp</dimen>
-    <dimen name="sidebar_icon_size">22dp</dimen>
-    <dimen name="menu_item_height">48dp</dimen>
-    <dimen name="product_image_height">120dp</dimen>
-    <dimen name="topbar_avatar_size">38dp</dimen>
-    <dimen name="fab_size">56dp</dimen>
-    <dimen name="chip_stroke_width">1.5dp</dimen>
-</resources>
+    <dimen name="screen_padding">18dp</dimen>
+    <dimen name="section_spacing">20dp</dimen>
+    <dimen name="card_corner_radius">22dp</dimen>
+    <dimen name="chip_corner_radius">22dp</dimen>
 
+    <dimen name="sidebar_expanded_width">252dp</dimen>
+    <dimen name="sidebar_collapsed_width">86dp</dimen>
+    <dimen name="sidebar_icon_size">22dp</dimen>
+    <dimen name="sidebar_item_height">54dp</dimen>
+    <dimen name="sidebar_padding">18dp</dimen>
+    <dimen name="sidebar_row_horizontal_padding">14dp</dimen>
+    <dimen name="sidebar_row_collapsed_padding">0dp</dimen>
+
+    <dimen name="menu_item_height">54dp</dimen>
+    <dimen name="topbar_avatar_size">44dp</dimen>
+    <dimen name="fab_size">56dp</dimen>
+
+    <dimen name="search_height">58dp</dimen>
+    <dimen name="category_tab_height">48dp</dimen>
+    <dimen name="product_image_height">142dp</dimen>
+    <dimen name="quantity_button_size">32dp</dimen>
+    <dimen name="order_item_thumbnail_size">62dp</dimen>
+    <dimen name="payment_button_stroke_width">1dp</dimen>
+    <dimen name="product_grid_spacing">8dp</dimen>
+    <dimen name="order_list_spacing">12dp</dimen>
+
+    <dimen name="product_card_elevation">4dp</dimen>
+    <dimen name="product_card_elevation_pressed">8dp</dimen>
+</resources>
