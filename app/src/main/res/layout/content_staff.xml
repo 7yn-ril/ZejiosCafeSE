@@ -389,6 +389,7 @@
             android:scrollbars="none">
 
             <LinearLayout
+                android:id="@+id/staffCardsContainer"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal">
@@ -439,6 +440,7 @@
                                 android:orientation="vertical">
 
                                 <TextView
+                                    android:id="@+id/tvStaffNameOne"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="@string/staff_member_name_one"
@@ -446,6 +448,7 @@
                                     android:textColor="@color/pos_text_primary" />
 
                                 <TextView
+                                    android:id="@+id/tvStaffIdOne"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:layout_marginTop="2dp"
@@ -455,6 +458,7 @@
                             </LinearLayout>
 
                             <TextView
+                                android:id="@+id/tvStaffStatusOne"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:background="@drawable/bg_stock_badge"
@@ -475,6 +479,7 @@
                             android:orientation="horizontal">
 
                             <TextView
+                                android:id="@+id/tvStaffRoleOne"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:background="@drawable/bg_hint_chip"
@@ -495,6 +500,7 @@
                                 app:tint="@color/pos_text_secondary" />
 
                             <TextView
+                                android:id="@+id/tvStaffShiftOne"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="6dp"
@@ -510,6 +516,7 @@
                             android:orientation="horizontal">
 
                             <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnEditStaffOne"
                                 style="@style/Widget.Material3.Button"
                                 android:layout_width="0dp"
                                 android:layout_height="42dp"
@@ -588,6 +595,7 @@
                                 android:orientation="vertical">
 
                                 <TextView
+                                    android:id="@+id/tvStaffNameTwo"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="@string/staff_member_name_two"
@@ -595,6 +603,7 @@
                                     android:textColor="@color/pos_text_primary" />
 
                                 <TextView
+                                    android:id="@+id/tvStaffIdTwo"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:layout_marginTop="2dp"
@@ -604,6 +613,7 @@
                             </LinearLayout>
 
                             <TextView
+                                android:id="@+id/tvStaffStatusTwo"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:background="@drawable/bg_stock_badge"
@@ -624,6 +634,7 @@
                             android:orientation="horizontal">
 
                             <TextView
+                                android:id="@+id/tvStaffRoleTwo"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:background="@drawable/bg_hint_chip"
@@ -644,6 +655,7 @@
                                 app:tint="@color/pos_text_secondary" />
 
                             <TextView
+                                android:id="@+id/tvStaffShiftTwo"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="6dp"
@@ -659,6 +671,7 @@
                             android:orientation="horizontal">
 
                             <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnEditStaffTwo"
                                 style="@style/Widget.Material3.Button"
                                 android:layout_width="0dp"
                                 android:layout_height="42dp"
@@ -737,6 +750,7 @@
                                 android:orientation="vertical">
 
                                 <TextView
+                                    android:id="@+id/tvStaffNameThree"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="@string/staff_member_name_three"
@@ -744,6 +758,7 @@
                                     android:textColor="@color/pos_text_primary" />
 
                                 <TextView
+                                    android:id="@+id/tvStaffIdThree"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:layout_marginTop="2dp"
@@ -753,6 +768,7 @@
                             </LinearLayout>
 
                             <TextView
+                                android:id="@+id/tvStaffStatusThree"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:background="@drawable/bg_stock_badge"
@@ -773,6 +789,7 @@
                             android:orientation="horizontal">
 
                             <TextView
+                                android:id="@+id/tvStaffRoleThree"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:background="@drawable/bg_hint_chip"
@@ -793,6 +810,7 @@
                                 app:tint="@color/pos_text_secondary" />
 
                             <TextView
+                                android:id="@+id/tvStaffShiftThree"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="6dp"
@@ -808,6 +826,7 @@
                             android:orientation="horizontal">
 
                             <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnEditStaffThree"
                                 style="@style/Widget.Material3.Button"
                                 android:layout_width="0dp"
                                 android:layout_height="42dp"

@@ -21,6 +21,8 @@
 
     <dimen name="search_height">58dp</dimen>
     <dimen name="category_tab_height">48dp</dimen>
+    <dimen name="pos_category_padding_end_default">10dp</dimen>
+    <dimen name="pos_category_padding_end_checkout_open">16dp</dimen>
     <dimen name="product_image_height">142dp</dimen>
     <dimen name="quantity_button_size">32dp</dimen>
     <dimen name="order_item_thumbnail_size">62dp</dimen>

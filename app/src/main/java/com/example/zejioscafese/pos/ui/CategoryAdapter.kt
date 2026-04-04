@@ -1,6 +1,8 @@
 package com.example.zejioscafese.pos.ui
 
+import android.animation.ValueAnimator
 import android.view.LayoutInflater
+import android.view.ViewGroup.MarginLayoutParams
 import android.view.ViewGroup
 import androidx.annotation.DrawableRes
 import androidx.recyclerview.widget.DiffUtil
@@ -12,6 +14,13 @@ import com.example.zejioscafese.databinding.ItemCategoryTabBinding
 class CategoryAdapter(
     private val onCategoryClick: (String) -> Unit
 ) : ListAdapter<String, CategoryAdapter.CategoryViewHolder>(DiffCallback) {
+
+    var compactMode: Boolean = false
+        set(value) {
+            if (field == value) return
+            field = value
+            notifyDataSetChanged()
+        }
 
     var selectedCategory: String = ""
         set(value) {
@@ -33,7 +42,11 @@ class CategoryAdapter(
     }
 
     override fun onBindViewHolder(holder: CategoryViewHolder, position: Int) {
-        holder.bind(getItem(position), getItem(position) == selectedCategory)
+        holder.bind(
+            category = getItem(position),
+            isSelected = getItem(position) == selectedCategory,
+            compactMode = compactMode
+        )
     }
 
     class CategoryViewHolder(
@@ -41,11 +54,68 @@ class CategoryAdapter(
         private val onCategoryClick: (String) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(category: String, isSelected: Boolean) {
-            binding.btnCategory.text = category
+        fun bind(category: String, isSelected: Boolean, compactMode: Boolean) {
             binding.btnCategory.setIconResource(categoryIcon(category))
             binding.btnCategory.isSelected = isSelected
+            binding.btnCategory.text = if (compactMode) "" else category
+            binding.btnCategory.contentDescription = category
+            updateButtonLayout(compactMode)
             binding.btnCategory.setOnClickListener { onCategoryClick(category) }
+        }
+
+        private fun updateButtonLayout(compactMode: Boolean) {
+            val targetPaddingStart = dpToPx(if (compactMode) 12 else 18)
+            val targetPaddingEnd = dpToPx(if (compactMode) 12 else 20)
+            val targetIconPadding = dpToPx(if (compactMode) 0 else 10)
+            val targetMarginEnd = dpToPx(if (compactMode) 6 else 12)
+
+            val button = binding.btnCategory
+            val params = button.layoutParams as MarginLayoutParams
+
+            val startPaddingStart = button.paddingStart
+            val startPaddingEnd = button.paddingEnd
+            val startIconPadding = button.iconPadding
+            val startMarginEnd = params.marginEnd
+
+            if (
+                startPaddingStart == targetPaddingStart &&
+                startPaddingEnd == targetPaddingEnd &&
+                startIconPadding == targetIconPadding &&
+                startMarginEnd == targetMarginEnd
+            ) {
+                return
+            }
+
+            ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = 180L
+                addUpdateListener { animator ->
+                    val fraction = animator.animatedValue as Float
+                    val currentPaddingStart = lerp(startPaddingStart, targetPaddingStart, fraction)
+                    val currentPaddingEnd = lerp(startPaddingEnd, targetPaddingEnd, fraction)
+                    val currentIconPadding = lerp(startIconPadding, targetIconPadding, fraction)
+                    val currentMarginEnd = lerp(startMarginEnd, targetMarginEnd, fraction)
+
+                    button.setPaddingRelative(
+                        currentPaddingStart,
+                        button.paddingTop,
+                        currentPaddingEnd,
+                        button.paddingBottom
+                    )
+                    button.iconPadding = currentIconPadding
+
+                    val updatedParams = button.layoutParams as MarginLayoutParams
+                    updatedParams.marginEnd = currentMarginEnd
+                    button.layoutParams = updatedParams
+                }
+            }.start()
+        }
+
+        private fun lerp(start: Int, end: Int, fraction: Float): Int {
+            return (start + ((end - start) * fraction)).toInt()
+        }
+
+        private fun dpToPx(dp: Int): Int {
+            return (dp * binding.root.resources.displayMetrics.density).toInt()
         }
 
         @DrawableRes

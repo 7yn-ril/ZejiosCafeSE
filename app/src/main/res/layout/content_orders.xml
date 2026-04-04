@@ -98,6 +98,7 @@
                 android:orientation="horizontal">
 
                 <LinearLayout
+                    android:id="@+id/chipAllOrders"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:background="@drawable/bg_hint_chip"
@@ -116,6 +117,7 @@
                         android:textColor="@color/pos_text_primary" />
 
                     <TextView
+                        android:id="@+id/tvAllOrdersCount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
@@ -130,6 +132,7 @@
                 </LinearLayout>
 
                 <LinearLayout
+                    android:id="@+id/chipPendingOrders"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="10dp"
@@ -148,6 +151,7 @@
                         android:textColor="@color/pos_text_primary" />
 
                     <TextView
+                        android:id="@+id/tvPendingOrdersCount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
@@ -162,6 +166,7 @@
                 </LinearLayout>
 
                 <LinearLayout
+                    android:id="@+id/chipPreparingOrders"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="10dp"
@@ -180,6 +185,7 @@
                         android:textColor="@color/pos_text_primary" />
 
                     <TextView
+                        android:id="@+id/tvPreparingOrdersCount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
@@ -194,6 +200,7 @@
                 </LinearLayout>
 
                 <LinearLayout
+                    android:id="@+id/chipCompletedOrders"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="10dp"
@@ -212,6 +219,7 @@
                         android:textColor="@color/pos_text_primary" />
 
                     <TextView
+                        android:id="@+id/tvCompletedOrdersCount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"

@@ -1,6 +1,7 @@
 // app/src/main/java/com/example/zejioscafese/MainActivity.kt
 package com.example.zejioscafese
 
+import android.app.AlertDialog
 import android.animation.ValueAnimator
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
@@ -11,6 +12,7 @@ import android.graphics.Typeface
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -37,7 +39,10 @@ import com.example.zejioscafese.dashboard.ui.DashboardInsightAdapter
 import com.example.zejioscafese.dashboard.ui.DashboardTopItemAdapter
 import com.example.zejioscafese.databinding.ActivityMainBinding
 import com.example.zejioscafese.orders.data.OrderSampleData
+import com.example.zejioscafese.orders.model.CafeOrder
+import com.example.zejioscafese.orders.model.CafeOrderStatus
 import com.example.zejioscafese.orders.ui.OrderManagementAdapter
+import com.example.zejioscafese.pos.data.model.Product
 import com.example.zejioscafese.pos.presentation.PosViewModel
 import com.example.zejioscafese.pos.ui.CategoryAdapter
 import com.example.zejioscafese.pos.ui.OrderItemAdapter
@@ -46,11 +51,15 @@ import com.example.zejioscafese.ui.InventoryFragment
 import com.example.zejioscafese.ui.NavigationHost
 import com.example.zejioscafese.ui.ReportsFragment
 import com.example.zejioscafese.ui.Screen
+import com.google.android.material.button.MaterialButton
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.math.abs
 
 class MainActivity : AppCompatActivity(), NavigationHost {
@@ -66,6 +75,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         INVENTORY(R.string.inventory, R.string.inventory_title, R.string.inventory_subtitle),
         REPORTS(R.string.reports, R.string.reports_title, R.string.reports_subtitle),
         STAFF(R.string.staff, R.string.staff_title, R.string.staff_subtitle),
+        PROFILE(R.string.profile, R.string.profile_title, R.string.profile_subtitle),
         SETTINGS(R.string.settings, R.string.settings_title, R.string.settings_subtitle)
     }
 
@@ -74,6 +84,22 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val row: LinearLayout,
         val icon: ImageView,
         val label: TextView
+    )
+
+    private data class StaffCardViews(
+        val nameView: TextView,
+        val idView: TextView,
+        val roleView: TextView,
+        val shiftView: TextView,
+        val statusView: TextView
+    )
+
+    private data class UserProfileState(
+        var name: String,
+        var email: String,
+        var role: String,
+        var phone: String,
+        var address: String
     )
 
     private lateinit var binding: ActivityMainBinding
@@ -86,6 +112,11 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private lateinit var dashboardTopItemAdapter: DashboardTopItemAdapter
     private lateinit var dashboardAlertAdapter: DashboardAlertAdapter
     private lateinit var orderManagementAdapter: OrderManagementAdapter
+    private lateinit var userProfileState: UserProfileState
+    private val orders = mutableListOf<CafeOrder>()
+    private var selectedOrderStatus: CafeOrderStatus? = null
+    private var orderSearchQuery: String = ""
+    private val staffCards = mutableListOf<StaffCardViews>()
 
     private var isSidebarExpanded: Boolean = true
     private var currentSection: Section = Section.POS
@@ -135,12 +166,21 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         isSidebarExpanded = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
         captureCheckoutExpandedGuidePercent()
         isCheckoutExpanded = savedInstanceState?.getBoolean(STATE_CHECKOUT_EXPANDED) ?: false
+        userProfileState = UserProfileState(
+            name = getString(R.string.profile_name),
+            email = getString(R.string.profile_email),
+            role = getString(R.string.profile_role),
+            phone = getString(R.string.profile_phone_value),
+            address = getString(R.string.profile_address_value)
+        )
 
         setupRecyclerViews()
         setupDashboard()
         setupOrders()
         setupSidebar()
         setupInteractions()
+        setupStaffInteractions()
+        setupProfileInteractions()
         observeViewModel()
         val initialSection = savedInstanceState
             ?.getInt(STATE_CURRENT_SECTION)
@@ -163,6 +203,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             adapter = categoryAdapter
             layoutManager = LinearLayoutManager(this@MainActivity, LinearLayoutManager.HORIZONTAL, false)
         }
+        updatePosCategoryChipMode(compact = false)
+        updatePosCategoryStripPadding(expanded = false)
 
         productAdapter = ProductAdapter(onCardClick = viewModel::increaseProduct)
         binding.rvProducts.apply {
@@ -245,14 +287,333 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             isNestedScrollingEnabled = false
         }
 
-        val orders = OrderSampleData.orders
-        orderManagementAdapter.submitList(orders)
+        orders.clear()
+        orders.addAll(OrderSampleData.orders)
+
+        binding.ordersContent.etOrderSearch.doAfterTextChanged { text ->
+            orderSearchQuery = text?.toString().orEmpty()
+            applyOrderFilters()
+        }
+
+        binding.ordersContent.chipAllOrders.setOnClickListener {
+            selectedOrderStatus = null
+            applyOrderFilters()
+        }
+
+        binding.ordersContent.chipPendingOrders.setOnClickListener {
+            selectedOrderStatus = CafeOrderStatus.PENDING
+            applyOrderFilters()
+        }
+
+        binding.ordersContent.chipPreparingOrders.setOnClickListener {
+            selectedOrderStatus = CafeOrderStatus.PREPARING
+            applyOrderFilters()
+        }
+
+        binding.ordersContent.chipCompletedOrders.setOnClickListener {
+            selectedOrderStatus = CafeOrderStatus.COMPLETED
+            applyOrderFilters()
+        }
+
+        binding.ordersContent.btnNewOrder.setOnClickListener {
+            showNewOrderDialog()
+        }
+
+        applyOrderFilters()
+    }
+
+    private fun applyOrderFilters() {
+        val normalizedQuery = orderSearchQuery.trim().lowercase(Locale.getDefault())
+
+        val filteredOrders = orders.filter { order ->
+            val matchesStatus = selectedOrderStatus == null || order.status == selectedOrderStatus
+            val matchesQuery = normalizedQuery.isBlank() || listOf(
+                order.id,
+                order.customerName,
+                order.itemsSummary,
+                order.tableLabel
+            ).joinToString(" ").lowercase(Locale.getDefault()).contains(normalizedQuery)
+            matchesStatus && matchesQuery
+        }
+
+        orderManagementAdapter.submitList(filteredOrders.toList())
+
+        val start = if (filteredOrders.isEmpty()) 0 else 1
         binding.ordersContent.tvOrdersShowing.text = getString(
             R.string.showing_orders_range,
-            1,
-            orders.size,
-            24
+            start,
+            filteredOrders.size,
+            orders.size
         )
+
+        updateOrderStatusCounts()
+        updateOrderStatusChipStyles()
+    }
+
+    private fun updateOrderStatusCounts() {
+        binding.ordersContent.tvAllOrdersCount.text = orders.size.toString()
+        binding.ordersContent.tvPendingOrdersCount.text =
+            orders.count { it.status == CafeOrderStatus.PENDING }.toString()
+        binding.ordersContent.tvPreparingOrdersCount.text =
+            orders.count { it.status == CafeOrderStatus.PREPARING }.toString()
+        binding.ordersContent.tvCompletedOrdersCount.text =
+            orders.count { it.status == CafeOrderStatus.COMPLETED }.toString()
+    }
+
+    private fun updateOrderStatusChipStyles() {
+        setOrderChipState(
+            chip = binding.ordersContent.chipAllOrders,
+            countView = binding.ordersContent.tvAllOrdersCount,
+            selected = selectedOrderStatus == null,
+            inactiveTextColorRes = R.color.pos_text_secondary
+        )
+
+        setOrderChipState(
+            chip = binding.ordersContent.chipPendingOrders,
+            countView = binding.ordersContent.tvPendingOrdersCount,
+            selected = selectedOrderStatus == CafeOrderStatus.PENDING,
+            inactiveTextColorRes = R.color.pos_warning
+        )
+
+        setOrderChipState(
+            chip = binding.ordersContent.chipPreparingOrders,
+            countView = binding.ordersContent.tvPreparingOrdersCount,
+            selected = selectedOrderStatus == CafeOrderStatus.PREPARING,
+            inactiveTextColorRes = R.color.pos_info
+        )
+
+        setOrderChipState(
+            chip = binding.ordersContent.chipCompletedOrders,
+            countView = binding.ordersContent.tvCompletedOrdersCount,
+            selected = selectedOrderStatus == CafeOrderStatus.COMPLETED,
+            inactiveTextColorRes = R.color.pos_secondary
+        )
+    }
+
+    private fun setOrderChipState(
+        chip: LinearLayout,
+        countView: TextView,
+        selected: Boolean,
+        inactiveTextColorRes: Int
+    ) {
+        chip.setBackgroundResource(if (selected) R.drawable.bg_hint_chip else 0)
+        countView.setBackgroundResource(if (selected) R.drawable.bg_sidebar_item_selected else R.drawable.bg_hint_chip)
+        countView.setTextColor(
+            ContextCompat.getColor(this, if (selected) R.color.white else inactiveTextColorRes)
+        )
+    }
+
+    private fun showNewOrderDialog() {
+        val availableProducts = viewModel.products.value.orEmpty().sortedBy { it.name }
+        val selectedProductIds = linkedSetOf<String>()
+
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dpToPx(20), dpToPx(12), dpToPx(20), dpToPx(4))
+        }
+
+        val etCustomerName = createStaffLabeledField(
+            container,
+            getString(R.string.order_field_customer_name),
+            ""
+        )
+        val etTableNumber = createStaffLabeledField(
+            container,
+            getString(R.string.order_field_table_number),
+            "",
+            android.text.InputType.TYPE_CLASS_NUMBER
+        )
+
+        val tvItemsPreview = createLabeledReadOnlyValue(
+            container,
+            getString(R.string.order_field_items_summary),
+            getString(R.string.order_no_products_selected)
+        )
+
+        val btnSelectProducts = MaterialButton(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = dpToPx(8)
+            }
+            text = getString(R.string.order_select_products)
+            isAllCaps = false
+            insetTop = 0
+            insetBottom = 0
+            cornerRadius = dpToPx(12)
+            strokeWidth = dpToPx(1)
+            strokeColor = ColorStateList.valueOf(ContextCompat.getColor(this@MainActivity, R.color.pos_border))
+            backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this@MainActivity, R.color.pos_surface))
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
+        }
+        container.addView(btnSelectProducts)
+
+        val tvTotalPreview = createLabeledReadOnlyValue(
+            container,
+            getString(R.string.order_field_total_amount),
+            getString(R.string.currency_format, 0.0)
+        )
+
+        val etStatus = createStaffLabeledField(
+            container,
+            getString(R.string.order_field_status),
+            getString(R.string.pending)
+        )
+
+        fun selectedProducts(): List<Product> {
+            return availableProducts.filter { selectedProductIds.contains(it.id) }
+        }
+
+        fun refreshSelectionPreview() {
+            val products = selectedProducts()
+            tvItemsPreview.text = if (products.isEmpty()) {
+                getString(R.string.order_no_products_selected)
+            } else {
+                products.joinToString(", ") { it.name }
+            }
+            val total = products.sumOf { it.price }
+            tvTotalPreview.text = getString(R.string.currency_format, total)
+            btnSelectProducts.text = if (products.isEmpty()) {
+                getString(R.string.order_select_products)
+            } else {
+                getString(R.string.order_select_products_count, products.size)
+            }
+        }
+
+        btnSelectProducts.setOnClickListener {
+            if (availableProducts.isEmpty()) {
+                Snackbar.make(
+                    binding.root,
+                    getString(R.string.order_no_products_available),
+                    Snackbar.LENGTH_SHORT
+                ).show()
+                return@setOnClickListener
+            }
+
+            showOrderProductPicker(
+                availableProducts = availableProducts,
+                selectedProductIds = selectedProductIds,
+                onSelectionSaved = { refreshSelectionPreview() }
+            )
+        }
+
+        refreshSelectionPreview()
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(getString(R.string.order_dialog_new_title))
+            .setView(container)
+            .setPositiveButton(getString(R.string.create_order), null)
+            .setNegativeButton(android.R.string.cancel, null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val customerName = etCustomerName.text.toString().trim()
+                if (customerName.isBlank()) {
+                    etCustomerName.error = getString(R.string.order_customer_required)
+                    return@setOnClickListener
+                }
+
+                val chosenProducts = selectedProducts()
+                if (chosenProducts.isEmpty()) {
+                    Snackbar.make(
+                        binding.root,
+                        getString(R.string.order_select_products_required),
+                        Snackbar.LENGTH_SHORT
+                    ).show()
+                    return@setOnClickListener
+                }
+
+                val itemsSummary = chosenProducts.joinToString(", ") { it.name }
+                val totalAmount = chosenProducts.sumOf { it.price }
+
+
+                val newOrder = CafeOrder(
+                    id = generateNextOrderId(),
+                    customerName = customerName,
+                    tableLabel = etTableNumber.text.toString().trim().ifBlank { "1" },
+                    itemsSummary = itemsSummary,
+                    itemCount = chosenProducts.size,
+                    timeLabel = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date()),
+                    status = parseOrderStatus(etStatus.text.toString()),
+                    total = totalAmount,
+                    initials = extractInitials(customerName)
+                )
+
+                orders.add(0, newOrder)
+                selectedOrderStatus = null
+                orderSearchQuery = ""
+                binding.ordersContent.etOrderSearch.setText("")
+                applyOrderFilters()
+
+                Snackbar.make(
+                    binding.root,
+                    getString(R.string.order_created_message, newOrder.id),
+                    Snackbar.LENGTH_SHORT
+                ).show()
+
+                dialog.dismiss()
+            }
+        }
+
+        dialog.show()
+    }
+
+    private fun showOrderProductPicker(
+        availableProducts: List<Product>,
+        selectedProductIds: MutableSet<String>,
+        onSelectionSaved: () -> Unit
+    ) {
+        val productLabels = availableProducts.map { product ->
+            getString(R.string.order_product_picker_entry, product.name, product.price)
+        }.toTypedArray()
+
+        val checkedItems = availableProducts
+            .map { selectedProductIds.contains(it.id) }
+            .toBooleanArray()
+
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.order_product_picker_title))
+            .setMultiChoiceItems(productLabels, checkedItems) { _, which, isChecked ->
+                val productId = availableProducts[which].id
+                if (isChecked) {
+                    selectedProductIds.add(productId)
+                } else {
+                    selectedProductIds.remove(productId)
+                }
+            }
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                onSelectionSaved()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun parseOrderStatus(value: String): CafeOrderStatus {
+        val normalized = value.trim().lowercase(Locale.getDefault())
+        return when {
+            normalized.startsWith("prep") -> CafeOrderStatus.PREPARING
+            normalized.startsWith("comp") || normalized.startsWith("done") -> CafeOrderStatus.COMPLETED
+            else -> CafeOrderStatus.PENDING
+        }
+    }
+
+    private fun generateNextOrderId(): String {
+        val maxIdNumber = orders
+            .mapNotNull { Regex("#ORD-(\\d+)").find(it.id)?.groupValues?.get(1)?.toIntOrNull() }
+            .maxOrNull()
+            ?: 1000
+
+        return String.format(Locale.getDefault(), "#ORD-%04d", maxIdNumber + 1)
+    }
+
+    private fun extractInitials(name: String): String {
+        val parts = name.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+        if (parts.isEmpty()) {
+            return "NA"
+        }
+        return parts.take(2).map { it.first().uppercaseChar() }.joinToString("")
     }
 
     private fun bindDashboardFocus(alerts: List<com.example.zejioscafese.dashboard.model.DashboardAlert>) {
@@ -460,6 +821,444 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         binding.btnCard.setOnClickListener {
             viewModel.setPaymentMethod(PosViewModel.PaymentMethod.CARD)
         }
+
+        binding.avatar.setOnClickListener {
+            showAvatarMenu(it)
+        }
+    }
+
+    private fun setupStaffInteractions() {
+        binding.staffContent.btnAddStaff.setOnClickListener {
+            showStaffDialog(card = null)
+        }
+
+        val initialStaffCards = listOf(
+            StaffCardViews(
+                nameView = binding.staffContent.tvStaffNameOne,
+                idView = binding.staffContent.tvStaffIdOne,
+                roleView = binding.staffContent.tvStaffRoleOne,
+                shiftView = binding.staffContent.tvStaffShiftOne,
+                statusView = binding.staffContent.tvStaffStatusOne
+            ),
+            StaffCardViews(
+                nameView = binding.staffContent.tvStaffNameTwo,
+                idView = binding.staffContent.tvStaffIdTwo,
+                roleView = binding.staffContent.tvStaffRoleTwo,
+                shiftView = binding.staffContent.tvStaffShiftTwo,
+                statusView = binding.staffContent.tvStaffStatusTwo
+            ),
+            StaffCardViews(
+                nameView = binding.staffContent.tvStaffNameThree,
+                idView = binding.staffContent.tvStaffIdThree,
+                roleView = binding.staffContent.tvStaffRoleThree,
+                shiftView = binding.staffContent.tvStaffShiftThree,
+                statusView = binding.staffContent.tvStaffStatusThree
+            )
+        )
+
+        staffCards.clear()
+        staffCards.addAll(initialStaffCards)
+
+        listOf(
+            binding.staffContent.btnEditStaffOne,
+            binding.staffContent.btnEditStaffTwo,
+            binding.staffContent.btnEditStaffThree
+        ).zip(initialStaffCards).forEach { (button, card) ->
+            button.setOnClickListener {
+                showStaffDialog(card)
+            }
+        }
+    }
+
+    private fun setupProfileInteractions() {
+        binding.profileCard.setOnClickListener {
+            renderSection(Section.PROFILE)
+        }
+
+        binding.profileContent.btnEditProfile.setOnClickListener {
+            showEditProfileDialog()
+        }
+
+        binding.profileContent.btnEditProfileInline.setOnClickListener {
+            showEditProfileDialog()
+        }
+
+        binding.profileContent.btnLogoutProfile.setOnClickListener {
+            showLogoutConfirmationDialog()
+        }
+
+        applyUserProfileStateToUi()
+    }
+
+    private fun showAvatarMenu(anchor: View) {
+        PopupMenu(this, anchor).apply {
+            menu.add(0, 1, 0, getString(R.string.profile_menu_view_profile))
+            menu.add(0, 2, 1, getString(R.string.profile_menu_edit_profile))
+            menu.add(0, 3, 2, getString(R.string.profile_menu_go_to_settings))
+            menu.add(0, 4, 3, getString(R.string.logout))
+
+            setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    1 -> {
+                        renderSection(Section.PROFILE)
+                        true
+                    }
+                    2 -> {
+                        renderSection(Section.PROFILE)
+                        showEditProfileDialog()
+                        true
+                    }
+                    3 -> {
+                        renderSection(Section.SETTINGS)
+                        true
+                    }
+                    4 -> {
+                        showLogoutConfirmationDialog()
+                        true
+                    }
+                    else -> false
+                }
+            }
+        }.show()
+    }
+
+    private fun showEditProfileDialog() {
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dpToPx(20), dpToPx(12), dpToPx(20), dpToPx(4))
+        }
+
+        val etName = createStaffLabeledField(
+            container,
+            getString(R.string.staff_field_full_name),
+            userProfileState.name
+        )
+        val etEmail = createStaffLabeledField(
+            container,
+            getString(R.string.profile_field_email),
+            userProfileState.email,
+            android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+        )
+        val etRole = createStaffLabeledField(
+            container,
+            getString(R.string.profile_field_role),
+            userProfileState.role
+        )
+        val etPhone = createStaffLabeledField(
+            container,
+            getString(R.string.profile_field_phone),
+            userProfileState.phone,
+            android.text.InputType.TYPE_CLASS_PHONE
+        )
+        val etAddress = createStaffLabeledField(
+            container,
+            getString(R.string.profile_field_address),
+            userProfileState.address
+        )
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(getString(R.string.profile_edit_dialog_title))
+            .setView(container)
+            .setPositiveButton(getString(R.string.profile_save_changes), null)
+            .setNegativeButton(android.R.string.cancel, null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val name = etName.text.toString().trim()
+                val email = etEmail.text.toString().trim()
+
+                if (name.isBlank()) {
+                    etName.error = getString(R.string.profile_name_required)
+                    return@setOnClickListener
+                }
+
+                if (!email.contains("@") || !email.contains(".")) {
+                    etEmail.error = getString(R.string.profile_email_invalid)
+                    return@setOnClickListener
+                }
+
+                userProfileState = userProfileState.copy(
+                    name = name,
+                    email = email,
+                    role = etRole.text.toString().trim().ifBlank { userProfileState.role },
+                    phone = etPhone.text.toString().trim().ifBlank { userProfileState.phone },
+                    address = etAddress.text.toString().trim().ifBlank { userProfileState.address }
+                )
+
+                applyUserProfileStateToUi()
+
+                Snackbar.make(
+                    binding.root,
+                    getString(R.string.profile_updated_message),
+                    Snackbar.LENGTH_SHORT
+                ).show()
+
+                dialog.dismiss()
+            }
+        }
+
+        dialog.show()
+    }
+
+    private fun showLogoutConfirmationDialog() {
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.logout_confirm_title))
+            .setMessage(getString(R.string.logout_confirm_message))
+            .setPositiveButton(getString(R.string.logout)) { _, _ ->
+                viewModel.clearOrder()
+                selectedOrderStatus = null
+                orderSearchQuery = ""
+                if (::orderManagementAdapter.isInitialized) {
+                    applyOrderFilters()
+                }
+                renderSection(Section.POS)
+                Snackbar.make(
+                    binding.root,
+                    getString(R.string.logout_success_message),
+                    Snackbar.LENGTH_SHORT
+                ).show()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun applyUserProfileStateToUi() {
+        binding.tvProfileName.text = userProfileState.name
+        binding.tvProfileEmail.text = userProfileState.email
+
+        binding.profileContent.tvProfilePageName.text = userProfileState.name
+        binding.profileContent.tvProfilePageRole.text = userProfileState.role
+        binding.profileContent.tvProfilePageEmail.text = userProfileState.email
+        binding.profileContent.tvProfilePageEmailDetail.text = userProfileState.email
+        binding.profileContent.tvProfilePagePhone.text = userProfileState.phone
+        binding.profileContent.tvProfilePageAddress.text = userProfileState.address
+        binding.profileContent.tvProfilePageRoleDetail.text = userProfileState.role
+
+        binding.avatar.contentDescription = getString(R.string.profile_avatar_for, userProfileState.name)
+    }
+
+    private fun showStaffDialog(card: StaffCardViews?) {
+        val isEditMode = card != null
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dpToPx(20), dpToPx(12), dpToPx(20), dpToPx(4))
+        }
+
+        val etName = createStaffLabeledField(
+            container,
+            getString(R.string.staff_field_full_name),
+            card?.nameView?.text?.toString().orEmpty()
+        )
+        val etEmployeeId = createStaffLabeledField(
+            container,
+            getString(R.string.staff_field_employee_id),
+            card?.idView?.text?.toString()?.removePrefix("ID:")?.trim().orEmpty()
+        )
+        val etRole = createStaffLabeledField(
+            container,
+            getString(R.string.staff_field_role),
+            card?.roleView?.text?.toString().orEmpty()
+        )
+        val etShift = createStaffLabeledField(
+            container,
+            getString(R.string.staff_field_shift),
+            card?.shiftView?.text?.toString().orEmpty()
+        )
+        val etStatus = createStaffLabeledField(
+            container,
+            getString(R.string.staff_field_status),
+            card?.statusView?.text?.toString().orEmpty()
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle(
+                getString(
+                    if (isEditMode) R.string.staff_dialog_edit_title else R.string.staff_dialog_add_title
+                )
+            )
+            .setView(container)
+            .setPositiveButton(
+                getString(
+                    if (isEditMode) R.string.staff_dialog_save_action else R.string.staff_dialog_add_action
+                )
+            ) { _, _ ->
+                val name = etName.text.toString().trim()
+                if (name.isBlank()) {
+                    return@setPositiveButton
+                }
+
+                if (isEditMode) {
+                    val staffCard = card!!
+                    staffCard.nameView.text = name
+
+                    val enteredId = etEmployeeId.text.toString().trim()
+                    if (enteredId.isNotBlank()) {
+                        staffCard.idView.text = getString(
+                            R.string.staff_id_format,
+                            normalizeStaffEmployeeId(enteredId)
+                        )
+                    }
+
+                    staffCard.roleView.text = etRole.text.toString().trim().ifBlank { staffCard.roleView.text.toString() }
+                    staffCard.shiftView.text = etShift.text.toString().trim().ifBlank { staffCard.shiftView.text.toString() }
+                    staffCard.statusView.text = etStatus.text.toString().trim().ifBlank { staffCard.statusView.text.toString() }
+
+                    Snackbar.make(
+                        binding.root,
+                        getString(R.string.staff_updated_message, name),
+                        Snackbar.LENGTH_SHORT
+                    ).show()
+                } else {
+                    val newEmployeeId = normalizeStaffEmployeeId(
+                        etEmployeeId.text.toString().trim().ifBlank { generateNextStaffEmployeeId() }
+                    )
+                    val role = etRole.text.toString().trim().ifBlank { getString(R.string.staff_role_barista) }
+                    val shift = etShift.text.toString().trim().ifBlank { getString(R.string.staff_shift_three) }
+                    val status = etStatus.text.toString().trim().ifBlank { getString(R.string.staff_status_active) }
+
+                    addStaffCard(
+                        name = name,
+                        employeeId = newEmployeeId,
+                        role = role,
+                        shift = shift,
+                        status = status
+                    )
+
+                    Snackbar.make(
+                        binding.root,
+                        getString(R.string.staff_added_message, name),
+                        Snackbar.LENGTH_SHORT
+                    ).show()
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun addStaffCard(
+        name: String,
+        employeeId: String,
+        role: String,
+        shift: String,
+        status: String
+    ) {
+        val cardRoot = layoutInflater.inflate(
+            R.layout.item_staff_profile_card,
+            binding.staffContent.staffCardsContainer,
+            false
+        )
+
+        val nameView = cardRoot.findViewById<TextView>(R.id.tvStaffName)
+        val idView = cardRoot.findViewById<TextView>(R.id.tvStaffId)
+        val roleView = cardRoot.findViewById<TextView>(R.id.tvStaffRole)
+        val shiftView = cardRoot.findViewById<TextView>(R.id.tvStaffShift)
+        val statusView = cardRoot.findViewById<TextView>(R.id.tvStaffStatus)
+        val editButton = cardRoot.findViewById<MaterialButton>(R.id.btnEditStaff)
+
+        nameView.text = name
+        idView.text = getString(R.string.staff_id_format, employeeId)
+        roleView.text = role
+        shiftView.text = shift
+        statusView.text = status
+
+        val newCard = StaffCardViews(
+            nameView = nameView,
+            idView = idView,
+            roleView = roleView,
+            shiftView = shiftView,
+            statusView = statusView
+        )
+
+        editButton.setOnClickListener {
+            showStaffDialog(newCard)
+        }
+
+        binding.staffContent.staffCardsContainer.addView(cardRoot)
+        staffCards.add(newCard)
+    }
+
+    private fun normalizeStaffEmployeeId(value: String): String {
+        var normalized = value.trim()
+        if (normalized.startsWith("ID:", ignoreCase = true)) {
+            normalized = normalized.substringAfter(':').trim()
+        }
+
+        normalized = normalized.removePrefix("#")
+        if (!normalized.startsWith("EMP-", ignoreCase = true)) {
+            normalized = "EMP-$normalized"
+        }
+
+        return "#${normalized.uppercase(Locale.getDefault())}"
+    }
+
+    private fun generateNextStaffEmployeeId(): String {
+        val nextNumber = staffCards
+            .mapNotNull { card ->
+                Regex("EMP-(\\d+)", RegexOption.IGNORE_CASE)
+                    .find(card.idView.text.toString())
+                    ?.groupValues
+                    ?.getOrNull(1)
+                    ?.toIntOrNull()
+            }
+            .maxOrNull()
+            ?.plus(1)
+            ?: 2401
+
+        return "#EMP-$nextNumber"
+    }
+
+    private fun createStaffLabeledField(
+        container: LinearLayout,
+        label: String,
+        value: String,
+        inputType: Int = android.text.InputType.TYPE_CLASS_TEXT
+    ): EditText {
+        val labelView = TextView(this).apply {
+            text = label
+            textSize = 12f
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_secondary))
+            setPadding(0, dpToPx(8), 0, dpToPx(4))
+        }
+        container.addView(labelView)
+
+        val editText = EditText(this).apply {
+            setText(value)
+            this.inputType = inputType
+            textSize = 14f
+            setPadding(dpToPx(12), dpToPx(10), dpToPx(12), dpToPx(10))
+            setBackgroundResource(R.drawable.bg_input_field)
+        }
+        container.addView(editText)
+        return editText
+    }
+
+    private fun createLabeledReadOnlyValue(
+        container: LinearLayout,
+        label: String,
+        value: String
+    ): TextView {
+        val labelView = TextView(this).apply {
+            text = label
+            textSize = 12f
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_secondary))
+            setPadding(0, dpToPx(8), 0, dpToPx(4))
+        }
+        container.addView(labelView)
+
+        val valueView = TextView(this).apply {
+            text = value
+            textSize = 14f
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
+            setPadding(dpToPx(12), dpToPx(10), dpToPx(12), dpToPx(10))
+            setBackgroundResource(R.drawable.bg_input_field)
+        }
+        container.addView(valueView)
+        return valueView
+    }
+
+    private fun dpToPx(dp: Int): Int {
+        return (dp * resources.displayMetrics.density).toInt()
     }
 
     private fun observeViewModel() {
@@ -560,7 +1359,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val showDashboard = section == Section.DASHBOARD
         val showOrders = section == Section.ORDERS
         val showStaff = section == Section.STAFF
-        val showPlaceholder = !showPos && !showDashboard && !showOrders && !showStaff && !showFragmentScreen
+        val showProfile = section == Section.PROFILE
+        val showPlaceholder = !showPos && !showDashboard && !showOrders && !showStaff && !showProfile && !showFragmentScreen
 
         binding.topBar.visibility = if (showFragmentScreen || showStaff) View.GONE else View.VISIBLE
         binding.leftPanel.visibility = if (showPos) View.VISIBLE else View.GONE
@@ -568,6 +1368,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         binding.dashboardContent.root.visibility = if (showDashboard) View.VISIBLE else View.GONE
         binding.ordersContent.root.visibility = if (showOrders) View.VISIBLE else View.GONE
         binding.staffContent.root.visibility = if (showStaff) View.VISIBLE else View.GONE
+        binding.profileContent.root.visibility = if (showProfile) View.VISIBLE else View.GONE
         binding.placeholderContent.root.visibility = if (showPlaceholder) View.VISIBLE else View.GONE
         binding.fragmentContainer.visibility = if (showFragmentScreen) View.VISIBLE else View.GONE
 
@@ -587,6 +1388,11 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 R.string.section_ready_title,
                 getString(section.labelRes)
             )
+        }
+
+        if (!showPos) {
+            updatePosCategoryChipMode(compact = false)
+            updatePosCategoryStripPadding(expanded = false)
         }
 
         updateHostedFragment(section)
@@ -619,6 +1425,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val slideOffset = resources.getDimension(R.dimen.checkout_panel_slide_offset)
 
         checkoutAnimator?.cancel()
+        updatePosCategoryChipMode(compact = expanded && isLandscape)
+        updatePosCategoryStripPadding(expanded)
 
         if (!animate || abs(startPercent - targetPercent) < 0.001f) {
             binding.contentGuide.updateLayoutParams<ConstraintLayout.LayoutParams> {
@@ -773,13 +1581,16 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val white = ContextCompat.getColor(this, R.color.white)
 
         binding.sidebarSurface.setBackgroundResource(R.drawable.bg_sidebar_surface)
-        binding.profileCard.setBackgroundResource(R.drawable.bg_profile_card)
+        val profileSelected = currentSection == Section.PROFILE
+        binding.profileCard.setBackgroundResource(
+            if (profileSelected) R.drawable.bg_sidebar_item_selected else R.drawable.bg_profile_card
+        )
         binding.ivSidebarLogo.imageTintList = ColorStateList.valueOf(white)
         binding.btnToggleSidebar.imageTintList = ColorStateList.valueOf(white)
         binding.tvSidebarTitle.setTextColor(white)
         binding.tvSidebarSubtitle.setTextColor(sidebarMuted)
         binding.tvProfileName.setTextColor(white)
-        binding.tvProfileEmail.setTextColor(sidebarMuted)
+        binding.tvProfileEmail.setTextColor(if (profileSelected) white else sidebarMuted)
 
         sidebarItems.forEach { item ->
             val isSelected = item.section == currentSection
@@ -821,6 +1632,36 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             ContextCompat.getColor(this, R.color.pos_secondary)
         )
         binding.btnCheckout.setTextColor(ContextCompat.getColor(this, R.color.pos_checkout_text))
+    }
+
+    private fun updatePosCategoryStripPadding(expanded: Boolean) {
+        val checkoutOpenInLandscape =
+            expanded && resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        val targetPaddingEnd = resources.getDimensionPixelSize(
+            if (checkoutOpenInLandscape) {
+                R.dimen.pos_category_padding_end_checkout_open
+            } else {
+                R.dimen.pos_category_padding_end_default
+            }
+        )
+
+        if (binding.rvCategories.paddingEnd == targetPaddingEnd) {
+            return
+        }
+
+        binding.rvCategories.setPaddingRelative(
+            binding.rvCategories.paddingStart,
+            binding.rvCategories.paddingTop,
+            targetPaddingEnd,
+            binding.rvCategories.paddingBottom
+        )
+    }
+
+    private fun updatePosCategoryChipMode(compact: Boolean) {
+        if (!::categoryAdapter.isInitialized) {
+            return
+        }
+        categoryAdapter.compactMode = compact
     }
 
     private class GridSpacingItemDecoration(
