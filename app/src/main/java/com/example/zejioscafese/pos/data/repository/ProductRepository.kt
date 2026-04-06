@@ -8,8 +8,11 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 
 class ProductRepository(
-    private val supabaseClient: SupabaseClient = SupabaseProvider.client
+    private val clientProvider: () -> SupabaseClient = { SupabaseProvider.client }
 ) {
+
+    private val supabaseClient: SupabaseClient
+        get() = clientProvider()
 
     suspend fun fetchProducts(): List<Product> {
         return supabaseClient

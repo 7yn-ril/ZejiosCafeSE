@@ -1641,6 +1641,17 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             applyPaymentSelection(paymentMethod)
         }
 
+        viewModel.menuLoadError.observe(this) { errorMessage ->
+            if (!errorMessage.isNullOrBlank()) {
+                Snackbar.make(
+                    binding.root,
+                    errorMessage,
+                    Snackbar.LENGTH_LONG
+                ).show()
+                viewModel.onMenuLoadErrorConsumed()
+            }
+        }
+
         viewModel.isCheckoutInProgress.observe(this) { isInProgress ->
             isCheckoutSaving = isInProgress
             updateCheckoutButtonState()

@@ -15,8 +15,11 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 class InventoryRepository(
-    private val supabaseClient: SupabaseClient = SupabaseProvider.client
+    private val clientProvider: () -> SupabaseClient = { SupabaseProvider.client }
 ) {
+
+    private val supabaseClient: SupabaseClient
+        get() = clientProvider()
 
     suspend fun fetchIngredients(): List<Ingredient> {
         return supabaseClient

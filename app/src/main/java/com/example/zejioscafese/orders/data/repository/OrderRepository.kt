@@ -51,8 +51,11 @@ data class CheckoutOrderLine(
 )
 
 class OrderRepository(
-    private val supabaseClient: SupabaseClient = SupabaseProvider.client
+    private val clientProvider: () -> SupabaseClient = { SupabaseProvider.client }
 ) {
+
+    private val supabaseClient: SupabaseClient
+        get() = clientProvider()
 
     suspend fun fetchNextOrderNumber(): String {
         return try {

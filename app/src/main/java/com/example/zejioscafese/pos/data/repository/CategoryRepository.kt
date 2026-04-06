@@ -8,8 +8,11 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 class CategoryRepository(
-    private val supabaseClient: SupabaseClient = SupabaseProvider.client
+    private val clientProvider: () -> SupabaseClient = { SupabaseProvider.client }
 ) {
+
+    private val supabaseClient: SupabaseClient
+        get() = clientProvider()
 
     suspend fun fetchCategories(): List<String> {
         val categories = supabaseClient
