@@ -25,4 +25,3 @@ Android tablet-first POS admin interface built with Kotlin + XML in Android Stud
 ```
 
 Install the generated APK from `app/build/outputs/apk/debug/` on an emulator or device.
-

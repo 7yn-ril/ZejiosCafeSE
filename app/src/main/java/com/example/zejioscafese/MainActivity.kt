@@ -10,11 +10,13 @@ import android.content.res.Configuration
 import android.graphics.Rect
 import android.graphics.Typeface
 import android.os.Bundle
+import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.annotation.StringRes
@@ -27,6 +29,7 @@ import androidx.core.widget.doAfterTextChanged
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -38,7 +41,7 @@ import com.example.zejioscafese.dashboard.ui.DashboardAlertAdapter
 import com.example.zejioscafese.dashboard.ui.DashboardInsightAdapter
 import com.example.zejioscafese.dashboard.ui.DashboardTopItemAdapter
 import com.example.zejioscafese.databinding.ActivityMainBinding
-import com.example.zejioscafese.orders.data.OrderSampleData
+import com.example.zejioscafese.orders.data.repository.OrderRepository
 import com.example.zejioscafese.orders.model.CafeOrder
 import com.example.zejioscafese.orders.model.CafeOrderStatus
 import com.example.zejioscafese.orders.ui.OrderManagementAdapter
@@ -61,6 +64,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity(), NavigationHost {
 
@@ -102,6 +106,20 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         var address: String
     )
 
+    private data class ReceiptLine(
+        val label: String,
+        val quantity: Int,
+        val lineTotal: Double
+    )
+
+    private data class PendingCheckoutReceipt(
+        val customerName: String?,
+        val cashReceived: Double,
+        val subtotal: Double,
+        val total: Double,
+        val lines: List<ReceiptLine>
+    )
+
     private lateinit var binding: ActivityMainBinding
     private val viewModel: PosViewModel by viewModels()
 
@@ -114,9 +132,13 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private lateinit var orderManagementAdapter: OrderManagementAdapter
     private lateinit var userProfileState: UserProfileState
     private val orders = mutableListOf<CafeOrder>()
+    private val orderRepository = OrderRepository()
     private var selectedOrderStatus: CafeOrderStatus? = null
     private var orderSearchQuery: String = ""
     private val staffCards = mutableListOf<StaffCardViews>()
+    private var hasCheckoutItems: Boolean = false
+    private var isCheckoutSaving: Boolean = false
+    private var pendingCheckoutReceipt: PendingCheckoutReceipt? = null
 
     private var isSidebarExpanded: Boolean = true
     private var currentSection: Section = Section.POS
@@ -188,6 +210,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             ?: Section.POS
         renderSection(initialSection)
         applySidebarState(isSidebarExpanded, animate = false)
+        configureCashOnlyCheckout()
         viewModel.setPaymentMethod(PosViewModel.PaymentMethod.CASH)
     }
 
@@ -278,7 +301,9 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     }
 
     private fun setupOrders() {
-        orderManagementAdapter = OrderManagementAdapter()
+        orderManagementAdapter = OrderManagementAdapter(
+            onOrderItemsClick = ::showOrderItemsDialog
+        )
 
         binding.ordersContent.rvOrders.apply {
             adapter = orderManagementAdapter
@@ -288,7 +313,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         }
 
         orders.clear()
-        orders.addAll(OrderSampleData.orders)
+        loadOrdersFromSupabase()
 
         binding.ordersContent.etOrderSearch.doAfterTextChanged { text ->
             orderSearchQuery = text?.toString().orEmpty()
@@ -322,6 +347,306 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         applyOrderFilters()
     }
 
+    private fun loadOrdersFromSupabase(showError: Boolean = false) {
+        lifecycleScope.launch {
+            try {
+                val fetchedOrders = orderRepository.fetchOrders()
+                orders.clear()
+                orders.addAll(fetchedOrders)
+                applyOrderFilters()
+            } catch (exception: Exception) {
+                if (showError) {
+                    Snackbar.make(
+                        binding.root,
+                        getString(
+                            R.string.orders_load_failed,
+                            exception.message ?: "Please try again."
+                        ),
+                        Snackbar.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
+
+    private fun addOrReplaceOrder(order: CafeOrder) {
+        orders.removeAll { it.id == order.id }
+        orders.add(0, order)
+        applyOrderFilters()
+    }
+
+    private fun showOrderItemsDialog(order: CafeOrder) {
+        val itemsToShow = order.orderedItems.ifEmpty { listOf(order.itemsSummary) }
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.order_items_dialog_title, order.id))
+            .setItems(itemsToShow.toTypedArray(), null)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
+    private fun showCheckoutReviewDialog() {
+        val orderItems = viewModel.orderItems.value.orEmpty()
+        if (orderItems.isEmpty()) {
+            Snackbar.make(
+                binding.root,
+                getString(R.string.checkout_requires_items),
+                Snackbar.LENGTH_SHORT
+            ).show()
+            return
+        }
+
+        val subtotal = viewModel.subtotal.value ?: 0.0
+        val total = viewModel.total.value ?: subtotal
+        val receiptLines = orderItems.map { item ->
+            ReceiptLine(
+                label = item.product.name,
+                quantity = item.quantity,
+                lineTotal = item.lineTotal
+            )
+        }
+
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(24.dp(), 20.dp(), 24.dp(), 12.dp())
+        }
+
+        content.addView(
+            createDialogText(
+                text = getString(R.string.checkout_review_caption),
+                textSizeSp = 14f,
+                textColorRes = R.color.pos_text_secondary
+            )
+        )
+
+        content.addView(createSectionLabel(getString(R.string.order_number_label)))
+        content.addView(
+            createDialogText(
+                text = viewModel.orderNumber.value.orEmpty(),
+                textSizeSp = 18f,
+                typeface = Typeface.DEFAULT_BOLD
+            )
+        )
+
+        content.addView(createSectionLabel(getString(R.string.checkout_review_items_title)))
+        receiptLines.forEach { line ->
+            content.addView(
+                createDialogText(
+                    text = formatReceiptLine(line),
+                    textSizeSp = 14f,
+                    typeface = Typeface.MONOSPACE
+                )
+            )
+        }
+
+        content.addView(createSectionLabel(getString(R.string.subtotal)))
+        content.addView(createDialogText(formatCurrency(subtotal), textSizeSp = 16f))
+        content.addView(createSectionLabel(getString(R.string.total)))
+        content.addView(
+            createDialogText(
+                text = formatCurrency(total),
+                textSizeSp = 22f,
+                typeface = Typeface.DEFAULT_BOLD
+            )
+        )
+
+        val customerNameInput = createDialogInput(
+            hint = getString(R.string.checkout_customer_name_hint),
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS
+        )
+        content.addView(createSectionLabel(getString(R.string.order_field_customer_name)))
+        content.addView(customerNameInput)
+
+        val paymentInput = createDialogInput(
+            hint = getString(R.string.checkout_cash_received_hint),
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+        )
+        content.addView(createSectionLabel(getString(R.string.cash)))
+        content.addView(paymentInput)
+
+        val paymentHelper = createDialogText(
+            text = getString(R.string.checkout_change_due_pending),
+            textSizeSp = 13f,
+            textColorRes = R.color.pos_text_secondary
+        )
+        content.addView(paymentHelper)
+
+        val scrollView = ScrollView(this).apply {
+            addView(content)
+        }
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(getString(R.string.checkout_review_title))
+            .setView(scrollView)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.checkout_confirm_payment, null)
+            .create()
+
+        dialog.setOnShowListener {
+            val confirmButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+
+            fun refreshPaymentState() {
+                val cashReceived = paymentInput.text?.toString().orEmpty().toCashAmount()
+                val change = cashReceived?.minus(total)
+                val isValid = cashReceived != null && change != null && change >= 0
+
+                confirmButton.isEnabled = isValid && !isCheckoutSaving
+                paymentHelper.text = when {
+                    cashReceived == null -> getString(R.string.checkout_change_due_pending)
+                    change == null || change < 0 -> getString(R.string.checkout_cash_required)
+                    else -> getString(R.string.checkout_change_due, formatCurrency(change))
+                }
+            }
+
+            paymentInput.doAfterTextChanged { refreshPaymentState() }
+            refreshPaymentState()
+
+            confirmButton.setOnClickListener {
+                val cashReceived = paymentInput.text?.toString().orEmpty().toCashAmount()
+                if (cashReceived == null || cashReceived < total) {
+                    refreshPaymentState()
+                    return@setOnClickListener
+                }
+
+                pendingCheckoutReceipt = PendingCheckoutReceipt(
+                    customerName = customerNameInput.text?.toString()?.trim()?.takeIf(String::isNotBlank),
+                    cashReceived = cashReceived,
+                    subtotal = subtotal,
+                    total = total,
+                    lines = receiptLines
+                )
+
+                dialog.dismiss()
+                viewModel.checkout(customerName = customerNameInput.text?.toString())
+            }
+        }
+
+        dialog.show()
+    }
+
+    private fun showReceiptDialog(order: CafeOrder, receipt: PendingCheckoutReceipt) {
+        val customerName = receipt.customerName?.takeIf(String::isNotBlank)
+            ?: order.customerName.ifBlank { getString(R.string.receipt_walk_in_customer) }
+        val change = (receipt.cashReceived - receipt.total).coerceAtLeast(0.0)
+
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(24.dp(), 20.dp(), 24.dp(), 12.dp())
+        }
+
+        content.addView(
+            createDialogText(
+                text = getString(R.string.receipt_subtitle),
+                textSizeSp = 14f,
+                textColorRes = R.color.pos_text_secondary
+            )
+        )
+
+        content.addView(createSectionLabel(getString(R.string.receipt_order_label)))
+        content.addView(createDialogText(order.id, textSizeSp = 18f, typeface = Typeface.DEFAULT_BOLD))
+        content.addView(createSectionLabel(getString(R.string.receipt_customer_label)))
+        content.addView(createDialogText(customerName, textSizeSp = 16f))
+        content.addView(createSectionLabel(getString(R.string.receipt_time_label)))
+        content.addView(createDialogText(order.timeLabel, textSizeSp = 16f))
+        content.addView(createSectionLabel(getString(R.string.receipt_payment_method_label)))
+        content.addView(createDialogText(getString(R.string.cash), textSizeSp = 16f))
+        content.addView(createSectionLabel(getString(R.string.items_label)))
+        receipt.lines.forEach { line ->
+            content.addView(
+                createDialogText(
+                    text = formatReceiptLine(line),
+                    textSizeSp = 14f,
+                    typeface = Typeface.MONOSPACE
+                )
+            )
+        }
+        content.addView(createSectionLabel(getString(R.string.subtotal)))
+        content.addView(createDialogText(formatCurrency(receipt.subtotal), textSizeSp = 16f))
+        content.addView(createSectionLabel(getString(R.string.total)))
+        content.addView(
+            createDialogText(
+                text = formatCurrency(receipt.total),
+                textSizeSp = 20f,
+                typeface = Typeface.DEFAULT_BOLD
+            )
+        )
+        content.addView(createSectionLabel(getString(R.string.receipt_cash_received_label)))
+        content.addView(createDialogText(formatCurrency(receipt.cashReceived), textSizeSp = 16f))
+        content.addView(createSectionLabel(getString(R.string.receipt_change_label)))
+        content.addView(
+            createDialogText(
+                text = formatCurrency(change),
+                textSizeSp = 18f,
+                typeface = Typeface.DEFAULT_BOLD
+            )
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.receipt_title))
+            .setView(ScrollView(this).apply { addView(content) })
+            .setPositiveButton(R.string.receipt_done, null)
+            .show()
+    }
+
+    private fun createSectionLabel(text: String): TextView {
+        return createDialogText(
+            text = text,
+            textSizeSp = 12f,
+            typeface = Typeface.DEFAULT_BOLD,
+            textColorRes = R.color.pos_text_secondary,
+            topMarginDp = 16
+        )
+    }
+
+    private fun createDialogInput(hint: String, inputType: Int): EditText {
+        return EditText(this).apply {
+            this.hint = hint
+            this.inputType = inputType
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
+            setHintTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_secondary))
+            background = ContextCompat.getDrawable(this@MainActivity, android.R.drawable.edit_text)
+            setPadding(16.dp(), 14.dp(), 16.dp(), 14.dp())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = 6.dp()
+            }
+        }
+    }
+
+    private fun createDialogText(
+        text: String,
+        textSizeSp: Float,
+        typeface: Typeface = Typeface.DEFAULT,
+        textColorRes: Int = R.color.pos_text_primary,
+        topMarginDp: Int = 0
+    ): TextView {
+        return TextView(this).apply {
+            this.text = text
+            textSize = textSizeSp
+            setTypeface(typeface)
+            setTextColor(ContextCompat.getColor(this@MainActivity, textColorRes))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = topMarginDp.dp()
+            }
+        }
+    }
+
+    private fun formatReceiptLine(line: ReceiptLine): String {
+        return "${line.quantity} x ${line.label}  ${formatCurrency(line.lineTotal)}"
+    }
+
+    private fun String.toCashAmount(): Double? {
+        return replace(",", "").trim().toDoubleOrNull()
+    }
+
+    private fun formatCurrency(amount: Double): String {
+        return getString(R.string.currency_format, amount)
+    }
+
     private fun applyOrderFilters() {
         val normalizedQuery = orderSearchQuery.trim().lowercase(Locale.getDefault())
 
@@ -331,7 +656,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 order.id,
                 order.customerName,
                 order.itemsSummary,
-                order.tableLabel
+                order.tableLabel,
+                order.orderedItems.joinToString(" ")
             ).joinToString(" ").lowercase(Locale.getDefault()).contains(normalizedQuery)
             matchesStatus && matchesQuery
         }
@@ -801,7 +1127,17 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         binding.btnFilterSort.setOnClickListener { showSortMenu(it) }
 
         binding.btnClear.setOnClickListener { viewModel.clearOrder() }
-        binding.btnCheckout.setOnClickListener { }
+        binding.btnCheckout.setOnClickListener {
+            if (viewModel.orderItems.value.isNullOrEmpty()) {
+                Snackbar.make(
+                    binding.root,
+                    getString(R.string.checkout_requires_items),
+                    Snackbar.LENGTH_SHORT
+                ).show()
+                return@setOnClickListener
+            }
+            showCheckoutReviewDialog()
+        }
         binding.btnCloseCheckout.setOnClickListener {
             setCheckoutExpanded(expanded = false, animate = true)
         }
@@ -814,12 +1150,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
         binding.btnCash.setOnClickListener {
             viewModel.setPaymentMethod(PosViewModel.PaymentMethod.CASH)
-        }
-        binding.btnGcash.setOnClickListener {
-            viewModel.setPaymentMethod(PosViewModel.PaymentMethod.GCASH)
-        }
-        binding.btnCard.setOnClickListener {
-            viewModel.setPaymentMethod(PosViewModel.PaymentMethod.CARD)
         }
 
         binding.avatar.setOnClickListener {
@@ -1261,6 +1591,10 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         return (dp * resources.displayMetrics.density).toInt()
     }
 
+    private fun Int.dp(): Int {
+        return dpToPx(this)
+    }
+
     private fun observeViewModel() {
         viewModel.categories.observe(this) { categories ->
             categoryAdapter.submitList(categories)
@@ -1281,8 +1615,10 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         viewModel.orderItems.observe(this) { items ->
             orderItemAdapter.submitList(items)
             val hasItems = items.isNotEmpty()
+            hasCheckoutItems = hasItems
             binding.emptyOrderState.visibility = if (hasItems) View.GONE else View.VISIBLE
             binding.rvOrderItems.visibility = if (hasItems) View.VISIBLE else View.GONE
+            updateCheckoutButtonState()
         }
 
         viewModel.orderNumber.observe(this) { orderNumber ->
@@ -1305,15 +1641,40 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             applyPaymentSelection(paymentMethod)
         }
 
+        viewModel.isCheckoutInProgress.observe(this) { isInProgress ->
+            isCheckoutSaving = isInProgress
+            updateCheckoutButtonState()
+        }
+
         // One-shot checkout success event
-        viewModel.checkoutEvent.observe(this) { orderNumber ->
-            if (orderNumber != null) {
+        viewModel.checkoutEvent.observe(this) { savedOrder ->
+            if (savedOrder != null) {
+                val receipt = pendingCheckoutReceipt
+                pendingCheckoutReceipt = null
+                addOrReplaceOrder(savedOrder)
+                loadOrdersFromSupabase(showError = false)
+                viewModel.refreshMenu()
+                if (receipt != null) {
+                    showReceiptDialog(savedOrder, receipt)
+                } else {
+                    Snackbar.make(
+                        binding.root,
+                        getString(R.string.checkout_saved_message, savedOrder.id),
+                        Snackbar.LENGTH_LONG
+                    ).show()
+                }
+                viewModel.onCheckoutEventConsumed()
+            }
+        }
+        viewModel.checkoutError.observe(this) { errorMessage ->
+            if (!errorMessage.isNullOrBlank()) {
+                pendingCheckoutReceipt = null
                 Snackbar.make(
                     binding.root,
-                    "Order $orderNumber placed successfully ✓",
+                    getString(R.string.checkout_save_failed, errorMessage),
                     Snackbar.LENGTH_LONG
                 ).show()
-                viewModel.onCheckoutEventConsumed()
+                viewModel.onCheckoutErrorConsumed()
             }
         }
     }
@@ -1634,6 +1995,19 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         binding.btnCheckout.setTextColor(ContextCompat.getColor(this, R.color.pos_checkout_text))
     }
 
+    private fun configureCashOnlyCheckout() {
+        binding.btnGcash.visibility = View.GONE
+        binding.btnCard.visibility = View.GONE
+        (binding.tvTax.parent as? View)?.visibility = View.GONE
+        updateCheckoutButtonState()
+    }
+
+    private fun updateCheckoutButtonState() {
+        val isEnabled = hasCheckoutItems && !isCheckoutSaving
+        binding.btnCheckout.isEnabled = isEnabled
+        binding.btnCheckout.alpha = if (isEnabled) 1f else 0.6f
+    }
+
     private fun updatePosCategoryStripPadding(expanded: Boolean) {
         val checkoutOpenInLandscape =
             expanded && resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -1709,3 +2083,4 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         }
     }
 }
+

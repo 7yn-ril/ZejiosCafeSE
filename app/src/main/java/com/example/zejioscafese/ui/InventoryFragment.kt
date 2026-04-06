@@ -18,6 +18,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.zejioscafese.R
 import com.example.zejioscafese.databinding.FragmentInventoryBinding
 import com.example.zejioscafese.pos.data.model.Ingredient
+import com.google.android.material.snackbar.Snackbar
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 class InventoryFragment : Fragment() {
@@ -25,8 +28,11 @@ class InventoryFragment : Fragment() {
     private var _binding: FragmentInventoryBinding? = null
     private val binding get() = _binding!!
     private val viewModel: InventoryViewModel by viewModels()
+
     private lateinit var ingredientAdapter: IngredientAdapter
-    private var selectedChipCategory = "All"
+    private lateinit var producibleProductAdapter: ProducibleProductAdapter
+
+    private var selectedChipCategory = ALL_CATEGORY
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -42,10 +48,16 @@ class InventoryFragment : Fragment() {
 
         setupRecyclerView()
         setupSearch()
-        setupFilterChips()
-        setupSortSpinner()
+        setupBottomNavigation()
         setupAddButton()
+        setupSortSpinner()
+        setupFilterChips()
         observeViewModel()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.refreshInventory()
     }
 
     private fun setupRecyclerView() {
@@ -53,8 +65,15 @@ class InventoryFragment : Fragment() {
             onEditClick = { showEditDialog(it) },
             onRestockClick = { showRestockDialog(it) }
         )
+        producibleProductAdapter = ProducibleProductAdapter()
+
         binding.rvIngredients.apply {
             adapter = ingredientAdapter
+            layoutManager = LinearLayoutManager(requireContext())
+        }
+
+        binding.rvProducibleProducts.apply {
+            adapter = producibleProductAdapter
             layoutManager = LinearLayoutManager(requireContext())
         }
     }
@@ -63,6 +82,26 @@ class InventoryFragment : Fragment() {
         binding.etInventorySearch.doAfterTextChanged { text ->
             viewModel.setSearchQuery(text?.toString().orEmpty())
         }
+    }
+
+    private fun setupBottomNavigation() {
+        binding.bottomInventoryNavigation.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.navInventoryIngredients -> {
+                    viewModel.setScreenMode(InventoryViewModel.ScreenMode.INGREDIENTS)
+                    true
+                }
+
+                R.id.navInventoryCanProduce -> {
+                    viewModel.setScreenMode(InventoryViewModel.ScreenMode.PRODUCTION)
+                    true
+                }
+
+                else -> false
+            }
+        }
+
+        binding.bottomInventoryNavigation.selectedItemId = R.id.navInventoryIngredients
     }
 
     private fun setupFilterChips() {
@@ -74,6 +113,7 @@ class InventoryFragment : Fragment() {
             val chip = TextView(requireContext()).apply {
                 text = category
                 textSize = 13f
+
                 val isSelected = category == selectedChipCategory
                 setBackgroundResource(
                     if (isSelected) R.drawable.bg_chip_selected else R.drawable.bg_chip_unselected
@@ -85,6 +125,7 @@ class InventoryFragment : Fragment() {
                     )
                 )
                 setPadding(dpToPx(14), dpToPx(6), dpToPx(14), dpToPx(6))
+
                 val params = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
@@ -95,9 +136,10 @@ class InventoryFragment : Fragment() {
                 setOnClickListener {
                     selectedChipCategory = category
                     viewModel.setCategory(category)
-                    setupFilterChips() // refresh chip visuals
+                    setupFilterChips()
                 }
             }
+
             container.addView(chip)
         }
     }
@@ -108,19 +150,25 @@ class InventoryFragment : Fragment() {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         binding.spinnerSort.adapter = adapter
 
-        binding.spinnerSort.setOnItemSelectedListener(object :
-            android.widget.AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, pos: Int, id: Long) {
-                val mode = when (pos) {
-                    0 -> InventoryViewModel.SortMode.NAME
-                    1 -> InventoryViewModel.SortMode.STOCK_LEVEL
-                    2 -> InventoryViewModel.SortMode.VALUE
-                    else -> InventoryViewModel.SortMode.NAME
+        binding.spinnerSort.onItemSelectedListener =
+            object : android.widget.AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(
+                    parent: android.widget.AdapterView<*>?,
+                    view: View?,
+                    position: Int,
+                    id: Long
+                ) {
+                    val mode = when (position) {
+                        0 -> InventoryViewModel.SortMode.NAME
+                        1 -> InventoryViewModel.SortMode.STOCK_LEVEL
+                        2 -> InventoryViewModel.SortMode.VALUE
+                        else -> InventoryViewModel.SortMode.NAME
+                    }
+                    viewModel.setSortMode(mode)
                 }
-                viewModel.setSortMode(mode)
+
+                override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
             }
-            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
-        })
     }
 
     private fun setupAddButton() {
@@ -132,25 +180,146 @@ class InventoryFragment : Fragment() {
     private fun observeViewModel() {
         viewModel.ingredientList.observe(viewLifecycleOwner) { list ->
             ingredientAdapter.submitList(list.toList())
-            binding.tvTotalIngredients.text = list.size.toString()
+            if (viewModel.screenMode.value == InventoryViewModel.ScreenMode.INGREDIENTS) {
+                setupFilterChips()
+            }
+            renderCurrentMetrics()
         }
 
-        viewModel.lowStockIngredients.observe(viewLifecycleOwner) { lowList ->
-            binding.tvLowStockCount.text = lowList.size.toString()
+        viewModel.producibleProductList.observe(viewLifecycleOwner) { list ->
+            producibleProductAdapter.submitList(list.toList())
+            if (viewModel.screenMode.value == InventoryViewModel.ScreenMode.PRODUCTION) {
+                setupFilterChips()
+            }
+            renderCurrentMetrics()
         }
 
-        viewModel.totalInventoryValue.observe(viewLifecycleOwner) { value ->
-            binding.tvInventoryValue.text = String.format(Locale.getDefault(), "PHP %,.2f", value)
+        viewModel.lowStockIngredients.observe(viewLifecycleOwner) {
+            renderCurrentMetrics()
+        }
+
+        viewModel.totalInventoryValue.observe(viewLifecycleOwner) {
+            renderCurrentMetrics()
+        }
+
+        viewModel.totalIngredientCount.observe(viewLifecycleOwner) {
+            renderCurrentMetrics()
+        }
+
+        viewModel.outOfStockProducts.observe(viewLifecycleOwner) {
+            renderCurrentMetrics()
+        }
+
+        viewModel.estimatedProductionValue.observe(viewLifecycleOwner) {
+            renderCurrentMetrics()
+        }
+
+        viewModel.totalProducibleProductCount.observe(viewLifecycleOwner) {
+            renderCurrentMetrics()
+        }
+
+        viewModel.screenMode.observe(viewLifecycleOwner) { mode ->
+            selectedChipCategory = ALL_CATEGORY
+            renderInventoryMode(mode)
+            setupFilterChips()
+            renderCurrentMetrics()
+        }
+
+        viewModel.inventoryError.observe(viewLifecycleOwner) { errorMessage ->
+            if (!errorMessage.isNullOrBlank()) {
+                Snackbar.make(binding.root, errorMessage, Snackbar.LENGTH_LONG).show()
+                viewModel.onInventoryErrorConsumed()
+            }
         }
     }
 
-    // ── Dialogs ──────────────────────────────────────────────────────────
+    private fun renderInventoryMode(mode: InventoryViewModel.ScreenMode) {
+        val isIngredientsMode = mode == InventoryViewModel.ScreenMode.INGREDIENTS
+
+        binding.rvIngredients.visibility = if (isIngredientsMode) View.VISIBLE else View.GONE
+        binding.rvProducibleProducts.visibility = if (isIngredientsMode) View.GONE else View.VISIBLE
+        binding.btnAddIngredient.visibility = if (isIngredientsMode) View.VISIBLE else View.GONE
+
+        binding.tvInventoryHeaderTitle.setText(
+            if (isIngredientsMode) R.string.inventory_header_ingredients_title
+            else R.string.inventory_header_production_title
+        )
+        binding.tvInventoryHeaderSubtitle.setText(
+            if (isIngredientsMode) R.string.inventory_header_ingredients_subtitle
+            else R.string.inventory_header_production_subtitle
+        )
+        binding.etInventorySearch.hint = getString(
+            if (isIngredientsMode) R.string.inventory_search_ingredients_hint
+            else R.string.inventory_search_products_hint
+        )
+        if (!binding.etInventorySearch.text.isNullOrEmpty()) {
+            binding.etInventorySearch.setText("")
+        }
+
+        binding.tvMetricLabelPrimary.setText(
+            if (isIngredientsMode) R.string.inventory_metric_ingredients_title
+            else R.string.inventory_metric_production_total_title
+        )
+        binding.tvMetricSubtitlePrimary.setText(
+            if (isIngredientsMode) R.string.inventory_metric_ingredients_subtitle
+            else R.string.inventory_metric_production_total_subtitle
+        )
+        binding.tvMetricLabelSecondary.setText(
+            if (isIngredientsMode) R.string.inventory_metric_low_stock_title
+            else R.string.inventory_metric_out_of_stock_title
+        )
+        binding.tvMetricSubtitleSecondary.setText(
+            if (isIngredientsMode) R.string.inventory_metric_low_stock_subtitle
+            else R.string.inventory_metric_out_of_stock_subtitle
+        )
+        binding.tvMetricLabelTertiary.setText(
+            if (isIngredientsMode) R.string.inventory_metric_value_title
+            else R.string.inventory_metric_sales_value_title
+        )
+        binding.tvMetricSubtitleTertiary.setText(
+            if (isIngredientsMode) R.string.inventory_metric_value_subtitle
+            else R.string.inventory_metric_sales_value_subtitle
+        )
+
+        val expectedNavigationItem = if (isIngredientsMode) {
+            R.id.navInventoryIngredients
+        } else {
+            R.id.navInventoryCanProduce
+        }
+        if (binding.bottomInventoryNavigation.selectedItemId != expectedNavigationItem) {
+            binding.bottomInventoryNavigation.selectedItemId = expectedNavigationItem
+        }
+    }
+
+    private fun renderCurrentMetrics() {
+        when (viewModel.screenMode.value ?: InventoryViewModel.ScreenMode.INGREDIENTS) {
+            InventoryViewModel.ScreenMode.INGREDIENTS -> {
+                binding.tvTotalIngredients.text =
+                    (viewModel.totalIngredientCount.value ?: 0).toString()
+                binding.tvLowStockCount.text =
+                    (viewModel.lowStockIngredients.value?.size ?: 0).toString()
+                binding.tvInventoryValue.text =
+                    formatCurrency(viewModel.totalInventoryValue.value ?: 0.0)
+            }
+
+            InventoryViewModel.ScreenMode.PRODUCTION -> {
+                binding.tvTotalIngredients.text =
+                    (viewModel.totalProducibleProductCount.value ?: 0).toString()
+                binding.tvLowStockCount.text =
+                    (viewModel.outOfStockProducts.value?.size ?: 0).toString()
+                binding.tvInventoryValue.text =
+                    formatCurrency(viewModel.estimatedProductionValue.value ?: 0.0)
+            }
+        }
+    }
 
     private fun showRestockDialog(ingredient: Ingredient) {
         val ctx = requireContext()
         val inputField = EditText(ctx).apply {
             hint = "Quantity to add (${ingredient.unit})"
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+            inputType =
+                android.text.InputType.TYPE_CLASS_NUMBER or
+                    android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
             setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12))
         }
 
@@ -159,9 +328,9 @@ class InventoryFragment : Fragment() {
             .setMessage("Current stock: ${ingredient.currentStock} ${ingredient.unit}")
             .setView(inputField)
             .setPositiveButton("Restock") { _, _ ->
-                val qty = inputField.text.toString().toDoubleOrNull()
-                if (qty != null && qty > 0) {
-                    viewModel.restockIngredient(ingredient.id, qty)
+                val quantity = inputField.text.toString().toDoubleOrNull()
+                if (quantity != null && quantity > 0) {
+                    viewModel.restockIngredient(ingredient.id, quantity)
                     setupFilterChips()
                 }
             }
@@ -179,12 +348,24 @@ class InventoryFragment : Fragment() {
         val etName = createLabeledField(container, "Name", ingredient.name)
         val etCategory = createLabeledField(container, "Category", ingredient.category)
         val etUnit = createLabeledField(container, "Unit", ingredient.unit)
-        val etStock = createLabeledField(container, "Current Stock", ingredient.currentStock.toString(),
-            android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL)
-        val etMinStock = createLabeledField(container, "Minimum Stock", ingredient.minimumStock.toString(),
-            android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL)
-        val etCost = createLabeledField(container, "Cost Per Unit (PHP)", ingredient.costPerUnit.toString(),
-            android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL)
+        val etStock = createLabeledField(
+            container,
+            "Current Stock",
+            ingredient.currentStock.toString(),
+            android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        )
+        val etMinStock = createLabeledField(
+            container,
+            "Minimum Stock",
+            ingredient.minimumStock.toString(),
+            android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        )
+        val etCost = createLabeledField(
+            container,
+            "Cost Per Unit (PHP)",
+            ingredient.costPerUnit.toString(),
+            android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        )
 
         AlertDialog.Builder(ctx)
             .setTitle("Edit Ingredient")
@@ -195,7 +376,8 @@ class InventoryFragment : Fragment() {
                     category = etCategory.text.toString().ifBlank { ingredient.category },
                     unit = etUnit.text.toString().ifBlank { ingredient.unit },
                     currentStock = etStock.text.toString().toDoubleOrNull() ?: ingredient.currentStock,
-                    minimumStock = etMinStock.text.toString().toDoubleOrNull() ?: ingredient.minimumStock,
+                    minimumStock = etMinStock.text.toString().toDoubleOrNull()
+                        ?: ingredient.minimumStock,
                     costPerUnit = etCost.text.toString().toDoubleOrNull() ?: ingredient.costPerUnit
                 )
                 viewModel.updateIngredient(updated)
@@ -215,12 +397,24 @@ class InventoryFragment : Fragment() {
         val etName = createLabeledField(container, "Name", "")
         val etCategory = createLabeledField(container, "Category (e.g. Dairy, Produce)", "")
         val etUnit = createLabeledField(container, "Unit (e.g. kg, L, pcs)", "")
-        val etStock = createLabeledField(container, "Initial Stock", "",
-            android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL)
-        val etMinStock = createLabeledField(container, "Minimum Stock", "",
-            android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL)
-        val etCost = createLabeledField(container, "Cost Per Unit (PHP)", "",
-            android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL)
+        val etStock = createLabeledField(
+            container,
+            "Initial Stock",
+            "",
+            android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        )
+        val etMinStock = createLabeledField(
+            container,
+            "Minimum Stock",
+            "",
+            android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        )
+        val etCost = createLabeledField(
+            container,
+            "Cost Per Unit (PHP)",
+            "",
+            android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        )
 
         AlertDialog.Builder(ctx)
             .setTitle("Add Ingredient")
@@ -236,8 +430,8 @@ class InventoryFragment : Fragment() {
                         currentStock = etStock.text.toString().toDoubleOrNull() ?: 0.0,
                         minimumStock = etMinStock.text.toString().toDoubleOrNull() ?: 1.0,
                         costPerUnit = etCost.text.toString().toDoubleOrNull() ?: 0.0,
-                        lastRestocked = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                            .format(java.util.Date())
+                        lastRestocked = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                            .format(Date())
                     )
                     viewModel.addIngredient(newIngredient)
                     setupFilterChips()
@@ -273,6 +467,10 @@ class InventoryFragment : Fragment() {
         return editText
     }
 
+    private fun formatCurrency(value: Double): String {
+        return String.format(Locale.getDefault(), "PHP %,.2f", value)
+    }
+
     private fun dpToPx(dp: Int): Int {
         return (dp * resources.displayMetrics.density).toInt()
     }
@@ -280,5 +478,9 @@ class InventoryFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private companion object {
+        const val ALL_CATEGORY = "All"
     }
 }

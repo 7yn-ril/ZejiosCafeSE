@@ -9,7 +9,8 @@ data class CafeOrder(
     val timeLabel: String,
     val status: CafeOrderStatus,
     val total: Double,
-    val initials: String
+    val initials: String,
+    val orderedItems: List<String> = emptyList()
 )
 
 enum class CafeOrderStatus {

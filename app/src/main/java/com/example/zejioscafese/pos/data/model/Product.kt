@@ -8,6 +8,9 @@ data class Product(
     val category: String,
     val price: Double,
     val stockLeft: Int,
+    val sourceProductId: String? = null,
+    val sourceProductName: String? = null,
+    val sourceVariantName: String? = null,
     val imageUrl: String? = null,
     @DrawableRes val imageResId: Int = android.R.drawable.ic_menu_gallery
 )

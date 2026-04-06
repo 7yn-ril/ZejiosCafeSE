@@ -1,15 +1,29 @@
 package com.example.zejioscafese.pos.presentation
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.example.zejioscafese.R
+import androidx.lifecycle.viewModelScope
+import com.example.zejioscafese.orders.data.repository.CheckoutOrderLine
+import com.example.zejioscafese.orders.data.repository.CheckoutOrderPayload
+import com.example.zejioscafese.orders.data.repository.OrderRepository
+import com.example.zejioscafese.orders.model.CafeOrder
 import com.example.zejioscafese.pos.data.model.OrderItem
 import com.example.zejioscafese.pos.data.model.Product
+import com.example.zejioscafese.pos.data.repository.CategoryRepository
+import com.example.zejioscafese.pos.data.repository.ProductRepository
 import java.util.Locale
 import kotlin.math.round
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
-class PosViewModel : ViewModel() {
+class PosViewModel(
+    private val productRepository: ProductRepository = ProductRepository(),
+    private val categoryRepository: CategoryRepository = CategoryRepository(),
+    private val orderRepository: OrderRepository = OrderRepository()
+) : ViewModel() {
 
     enum class PaymentMethod {
         CASH,
@@ -24,123 +38,12 @@ class PosViewModel : ViewModel() {
         PRICE_DESC
     }
 
-    private val allProducts: List<Product> = listOf(
-        Product(
-            id = "d1",
-            name = "Iced Caramel Latte",
-            category = "Drinks",
-            price = 165.0,
-            stockLeft = 18,
-            imageUrl = "https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=1200&q=80",
-            imageResId = R.drawable.ic_coffee_24
-        ),
-        Product(
-            id = "d2",
-            name = "Cold Brew",
-            category = "Drinks",
-            price = 145.0,
-            stockLeft = 24,
-            imageUrl = "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1200&q=80",
-            imageResId = R.drawable.ic_coffee_24
-        ),
-        Product(
-            id = "d3",
-            name = "Matcha Latte",
-            category = "Drinks",
-            price = 175.0,
-            stockLeft = 9,
-            imageUrl = "https://images.unsplash.com/photo-1515823064-d6e0c04616a7?auto=format&fit=crop&w=1200&q=80",
-            imageResId = R.drawable.ic_coffee_24
-        ),
-        Product(
-            id = "d4",
-            name = "Espresso",
-            category = "Drinks",
-            price = 110.0,
-            stockLeft = 32,
-            imageUrl = "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=1200&q=80",
-            imageResId = R.drawable.ic_coffee_24
-        ),
-        Product(
-            id = "d5",
-            name = "Cappuccino",
-            category = "Drinks",
-            price = 150.0,
-            stockLeft = 15,
-            imageUrl = "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1200&q=80",
-            imageResId = R.drawable.ic_coffee_24
-        ),
-        Product(
-            id = "d6",
-            name = "Americano",
-            category = "Drinks",
-            price = 120.0,
-            stockLeft = 27,
-            imageUrl = "https://images.unsplash.com/photo-1498804103079-a6351b050096?auto=format&fit=crop&w=1200&q=80",
-            imageResId = R.drawable.ic_coffee_24
-        ),
-        Product(
-            id = "d7",
-            name = "Mocha Frappe",
-            category = "Drinks",
-            price = 185.0,
-            stockLeft = 7,
-            imageUrl = "https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=1200&q=80",
-            imageResId = R.drawable.ic_coffee_24
-        ),
-        Product(
-            id = "d8",
-            name = "Hot Chocolate",
-            category = "Drinks",
-            price = 155.0,
-            stockLeft = 14,
-            imageUrl = "https://images.unsplash.com/photo-1542990253-0d0f5be5f44b?auto=format&fit=crop&w=1200&q=80",
-            imageResId = R.drawable.ic_coffee_24
-        ),
-        Product(
-            id = "m1",
-            name = "Chicken Pesto Panini",
-            category = "Meals",
-            price = 235.0,
-            stockLeft = 11,
-            imageUrl = "https://images.unsplash.com/photo-1550317138-10000687a72b?auto=format&fit=crop&w=1200&q=80",
-            imageResId = R.drawable.ic_meal_24
-        ),
-        Product(
-            id = "de1",
-            name = "Blueberry Cheesecake",
-            category = "Desserts",
-            price = 180.0,
-            stockLeft = 6,
-            imageUrl = "https://images.unsplash.com/photo-1533134242443-d4fd215305ad?auto=format&fit=crop&w=1200&q=80",
-            imageResId = R.drawable.ic_dessert_24
-        ),
-        Product(
-            id = "s1",
-            name = "Butter Croissant",
-            category = "Snacks",
-            price = 95.0,
-            stockLeft = 21,
-            imageUrl = "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=1200&q=80",
-            imageResId = R.drawable.ic_snack_24
-        ),
-        Product(
-            id = "sp1",
-            name = "Seasonal Signature Latte",
-            category = "Specials",
-            price = 195.0,
-            stockLeft = 5,
-            imageUrl = "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=1200&q=80",
-            imageResId = R.drawable.ic_star_24
-        )
-    )
+    private var allProducts: List<Product> = emptyList()
 
-    private val _categories = MutableLiveData(
-        listOf("All", "Drinks", "Meals", "Desserts", "Snacks", "Specials")
-    )
+    private val _categories = MutableLiveData(listOf(CategoryRepository.ALL_CATEGORY))
     val categories: LiveData<List<String>> = _categories
 
-    private val _selectedCategory = MutableLiveData("All")
+    private val _selectedCategory = MutableLiveData(CategoryRepository.ALL_CATEGORY)
     val selectedCategory: LiveData<String> = _selectedCategory
 
     private val _searchQuery = MutableLiveData("")
@@ -169,18 +72,31 @@ class PosViewModel : ViewModel() {
     private val _selectedPaymentMethod = MutableLiveData(PaymentMethod.CASH)
     val selectedPaymentMethod: LiveData<PaymentMethod> = _selectedPaymentMethod
 
+    private val _isMenuLoading = MutableLiveData(false)
+    val isMenuLoading: LiveData<Boolean> = _isMenuLoading
+
+    private val _menuLoadError = MutableLiveData<String?>(null)
+    val menuLoadError: LiveData<String?> = _menuLoadError
+
+    private val _isCheckoutInProgress = MutableLiveData(false)
+    val isCheckoutInProgress: LiveData<Boolean> = _isCheckoutInProgress
+
+    private val _checkoutError = MutableLiveData<String?>(null)
+    val checkoutError: LiveData<String?> = _checkoutError
+
     private var orderCounter = 1024
 
     private val _orderNumber = MutableLiveData("#POS-1024")
     val orderNumber: LiveData<String> = _orderNumber
 
-    private val _checkoutEvent = MutableLiveData<String?>(null)
-    val checkoutEvent: LiveData<String?> = _checkoutEvent
+    private val _checkoutEvent = MutableLiveData<CafeOrder?>(null)
+    val checkoutEvent: LiveData<CafeOrder?> = _checkoutEvent
 
     private val orderQuantitiesStore = linkedMapOf<String, Int>()
 
     init {
-        refreshProductList()
+        loadMenuData()
+        refreshSuggestedOrderNumber()
     }
 
     fun selectCategory(category: String) {
@@ -196,6 +112,10 @@ class PosViewModel : ViewModel() {
     fun setSortOption(option: SortOption) {
         _selectedSortOption.value = option
         refreshProductList()
+    }
+
+    fun refreshMenu() {
+        loadMenuData()
     }
 
     fun increaseProduct(product: Product) {
@@ -228,21 +148,133 @@ class PosViewModel : ViewModel() {
         _selectedPaymentMethod.value = method
     }
 
-    /**
-     * Performs checkout: clears the current order, increments the order counter,
-     * and posts a one-shot event with the completed order number.
-     */
-    fun checkout() {
-        val completedOrderNumber = _orderNumber.value ?: "#POS-$orderCounter"
-        clearOrder()
-        orderCounter++
-        _orderNumber.value = "#POS-$orderCounter"
-        _checkoutEvent.value = completedOrderNumber
+    fun checkout(customerName: String? = null) {
+        val itemsToCheckout = _orderItems.value.orEmpty()
+        if (itemsToCheckout.isEmpty() || _isCheckoutInProgress.value == true) {
+            return
+        }
+
+        val currentOrderNumber = _orderNumber.value ?: formatOrderNumber(orderCounter)
+
+        viewModelScope.launch {
+            _isCheckoutInProgress.value = true
+            _checkoutError.value = null
+
+            try {
+                val savedOrder = orderRepository.saveCheckoutOrder(
+                    payload = CheckoutOrderPayload(
+                        customerName = customerName?.trim()?.takeIf(String::isNotBlank),
+                        subtotal = _subtotal.value ?: 0.0,
+                        tax = _tax.value ?: 0.0,
+                        total = _total.value ?: 0.0,
+                        paymentMethod = PaymentMethod.CASH.name.lowercase(Locale.US),
+                        status = "completed",
+                        items = buildCheckoutLines(itemsToCheckout)
+                    ),
+                    suggestedOrderNumber = currentOrderNumber
+                )
+
+                clearOrder()
+                setNextOrderNumberAfter(savedOrder.id)
+                _checkoutEvent.value = savedOrder
+            } catch (exception: Exception) {
+                Log.e(TAG, "Failed to save checkout order to Supabase", exception)
+                _checkoutError.value = exception.message ?: "Failed to save order."
+            } finally {
+                _isCheckoutInProgress.value = false
+            }
+        }
     }
 
-    /** Call after the checkout event has been consumed to avoid re-delivery */
     fun onCheckoutEventConsumed() {
         _checkoutEvent.value = null
+    }
+
+    fun onCheckoutErrorConsumed() {
+        _checkoutError.value = null
+    }
+
+    fun onMenuLoadErrorConsumed() {
+        _menuLoadError.value = null
+    }
+
+    private fun loadMenuData() {
+        viewModelScope.launch {
+            val previousProducts = allProducts
+            val previousCategories = _categories.value.orEmpty()
+
+            _isMenuLoading.value = true
+            _menuLoadError.value = null
+
+            try {
+                coroutineScope {
+                    val productsDeferred = async { productRepository.fetchProducts() }
+                    val categoriesDeferred = async { categoryRepository.fetchCategories() }
+
+                    val fetchedProducts = productsDeferred.await()
+                    val fetchedCategories = categoriesDeferred.await()
+
+                    allProducts = fetchedProducts
+                    _categories.value = buildVisibleCategories(
+                        fetchedCategories = fetchedCategories,
+                        products = fetchedProducts
+                    )
+
+                    if ((_selectedCategory.value ?: CategoryRepository.ALL_CATEGORY) !in _categories.value.orEmpty()) {
+                        _selectedCategory.value = CategoryRepository.ALL_CATEGORY
+                    }
+
+                    refreshProductList()
+                    syncOrderState()
+                }
+            } catch (exception: Exception) {
+                Log.e(TAG, "Failed to load POS menu from Supabase", exception)
+                allProducts = previousProducts
+                _categories.value = previousCategories.ifEmpty { listOf(CategoryRepository.ALL_CATEGORY) }
+                refreshProductList()
+                syncOrderState()
+                _menuLoadError.value = exception.message ?: "Failed to load menu data."
+            } finally {
+                _isMenuLoading.value = false
+            }
+        }
+    }
+
+    private fun refreshSuggestedOrderNumber() {
+        viewModelScope.launch {
+            try {
+                val nextOrderNumber = orderRepository.fetchNextOrderNumber()
+                orderCounter = extractOrderCounter(nextOrderNumber) ?: orderCounter
+                _orderNumber.value = nextOrderNumber
+            } catch (exception: Exception) {
+                Log.w(TAG, "Falling back to local order number seed", exception)
+            }
+        }
+    }
+
+    private fun buildVisibleCategories(
+        fetchedCategories: List<String>,
+        products: List<Product>
+    ): List<String> {
+        val productCategories = products
+            .asSequence()
+            .map(Product::category)
+            .filter(String::isNotBlank)
+            .distinct()
+            .toList()
+
+        val orderedCategories = fetchedCategories
+            .asSequence()
+            .filter { it != CategoryRepository.ALL_CATEGORY }
+            .filter(productCategories::contains)
+            .distinct()
+            .toList()
+
+        val missingCategories = productCategories
+            .filterNot(orderedCategories::contains)
+            .sorted()
+
+        return listOf(CategoryRepository.ALL_CATEGORY) + orderedCategories + missingCategories
     }
 
     private fun refreshProductList() {
@@ -250,7 +282,9 @@ class PosViewModel : ViewModel() {
         val query = _searchQuery.value.orEmpty().trim().lowercase(Locale.getDefault())
 
         val filtered = allProducts.filter { product ->
-            val categoryMatch = selected.isBlank() || selected == "All" || product.category == selected
+            val categoryMatch = selected.isBlank() ||
+                selected == CategoryRepository.ALL_CATEGORY ||
+                product.category == selected
             val queryMatch = query.isBlank() ||
                 product.name.lowercase(Locale.getDefault()).contains(query) ||
                 product.category.lowercase(Locale.getDefault()).contains(query)
@@ -286,13 +320,51 @@ class PosViewModel : ViewModel() {
         _orderItems.value = items
 
         val subtotalAmount = items.sumOf { it.lineTotal }
-        val taxAmount = subtotalAmount * 0.12
+        val taxAmount = 0.0
         _subtotal.value = subtotalAmount.roundToTwoDecimals()
         _tax.value = taxAmount.roundToTwoDecimals()
-        _total.value = (subtotalAmount + taxAmount).roundToTwoDecimals()
+        _total.value = subtotalAmount.roundToTwoDecimals()
+    }
+
+    private fun buildCheckoutLines(items: List<OrderItem>): List<CheckoutOrderLine> {
+        return items.map { item ->
+            val product = item.product
+            CheckoutOrderLine(
+                productVariantId = product.id,
+                sourceProductId = product.sourceProductId
+                    ?: throw IllegalStateException("Missing product ID for ${product.name}. Refresh the menu and try again."),
+                sourceProductName = product.sourceProductName ?: product.name,
+                sourceVariantName = product.sourceVariantName ?: "Standard",
+                unitPrice = product.price,
+                quantity = item.quantity
+            )
+        }
+    }
+
+    private fun setNextOrderNumberAfter(savedOrderNumber: String) {
+        val savedCounter = extractOrderCounter(savedOrderNumber) ?: orderCounter
+        orderCounter = savedCounter + 1
+        _orderNumber.value = formatOrderNumber(orderCounter)
+    }
+
+    private fun extractOrderCounter(orderNumber: String): Int? {
+        return ORDER_NUMBER_REGEX.find(orderNumber)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.toIntOrNull()
+    }
+
+    private fun formatOrderNumber(counter: Int): String {
+        return ORDER_NUMBER_TEMPLATE.format(counter)
     }
 
     private fun Double.roundToTwoDecimals(): Double {
         return round(this * 100) / 100
+    }
+
+    private companion object {
+        const val TAG = "PosViewModel"
+        val ORDER_NUMBER_REGEX = Regex("^#POS-(\\d+)$")
+        const val ORDER_NUMBER_TEMPLATE = "#POS-%04d"
     }
 }
