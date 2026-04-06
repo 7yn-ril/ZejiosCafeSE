@@ -230,6 +230,9 @@
     <string name="sort_name_desc">Names Z-A</string>
     <string name="sort_price_asc">Low to High Price</string>
     <string name="sort_price_desc">High to Low Price</string>
+    <string name="pagination_previous">Previous</string>
+    <string name="pagination_next">Next</string>
+    <string name="pagination_page_status">Page %1$d of %2$d</string>
 
     <string name="currency_format">PHP %1$.2f</string>
     <string name="quantity_format">x%1$d</string>

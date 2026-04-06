@@ -593,12 +593,58 @@
                 android:layout_height="0dp"
                 android:layout_marginTop="@dimen/section_spacing"
                 android:clipToPadding="false"
-                android:paddingBottom="78dp"
-                app:layout_constraintBottom_toBottomOf="parent"
+                android:paddingBottom="12dp"
+                app:layout_constraintBottom_toTopOf="@id/productPaginationContainer"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/rvCategories"
                 tools:listitem="@layout/item_product" />
+
+            <LinearLayout
+                android:id="@+id/productPaginationContainer"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPreviousProductsPage"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:text="@string/pagination_previous"
+                    android:textAllCaps="false"
+                    app:cornerRadius="14dp" />
+
+                <TextView
+                    android:id="@+id/tvProductsPageInfo"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="12dp"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:textColor="@color/pos_text_secondary"
+                    android:textSize="13sp"
+                    tools:text="Page 1 of 3" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnNextProductsPage"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:text="@string/pagination_next"
+                    android:textAllCaps="false"
+                    app:cornerRadius="14dp" />
+            </LinearLayout>
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 

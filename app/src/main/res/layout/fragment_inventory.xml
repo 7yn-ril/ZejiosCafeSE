@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/pos_background">
@@ -312,6 +313,49 @@
                 android:nestedScrollingEnabled="false"
                 android:paddingBottom="24dp"
                 android:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/inventoryPaginationContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnInventoryPreviousPage"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:text="@string/pagination_previous"
+                    android:textAllCaps="false"
+                    app:cornerRadius="14dp" />
+
+                <TextView
+                    android:id="@+id/tvInventoryPageInfo"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="12dp"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:textColor="@color/pos_text_secondary"
+                    android:textSize="13sp"
+                    tools:text="Page 1 of 2" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnInventoryNextPage"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:text="@string/pagination_next"
+                    android:textAllCaps="false"
+                    app:cornerRadius="14dp" />
+            </LinearLayout>
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

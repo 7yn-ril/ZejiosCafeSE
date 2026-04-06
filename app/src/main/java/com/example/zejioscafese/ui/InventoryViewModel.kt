@@ -21,10 +21,23 @@ class InventoryViewModel(
     private val inventoryRepository: InventoryRepository = InventoryRepository()
 ) : ViewModel() {
 
+    data class PaginationState(
+        val currentPage: Int,
+        val totalPages: Int,
+        val totalItems: Int
+    ) {
+        val canGoPrevious: Boolean get() = currentPage > 1
+        val canGoNext: Boolean get() = currentPage < totalPages
+    }
+
     private val allIngredients = mutableListOf<Ingredient>()
     private val allProducibleProducts = mutableListOf<ProducibleProduct>()
     private val productCategories = mutableListOf<ProductCategoryOption>()
     private val productRecipeMap = mutableMapOf<String, List<ProductRecipeIngredient>>()
+    private var filteredIngredients = emptyList<Ingredient>()
+    private var filteredProducibleProducts = emptyList<ProducibleProduct>()
+    private var ingredientPageIndex = 0
+    private var productionPageIndex = 0
 
     private val _ingredientList = MutableLiveData<List<Ingredient>>(emptyList())
     val ingredientList: LiveData<List<Ingredient>> = _ingredientList
@@ -56,6 +69,15 @@ class InventoryViewModel(
     private val _screenMode = MutableLiveData(ScreenMode.INGREDIENTS)
     val screenMode: LiveData<ScreenMode> = _screenMode
 
+    private val _paginationState = MutableLiveData(
+        PaginationState(
+            currentPage = 1,
+            totalPages = 1,
+            totalItems = 0
+        )
+    )
+    val paginationState: LiveData<PaginationState> = _paginationState
+
     private var searchQuery = ""
     private var selectedCategory = ALL_CATEGORY
     private var sortMode = SortMode.NAME
@@ -74,36 +96,54 @@ class InventoryViewModel(
                 _inventoryError.value = null
             } catch (exception: Exception) {
                 _inventoryError.value = exception.message ?: "Failed to load inventory."
-                applyFilters()
+                applyFilters(resetActivePage = false)
             }
         }
     }
 
     fun setSearchQuery(query: String) {
         searchQuery = query.trim().lowercase(Locale.getDefault())
-        applyFilters()
+        applyFilters(resetActivePage = true)
     }
 
     fun setCategory(category: String) {
         selectedCategory = category
-        applyFilters()
+        applyFilters(resetActivePage = true)
     }
 
     fun setSortMode(mode: SortMode) {
         sortMode = mode
-        applyFilters()
+        applyFilters(resetActivePage = true)
     }
 
     fun setScreenMode(mode: ScreenMode) {
         if (_screenMode.value == mode) return
         _screenMode.value = mode
         selectedCategory = ALL_CATEGORY
-        applyFilters()
+        when (mode) {
+            ScreenMode.INGREDIENTS -> ingredientPageIndex = 0
+            ScreenMode.PRODUCTION -> productionPageIndex = 0
+        }
+        applyFilters(resetActivePage = false)
+    }
+
+    fun goToPreviousPage() {
+        when (_screenMode.value ?: ScreenMode.INGREDIENTS) {
+            ScreenMode.INGREDIENTS -> publishIngredientPage(ingredientPageIndex - 1)
+            ScreenMode.PRODUCTION -> publishProductionPage(productionPageIndex - 1)
+        }
+    }
+
+    fun goToNextPage() {
+        when (_screenMode.value ?: ScreenMode.INGREDIENTS) {
+            ScreenMode.INGREDIENTS -> publishIngredientPage(ingredientPageIndex + 1)
+            ScreenMode.PRODUCTION -> publishProductionPage(productionPageIndex + 1)
+        }
     }
 
     fun addIngredient(ingredient: Ingredient) {
         allIngredients.add(ingredient)
-        applyFilters()
+        applyFilters(resetActivePage = false)
 
         viewModelScope.launch {
             try {
@@ -121,7 +161,7 @@ class InventoryViewModel(
         if (index == -1) return
 
         allIngredients[index] = updated
-        applyFilters()
+        applyFilters(resetActivePage = false)
 
         viewModelScope.launch {
             try {
@@ -144,7 +184,7 @@ class InventoryViewModel(
             lastRestocked = currentDate()
         )
         allIngredients[index] = updated
-        applyFilters()
+        applyFilters(resetActivePage = false)
 
         viewModelScope.launch {
             try {
@@ -189,7 +229,7 @@ class InventoryViewModel(
     fun softDeleteProduct(product: ProducibleProduct) {
         allProducibleProducts.removeAll { it.id == product.id }
         productRecipeMap.remove(product.id)
-        applyFilters()
+        applyFilters(resetActivePage = false)
 
         viewModelScope.launch {
             try {
@@ -288,15 +328,15 @@ class InventoryViewModel(
             selectedCategory = ALL_CATEGORY
         }
 
-        applyFilters()
+        applyFilters(resetActivePage = false)
     }
 
     private suspend fun syncInventorySafely() {
         runCatching { syncInventoryFromRemote() }
-        applyFilters()
+        applyFilters(resetActivePage = false)
     }
 
-    private fun applyFilters() {
+    private fun applyFilters(resetActivePage: Boolean = true) {
         when (_screenMode.value ?: ScreenMode.INGREDIENTS) {
             ScreenMode.INGREDIENTS -> {
                 var filtered = allIngredients.toList()
@@ -320,7 +360,11 @@ class InventoryViewModel(
                     SortMode.VALUE -> filtered.sortedByDescending { it.currentStock * it.costPerUnit }
                 }
 
-                _ingredientList.value = filtered
+                filteredIngredients = filtered
+                if (resetActivePage) {
+                    ingredientPageIndex = 0
+                }
+                publishIngredientPage(ingredientPageIndex)
             }
 
             ScreenMode.PRODUCTION -> {
@@ -342,11 +386,59 @@ class InventoryViewModel(
                     SortMode.VALUE -> filtered.sortedByDescending { it.estimatedValue }
                 }
 
-                _producibleProductList.value = filtered
+                filteredProducibleProducts = filtered
+                if (resetActivePage) {
+                    productionPageIndex = 0
+                }
+                publishProductionPage(productionPageIndex)
             }
         }
 
         refreshDerived()
+    }
+
+    private fun publishIngredientPage(targetPageIndex: Int) {
+        val pagination = buildPaginationState(
+            totalItems = filteredIngredients.size,
+            pageSize = INVENTORY_PAGE_SIZE,
+            requestedPageIndex = targetPageIndex
+        )
+        ingredientPageIndex = pagination.currentPage - 1
+        val fromIndex = ingredientPageIndex * INVENTORY_PAGE_SIZE
+
+        _ingredientList.value = filteredIngredients.drop(fromIndex).take(INVENTORY_PAGE_SIZE)
+        if (_screenMode.value == ScreenMode.INGREDIENTS) {
+            _paginationState.value = pagination
+        }
+    }
+
+    private fun publishProductionPage(targetPageIndex: Int) {
+        val pagination = buildPaginationState(
+            totalItems = filteredProducibleProducts.size,
+            pageSize = INVENTORY_PAGE_SIZE,
+            requestedPageIndex = targetPageIndex
+        )
+        productionPageIndex = pagination.currentPage - 1
+        val fromIndex = productionPageIndex * INVENTORY_PAGE_SIZE
+
+        _producibleProductList.value = filteredProducibleProducts.drop(fromIndex).take(INVENTORY_PAGE_SIZE)
+        if (_screenMode.value == ScreenMode.PRODUCTION) {
+            _paginationState.value = pagination
+        }
+    }
+
+    private fun buildPaginationState(
+        totalItems: Int,
+        pageSize: Int,
+        requestedPageIndex: Int
+    ): PaginationState {
+        val totalPages = if (totalItems == 0) 1 else ((totalItems + pageSize - 1) / pageSize)
+        val boundedIndex = requestedPageIndex.coerceIn(0, totalPages - 1)
+        return PaginationState(
+            currentPage = boundedIndex + 1,
+            totalPages = totalPages,
+            totalItems = totalItems
+        )
     }
 
     private fun refreshDerived() {
@@ -365,6 +457,7 @@ class InventoryViewModel(
     private companion object {
         const val ALL_CATEGORY = "All"
         const val INGREDIENT_ID_PREFIX = "ING-"
+        const val INVENTORY_PAGE_SIZE = 8
     }
 
     private data class InventorySnapshot(

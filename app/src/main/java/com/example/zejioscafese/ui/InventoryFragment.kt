@@ -61,6 +61,7 @@ class InventoryFragment : Fragment() {
         setupBottomNavigation()
         applyBottomNavThemeColors()
         setupAddButton()
+        setupPaginationControls()
         setupSortSpinner()
         setupFilterChips()
         observeViewModel()
@@ -195,9 +196,19 @@ class InventoryFragment : Fragment() {
         }
     }
 
+    private fun setupPaginationControls() {
+        binding.btnInventoryPreviousPage.setOnClickListener {
+            viewModel.goToPreviousPage()
+        }
+        binding.btnInventoryNextPage.setOnClickListener {
+            viewModel.goToNextPage()
+        }
+    }
+
     private fun observeViewModel() {
         viewModel.ingredientList.observe(viewLifecycleOwner) { list ->
             ingredientAdapter.submitList(list.toList())
+            binding.rvIngredients.scrollToPosition(0)
             if (viewModel.screenMode.value == InventoryViewModel.ScreenMode.INGREDIENTS) {
                 setupFilterChips()
             }
@@ -206,6 +217,7 @@ class InventoryFragment : Fragment() {
 
         viewModel.producibleProductList.observe(viewLifecycleOwner) { list ->
             producibleProductAdapter.submitList(list.toList())
+            binding.rvProducibleProducts.scrollToPosition(0)
             if (viewModel.screenMode.value == InventoryViewModel.ScreenMode.PRODUCTION) {
                 setupFilterChips()
             }
@@ -241,6 +253,10 @@ class InventoryFragment : Fragment() {
             renderInventoryMode(mode)
             setupFilterChips()
             renderCurrentMetrics()
+        }
+
+        viewModel.paginationState.observe(viewLifecycleOwner) { state ->
+            renderPagination(state)
         }
 
         viewModel.inventoryError.observe(viewLifecycleOwner) { errorMessage ->
@@ -311,6 +327,18 @@ class InventoryFragment : Fragment() {
         if (binding.bottomInventoryNavigation.selectedItemId != expectedNavigationItem) {
             binding.bottomInventoryNavigation.selectedItemId = expectedNavigationItem
         }
+    }
+
+    private fun renderPagination(state: InventoryViewModel.PaginationState) {
+        val shouldShow = state.totalItems > INVENTORY_PAGE_SIZE
+        binding.inventoryPaginationContainer.visibility = if (shouldShow) View.VISIBLE else View.GONE
+        binding.tvInventoryPageInfo.text = getString(
+            R.string.pagination_page_status,
+            state.currentPage,
+            state.totalPages
+        )
+        binding.btnInventoryPreviousPage.isEnabled = state.canGoPrevious
+        binding.btnInventoryNextPage.isEnabled = state.canGoNext
     }
 
     private fun renderCurrentMetrics() {
@@ -894,6 +922,7 @@ class InventoryFragment : Fragment() {
 
     private companion object {
         const val ALL_CATEGORY = "All"
+        const val INVENTORY_PAGE_SIZE = 8
     }
 
     private data class ProductIngredientRowHolder(

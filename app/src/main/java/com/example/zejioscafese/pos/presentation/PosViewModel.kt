@@ -25,6 +25,15 @@ class PosViewModel(
     private val orderRepository: OrderRepository = OrderRepository()
 ) : ViewModel() {
 
+    data class PaginationState(
+        val currentPage: Int,
+        val totalPages: Int,
+        val totalItems: Int
+    ) {
+        val canGoPrevious: Boolean get() = currentPage > 1
+        val canGoNext: Boolean get() = currentPage < totalPages
+    }
+
     enum class PaymentMethod {
         CASH,
         GCASH,
@@ -39,6 +48,8 @@ class PosViewModel(
     }
 
     private var allProducts: List<Product> = emptyList()
+    private var filteredProducts: List<Product> = emptyList()
+    private var currentProductPageIndex: Int = 0
 
     private val _categories = MutableLiveData(listOf(CategoryRepository.ALL_CATEGORY))
     val categories: LiveData<List<String>> = _categories
@@ -53,6 +64,15 @@ class PosViewModel(
 
     private val _products = MutableLiveData<List<Product>>(emptyList())
     val products: LiveData<List<Product>> = _products
+
+    private val _productPaginationState = MutableLiveData(
+        PaginationState(
+            currentPage = 1,
+            totalPages = 1,
+            totalItems = 0
+        )
+    )
+    val productPaginationState: LiveData<PaginationState> = _productPaginationState
 
     private val _orderItems = MutableLiveData<List<OrderItem>>(emptyList())
     val orderItems: LiveData<List<OrderItem>> = _orderItems
@@ -116,6 +136,14 @@ class PosViewModel(
 
     fun refreshMenu() {
         loadMenuData()
+    }
+
+    fun goToPreviousProductPage() {
+        updateProductPage(currentProductPageIndex - 1)
+    }
+
+    fun goToNextProductPage() {
+        updateProductPage(currentProductPageIndex + 1)
     }
 
     fun increaseProduct(product: Product) {
@@ -224,14 +252,14 @@ class PosViewModel(
                         _selectedCategory.value = CategoryRepository.ALL_CATEGORY
                     }
 
-                    refreshProductList()
+                    refreshProductList(resetPage = false)
                     syncOrderState()
                 }
             } catch (exception: Exception) {
                 Log.e(TAG, "Failed to load POS menu from Supabase", exception)
                 allProducts = previousProducts
                 _categories.value = previousCategories.ifEmpty { listOf(CategoryRepository.ALL_CATEGORY) }
-                refreshProductList()
+                refreshProductList(resetPage = false)
                 syncOrderState()
                 _menuLoadError.value = exception.message ?: "Failed to load menu data."
             } finally {
@@ -277,7 +305,7 @@ class PosViewModel(
         return listOf(CategoryRepository.ALL_CATEGORY) + orderedCategories + missingCategories
     }
 
-    private fun refreshProductList() {
+    private fun refreshProductList(resetPage: Boolean = true) {
         val selected = _selectedCategory.value.orEmpty()
         val query = _searchQuery.value.orEmpty().trim().lowercase(Locale.getDefault())
 
@@ -291,12 +319,44 @@ class PosViewModel(
             categoryMatch && queryMatch
         }
 
-        _products.value = when (_selectedSortOption.value ?: SortOption.NAME_ASC) {
+        filteredProducts = when (_selectedSortOption.value ?: SortOption.NAME_ASC) {
             SortOption.NAME_ASC -> filtered.sortedBy { it.name.lowercase(Locale.getDefault()) }
             SortOption.NAME_DESC -> filtered.sortedByDescending { it.name.lowercase(Locale.getDefault()) }
             SortOption.PRICE_ASC -> filtered.sortedBy { it.price }
             SortOption.PRICE_DESC -> filtered.sortedByDescending { it.price }
         }
+
+        if (resetPage) {
+            currentProductPageIndex = 0
+        }
+
+        publishProductPage()
+    }
+
+    private fun updateProductPage(targetPageIndex: Int) {
+        val totalPages = filteredProducts.pageCount(POS_PAGE_SIZE)
+        if (totalPages <= 1) return
+
+        val boundedIndex = targetPageIndex.coerceIn(0, totalPages - 1)
+        if (boundedIndex == currentProductPageIndex) return
+
+        currentProductPageIndex = boundedIndex
+        publishProductPage()
+    }
+
+    private fun publishProductPage() {
+        val totalPages = filteredProducts.pageCount(POS_PAGE_SIZE)
+        currentProductPageIndex = currentProductPageIndex.coerceIn(0, totalPages - 1)
+
+        val fromIndex = currentProductPageIndex * POS_PAGE_SIZE
+        val pagedProducts = filteredProducts.drop(fromIndex).take(POS_PAGE_SIZE)
+
+        _products.value = pagedProducts
+        _productPaginationState.value = PaginationState(
+            currentPage = currentProductPageIndex + 1,
+            totalPages = totalPages,
+            totalItems = filteredProducts.size
+        )
     }
 
     private fun updateQuantity(product: Product, delta: Int) {
@@ -362,9 +422,15 @@ class PosViewModel(
         return round(this * 100) / 100
     }
 
+    private fun <T> List<T>.pageCount(pageSize: Int): Int {
+        if (isEmpty()) return 1
+        return ((size + pageSize - 1) / pageSize).coerceAtLeast(1)
+    }
+
     private companion object {
         const val TAG = "PosViewModel"
         val ORDER_NUMBER_REGEX = Regex("^#POS-(\\d+)$")
         const val ORDER_NUMBER_TEMPLATE = "#POS-%04d"
+        const val POS_PAGE_SIZE = 12
     }
 }

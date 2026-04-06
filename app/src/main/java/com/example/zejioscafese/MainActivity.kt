@@ -154,8 +154,10 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     companion object {
         private const val STATE_CURRENT_SECTION = "current_section"
         private const val STATE_CHECKOUT_EXPANDED = "checkout_expanded"
+        private const val STATE_SIDEBAR_EXPANDED = "sidebar_expanded"
         private const val CHECKOUT_COLLAPSED_GUIDE_PERCENT = 1f
         private const val SIDEBAR_LOGO_ASSET_PATH = "other_assets/ZejiosCafeLogo.jpg"
+        private const val POS_PAGE_SIZE = 12
     }
 
     private val sidebarTextViews by lazy {
@@ -191,7 +193,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        isSidebarExpanded = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        isSidebarExpanded = savedInstanceState?.getBoolean(STATE_SIDEBAR_EXPANDED) ?: false
         captureCheckoutExpandedGuidePercent()
         isCheckoutExpanded = savedInstanceState?.getBoolean(STATE_CHECKOUT_EXPANDED) ?: false
         userProfileState = UserProfileState(
@@ -226,6 +228,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         super.onSaveInstanceState(outState)
         outState.putInt(STATE_CURRENT_SECTION, currentSection.ordinal)
         outState.putBoolean(STATE_CHECKOUT_EXPANDED, isCheckoutExpanded)
+        outState.putBoolean(STATE_SIDEBAR_EXPANDED, isSidebarExpanded)
     }
 
     private fun setupRecyclerViews() {
@@ -1129,8 +1132,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
     private fun setupSidebar() {
         binding.btnToggleSidebar.setOnClickListener {
-            isSidebarExpanded = !isSidebarExpanded
-            applySidebarState(isSidebarExpanded, animate = true)
+            setSidebarExpanded(expanded = !isSidebarExpanded, animate = true)
         }
 
         sidebarItems.forEach { item ->
@@ -1165,6 +1167,12 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 renderSection(Section.POS)
             }
             setCheckoutExpanded(expanded = true, animate = true)
+        }
+        binding.btnPreviousProductsPage.setOnClickListener {
+            viewModel.goToPreviousProductPage()
+        }
+        binding.btnNextProductsPage.setOnClickListener {
+            viewModel.goToNextProductPage()
         }
 
         binding.btnCash.setOnClickListener {
@@ -1625,6 +1633,11 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
         viewModel.products.observe(this) { products ->
             productAdapter.submitList(products)
+            binding.rvProducts.scrollToPosition(0)
+        }
+
+        viewModel.productPaginationState.observe(this) { state ->
+            renderProductPagination(state)
         }
 
         viewModel.orderQuantities.observe(this) { quantities ->
@@ -1789,6 +1802,9 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         binding.fragmentContainer.visibility = if (showFragmentScreen) View.VISIBLE else View.GONE
 
         if (showPos) {
+            if (isCheckoutExpanded && isSidebarExpanded) {
+                setSidebarExpanded(expanded = false, animate = false)
+            }
             applyCheckoutPanelState(expanded = isCheckoutExpanded, animate = false)
         } else {
             checkoutAnimator?.cancel()
@@ -1836,10 +1852,24 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         if (isCheckoutExpanded == expanded && currentSection == Section.POS) {
             return
         }
+        if (expanded && currentSection == Section.POS && isSidebarExpanded) {
+            setSidebarExpanded(expanded = false, animate = animate)
+        }
         isCheckoutExpanded = expanded
         if (currentSection == Section.POS) {
             applyCheckoutPanelState(expanded = expanded, animate = animate)
         }
+    }
+
+    private fun setSidebarExpanded(expanded: Boolean, animate: Boolean) {
+        if (isSidebarExpanded == expanded) {
+            return
+        }
+        if (expanded && currentSection == Section.POS && isCheckoutExpanded) {
+            setCheckoutExpanded(expanded = false, animate = animate)
+        }
+        isSidebarExpanded = expanded
+        applySidebarState(expanded, animate = animate)
     }
 
     private fun applyCheckoutPanelState(expanded: Boolean, animate: Boolean) {
@@ -1999,6 +2029,18 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             }
             start()
         }
+    }
+
+    private fun renderProductPagination(state: PosViewModel.PaginationState) {
+        val shouldShow = state.totalItems > POS_PAGE_SIZE
+        binding.productPaginationContainer.visibility = if (shouldShow) View.VISIBLE else View.GONE
+        binding.tvProductsPageInfo.text = getString(
+            R.string.pagination_page_status,
+            state.currentPage,
+            state.totalPages
+        )
+        binding.btnPreviousProductsPage.isEnabled = state.canGoPrevious
+        binding.btnNextProductsPage.isEnabled = state.canGoNext
     }
 
     private fun applySidebarAppearance(expanded: Boolean) {
