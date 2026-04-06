@@ -15,7 +15,16 @@ val localProperties = Properties().apply {
 }
 
 fun localProperty(name: String, defaultValue: String = ""): String {
-    return localProperties.getProperty(name, defaultValue)
+    val localValue = localProperties.getProperty(name)?.trim().orEmpty()
+    if (localValue.isNotEmpty()) return localValue
+
+    val gradleValue = (findProperty(name) as? String)?.trim().orEmpty()
+    if (gradleValue.isNotEmpty()) return gradleValue
+
+    val envValue = System.getenv(name)?.trim().orEmpty()
+    if (envValue.isNotEmpty()) return envValue
+
+    return defaultValue
 }
 
 android {

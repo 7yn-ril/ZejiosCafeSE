@@ -1,0 +1,9 @@
+## Copy this file to local.properties on your own machine.
+## Do not commit your real local.properties file.
+
+## Android SDK path for your machine
+sdk.dir=C\:\\Users\\YOUR_USERNAME\\AppData\\Local\\Android\\Sdk
+
+## Supabase project config
+SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_OR_PUBLISHABLE_KEY
