@@ -7,6 +7,61 @@ data class DashboardMetric(
     val positive: Boolean
 )
 
+data class DashboardSnapshot(
+    val salesMetric: DashboardMetric,
+    val ordersMetric: DashboardMetric,
+    val profitMetric: DashboardMetric,
+    val activeOrdersMetric: DashboardMetric,
+    val lowStockMetric: DashboardMetric,
+    val insights: List<DashboardInsight>,
+    val topItems: List<DashboardTopItem>,
+    val alerts: List<DashboardAlert>,
+    val charts: Map<DashboardPeriod, List<DashboardChartPoint>>
+) {
+
+    companion object {
+        fun empty(): DashboardSnapshot {
+            val emptyCharts = DashboardPeriod.entries.associateWith { emptyList<DashboardChartPoint>() }
+            return DashboardSnapshot(
+                salesMetric = DashboardMetric(
+                    title = "Total Sales Today",
+                    value = "PHP 0.00",
+                    delta = "No sales yet today",
+                    positive = true
+                ),
+                ordersMetric = DashboardMetric(
+                    title = "Total Orders Today",
+                    value = "0",
+                    delta = "No completed orders yet",
+                    positive = true
+                ),
+                profitMetric = DashboardMetric(
+                    title = "Net Profit",
+                    value = "PHP 0.00",
+                    delta = "No profit recorded yet",
+                    positive = true
+                ),
+                activeOrdersMetric = DashboardMetric(
+                    title = "Active Orders",
+                    value = "0",
+                    delta = "No active orders right now",
+                    positive = true
+                ),
+                lowStockMetric = DashboardMetric(
+                    title = "Low Stock Items",
+                    value = "0",
+                    delta = "All ingredients are above minimum stock",
+                    positive = true
+                ),
+                insights = emptyList(),
+                topItems = emptyList(),
+                alerts = emptyList(),
+                charts = emptyCharts
+            )
+        }
+    }
+}
+
 data class DashboardInsight(
     val title: String,
     val value: String,

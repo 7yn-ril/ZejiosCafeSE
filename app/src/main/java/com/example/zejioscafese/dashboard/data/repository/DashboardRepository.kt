@@ -1,0 +1,554 @@
+package com.example.zejioscafese.dashboard.data.repository
+
+import android.util.Log
+import com.example.zejioscafese.core.supabase.SupabaseProvider
+import com.example.zejioscafese.dashboard.model.AlertLevel
+import com.example.zejioscafese.dashboard.model.DashboardAlert
+import com.example.zejioscafese.dashboard.model.DashboardChartPoint
+import com.example.zejioscafese.dashboard.model.DashboardInsight
+import com.example.zejioscafese.dashboard.model.DashboardMetric
+import com.example.zejioscafese.dashboard.model.DashboardPeriod
+import com.example.zejioscafese.dashboard.model.DashboardSnapshot
+import com.example.zejioscafese.dashboard.model.DashboardTopItem
+import com.example.zejioscafese.pos.data.remote.dto.ProductVariantStockDto
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.gotrue.Auth
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Order
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
+import java.time.format.TextStyle
+import java.util.Locale
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+class DashboardRepository(
+    private val clientProvider: () -> SupabaseClient = { SupabaseProvider.client }
+) {
+
+    private val supabaseClient: SupabaseClient
+        get() = clientProvider()
+
+    suspend fun fetchDashboardSnapshot(
+        now: OffsetDateTime = OffsetDateTime.now()
+    ): DashboardSnapshot {
+        ensureAuthenticatedSession()
+
+        val zoneId = ZoneId.systemDefault()
+        val today = now.atZoneSameInstant(zoneId).toLocalDate()
+        val yesterday = today.minusDays(1)
+        val monthStart = today.withDayOfMonth(1)
+        val lastThirtyDaysStart = today.minusDays(29)
+        val lastTwentyEightDaysStart = today.minusDays(27)
+
+        val rawData = RawDashboardData(
+            orders = fetchOrders()
+                .mapNotNull { it.toOrderRecord(zoneId) },
+            orderItems = fetchOptionalData("order_items") { fetchOrderItems() },
+            ingredients = fetchOptionalData("ingredients") { fetchIngredients() },
+            recipes = fetchOptionalData("variant_ingredients") { fetchRecipes() },
+            productCatalog = fetchOptionalData("product_variant_stock_view") { fetchProductCatalog() }
+        )
+
+        val completedOrders = rawData.orders.filter { it.isCompleted }
+        val activeOrders = rawData.orders.filter { it.isActive }
+
+        val todayCompleted = completedOrders.filter { it.localDate == today }
+        val yesterdayCompleted = completedOrders.filter { it.localDate == yesterday }
+        val monthCompleted = completedOrders.filter { !it.localDate.isBefore(monthStart) }
+        val lastThirtyDaysCompleted = completedOrders.filter { !it.localDate.isBefore(lastThirtyDaysStart) }
+
+        val todayOrderIds = todayCompleted.map(OrderRecord::id).toHashSet()
+        val yesterdayOrderIds = yesterdayCompleted.map(OrderRecord::id).toHashSet()
+        val monthOrderIds = monthCompleted.map(OrderRecord::id).toHashSet()
+
+        val todayOrderItems = rawData.orderItems.filter { it.orderId in todayOrderIds }
+        val yesterdayOrderItems = rawData.orderItems.filter { it.orderId in yesterdayOrderIds }
+        val monthOrderItems = rawData.orderItems.filter { it.orderId in monthOrderIds }
+
+        val ingredientCostById = rawData.ingredients.associate { it.ingredientId to it.costPerUnit }
+        val estimatedVariantCostById = rawData.recipes
+            .groupBy(RecipeRowDto::productVariantId)
+            .mapValues { (_, recipeRows) ->
+                recipeRows.sumOf { row ->
+                    row.requiredQuantity * (ingredientCostById[row.ingredientId] ?: 0.0)
+                }
+            }
+
+        val productMetadataByVariantId = rawData.productCatalog.associateBy(ProductVariantStockDto::productVariantId)
+
+        val salesToday = todayCompleted.sumOf(OrderRecord::total)
+        val salesYesterday = yesterdayCompleted.sumOf(OrderRecord::total)
+        val ordersToday = todayCompleted.size
+        val ordersYesterday = yesterdayCompleted.size
+        val profitToday = estimateProfit(todayOrderItems, estimatedVariantCostById)
+        val profitYesterday = estimateProfit(yesterdayOrderItems, estimatedVariantCostById)
+
+        val lowStockIngredients = rawData.ingredients
+            .filter { it.minimumStock > 0.0 && it.currentStock <= it.minimumStock }
+            .sortedWith(
+                compareBy<IngredientRowDto> { if (it.currentStock <= it.minimumStock * CRITICAL_THRESHOLD_RATIO) 0 else 1 }
+                    .thenBy { stockRatio(it) }
+                    .thenBy { it.ingredientName.lowercase(Locale.getDefault()) }
+            )
+
+        val criticalAlerts = lowStockIngredients.count { it.currentStock <= it.minimumStock * CRITICAL_THRESHOLD_RATIO }
+        val warningAlerts = (lowStockIngredients.size - criticalAlerts).coerceAtLeast(0)
+        val pendingOrders = activeOrders.count { it.status == STATUS_PENDING }
+        val preparingOrders = activeOrders.count { it.status == STATUS_PREPARING }
+
+        val alerts = lowStockIngredients.take(MAX_ALERT_COUNT).map { ingredient ->
+            val isCritical = ingredient.currentStock <= ingredient.minimumStock * CRITICAL_THRESHOLD_RATIO
+            DashboardAlert(
+                title = "Low stock: ${ingredient.ingredientName}",
+                detail = "Only ${formatStock(ingredient.currentStock)} ${ingredient.ingredientUnit} left. Minimum target is ${formatStock(ingredient.minimumStock)} ${ingredient.ingredientUnit}.",
+                level = if (isCritical) AlertLevel.CRITICAL else AlertLevel.WARNING
+            )
+        }
+
+        val topItems = monthOrderItems
+            .groupBy { item -> item.displayName() }
+            .map { (displayName, rows) ->
+                val firstRow = rows.first()
+                val metadata = firstRow.productVariantId
+                    ?.let(productMetadataByVariantId::get)
+
+                DashboardTopItem(
+                    name = displayName,
+                    orders = rows.size,
+                    revenue = rows.sumOf(OrderItemRowDto::lineTotal),
+                    imageUrl = metadata?.productImageUrl.orEmpty()
+                )
+            }
+            .sortedWith(
+                compareByDescending<DashboardTopItem> { it.revenue }
+                    .thenByDescending { it.orders }
+                    .thenBy { it.name.lowercase(Locale.getDefault()) }
+            )
+            .take(MAX_TOP_ITEMS)
+
+        val categoryRevenue = monthOrderItems
+            .groupBy { item ->
+                item.productVariantId
+                    ?.let(productMetadataByVariantId::get)
+                    ?.categoryName
+                    .orEmpty()
+                    .ifBlank { UNCATEGORIZED }
+            }
+            .mapValues { (_, rows) -> rows.sumOf(OrderItemRowDto::lineTotal) }
+
+        val bestCategory = categoryRevenue.maxByOrNull(Map.Entry<String, Double>::value)
+        val peakHour = lastThirtyDaysCompleted
+            .groupingBy { it.createdAt.hour }
+            .eachCount()
+            .maxByOrNull(Map.Entry<Int, Int>::value)
+
+        val topSeller = topItems.firstOrNull()
+        val averageOrderValue = if (monthCompleted.isNotEmpty()) {
+            monthCompleted.sumOf(OrderRecord::total) / monthCompleted.size
+        } else {
+            0.0
+        }
+
+        val insights = listOf(
+            DashboardInsight(
+                title = "Peak Hours",
+                value = peakHour?.key?.let(::formatHourRange) ?: "No data yet",
+                supportingText = peakHour?.value?.let { "$it completed orders hit that hour in the last 30 days." }
+                    ?: "Complete a few orders to reveal customer traffic patterns."
+            ),
+            DashboardInsight(
+                title = "Best Category",
+                value = bestCategory?.key ?: "No sales yet",
+                supportingText = bestCategory?.value?.let { "${formatCurrency(it)} in revenue this month." }
+                    ?: "Sales by category will appear once completed orders come in."
+            ),
+            DashboardInsight(
+                title = "Average Order",
+                value = formatCurrency(averageOrderValue),
+                supportingText = if (monthCompleted.isEmpty()) {
+                    "No completed orders recorded this month yet."
+                } else {
+                    "${monthCompleted.size} completed orders recorded this month."
+                }
+            ),
+            DashboardInsight(
+                title = "Top Seller",
+                value = topSeller?.name ?: "No top item yet",
+                supportingText = topSeller?.let { "Featured in ${it.orders} completed orders and generated ${formatCurrency(it.revenue)} this month." }
+                    ?: "Best-selling items will appear after the first completed sales."
+            )
+        )
+
+        val charts = mapOf(
+            DashboardPeriod.DAILY to buildDailyChart(todayCompleted),
+            DashboardPeriod.WEEKLY to buildWeeklyChart(completedOrders, today),
+            DashboardPeriod.MONTHLY to buildMonthlyChart(completedOrders, lastTwentyEightDaysStart)
+        )
+
+        return DashboardSnapshot(
+            salesMetric = buildComparisonMetric(
+                title = "Total Sales Today",
+                current = salesToday,
+                previous = salesYesterday,
+                value = formatCurrency(salesToday)
+            ),
+            ordersMetric = buildComparisonMetric(
+                title = "Total Orders Today",
+                current = ordersToday.toDouble(),
+                previous = ordersYesterday.toDouble(),
+                value = ordersToday.toString()
+            ),
+            profitMetric = buildComparisonMetric(
+                title = "Net Profit",
+                current = profitToday,
+                previous = profitYesterday,
+                value = formatCurrency(profitToday)
+            ),
+            activeOrdersMetric = DashboardMetric(
+                title = "Active Orders",
+                value = activeOrders.size.toString(),
+                delta = when {
+                    activeOrders.isEmpty() -> "No active orders right now"
+                    pendingOrders > 0 && preparingOrders > 0 -> "$pendingOrders pending, $preparingOrders preparing"
+                    preparingOrders > 0 -> "$preparingOrders order(s) being prepared"
+                    else -> "$pendingOrders order(s) waiting to be prepared"
+                },
+                positive = activeOrders.isEmpty()
+            ),
+            lowStockMetric = DashboardMetric(
+                title = "Low Stock Items",
+                value = lowStockIngredients.size.toString(),
+                delta = when {
+                    lowStockIngredients.isEmpty() -> "All ingredients are above minimum stock"
+                    warningAlerts == 0 -> "$criticalAlerts critical item(s) need action"
+                    else -> "$criticalAlerts critical, $warningAlerts warning"
+                },
+                positive = lowStockIngredients.isEmpty()
+            ),
+            insights = insights,
+            topItems = topItems,
+            alerts = alerts,
+            charts = charts
+        )
+    }
+
+    private suspend fun fetchOrders(): List<OrderRowDto> {
+        return supabaseClient
+            .from(ORDERS_TABLE)
+            .select {
+                order(column = "created_at", order = Order.DESCENDING)
+            }
+            .decodeList<OrderRowDto>()
+    }
+
+    private suspend fun fetchOrderItems(): List<OrderItemRowDto> {
+        return supabaseClient
+            .from(ORDER_ITEMS_TABLE)
+            .select {
+                order(column = "created_at", order = Order.DESCENDING)
+            }
+            .decodeList<OrderItemRowDto>()
+    }
+
+    private suspend fun fetchIngredients(): List<IngredientRowDto> {
+        return supabaseClient
+            .from(INGREDIENTS_TABLE)
+            .select {
+                order(column = "ingredient_name", order = Order.ASCENDING)
+            }
+            .decodeList<IngredientRowDto>()
+    }
+
+    private suspend fun fetchRecipes(): List<RecipeRowDto> {
+        return supabaseClient
+            .from(VARIANT_INGREDIENTS_TABLE)
+            .select {
+                order(column = "product_variant_id", order = Order.ASCENDING)
+            }
+            .decodeList<RecipeRowDto>()
+    }
+
+    private suspend fun fetchProductCatalog(): List<ProductVariantStockDto> {
+        return supabaseClient
+            .from(PRODUCT_VARIANT_STOCK_VIEW)
+            .select {
+                order(column = "product_name", order = Order.ASCENDING)
+                order(column = "variant_name", order = Order.ASCENDING)
+            }
+            .decodeList<ProductVariantStockDto>()
+    }
+
+    private suspend fun ensureAuthenticatedSession() {
+        val auth = supabaseClient.pluginManager.getPlugin(Auth)
+        auth.awaitInitialization()
+
+        if (auth.currentUserOrNull() != null) {
+            return
+        }
+
+        auth.signInAnonymously()
+    }
+
+    private suspend fun <T> fetchOptionalData(
+        label: String,
+        block: suspend () -> List<T>
+    ): List<T> {
+        return try {
+            block()
+        } catch (exception: Exception) {
+            Log.w(TAG, "Dashboard optional source failed: $label", exception)
+            emptyList()
+        }
+    }
+
+    private fun OrderRowDto.toOrderRecord(zoneId: ZoneId): OrderRecord? {
+        val zonedDateTime = try {
+            OffsetDateTime.parse(createdAt).atZoneSameInstant(zoneId)
+        } catch (_: DateTimeParseException) {
+            null
+        }
+
+        return zonedDateTime?.let { parsedTime ->
+            OrderRecord(
+                id = orderId,
+                createdAt = parsedTime,
+                localDate = parsedTime.toLocalDate(),
+                total = orderTotal,
+                status = orderStatus.trim().lowercase(Locale.US),
+                isCompleted = orderStatus.trim().equals(STATUS_COMPLETED, ignoreCase = true),
+                isActive = orderStatus.trim().equals(STATUS_PENDING, ignoreCase = true) ||
+                    orderStatus.trim().equals(STATUS_PREPARING, ignoreCase = true)
+            )
+        }
+    }
+
+    private fun OrderItemRowDto.displayName(): String {
+        return when {
+            variantName.equals(STANDARD_VARIANT, ignoreCase = true) -> productName
+            variantName.equals(COMBO_VARIANT, ignoreCase = true) -> productName
+            else -> "$productName ($variantName)"
+        }
+    }
+
+    private fun estimateProfit(
+        items: List<OrderItemRowDto>,
+        estimatedVariantCostById: Map<String, Double>
+    ): Double {
+        return items.sumOf { item ->
+            val recipeCost = item.productVariantId
+                ?.let(estimatedVariantCostById::get)
+                ?: 0.0
+            item.lineTotal - (recipeCost * item.quantity)
+        }
+    }
+
+    private fun buildComparisonMetric(
+        title: String,
+        current: Double,
+        previous: Double,
+        value: String
+    ): DashboardMetric {
+        val (deltaLabel, isPositive) = compareAgainstYesterday(current, previous)
+        return DashboardMetric(
+            title = title,
+            value = value,
+            delta = deltaLabel,
+            positive = isPositive
+        )
+    }
+
+    private fun compareAgainstYesterday(current: Double, previous: Double): Pair<String, Boolean> {
+        return when {
+            current <= 0.0 && previous <= 0.0 -> "No change vs yesterday" to true
+            previous <= 0.0 -> "New activity vs yesterday" to true
+            else -> {
+                val delta = ((current - previous) / previous) * 100.0
+                String.format(Locale.US, "%+.1f%% vs yesterday", delta) to (delta >= 0.0)
+            }
+        }
+    }
+
+    private fun buildDailyChart(todayOrders: List<OrderRecord>): List<DashboardChartPoint> {
+        val buckets = listOf(8, 10, 12, 14, 16, 18, 20)
+        return buckets.mapIndexed { index, hour ->
+            val endExclusive = buckets.getOrNull(index + 1) ?: 24
+            val totalSales = todayOrders
+                .filter { record -> record.createdAt.hour in hour until endExclusive }
+                .sumOf(OrderRecord::total)
+
+            DashboardChartPoint(
+                label = formatChartHour(hour),
+                sales = totalSales.toFloat()
+            )
+        }
+    }
+
+    private fun buildWeeklyChart(
+        completedOrders: List<OrderRecord>,
+        today: LocalDate
+    ): List<DashboardChartPoint> {
+        val startDate = today.minusDays(6)
+        return (0L..6L).map { dayOffset ->
+            val date = startDate.plusDays(dayOffset)
+            DashboardChartPoint(
+                label = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
+                sales = completedOrders
+                    .filter { it.localDate == date }
+                    .sumOf(OrderRecord::total)
+                    .toFloat()
+            )
+        }
+    }
+
+    private fun buildMonthlyChart(
+        completedOrders: List<OrderRecord>,
+        startDate: LocalDate
+    ): List<DashboardChartPoint> {
+        return (0..3).map { weekIndex ->
+            val rangeStart = startDate.plusDays((weekIndex * 7).toLong())
+            val rangeEnd = rangeStart.plusDays(6)
+            DashboardChartPoint(
+                label = "W${weekIndex + 1}",
+                sales = completedOrders
+                    .filter { it.localDate in rangeStart..rangeEnd }
+                    .sumOf(OrderRecord::total)
+                    .toFloat()
+            )
+        }
+    }
+
+    private fun formatCurrency(amount: Double): String {
+        return String.format(Locale.US, "PHP %,.2f", amount.coerceAtLeast(0.0))
+    }
+
+    private fun formatStock(amount: Double): String {
+        return if (amount % 1.0 == 0.0) {
+            amount.toInt().toString()
+        } else {
+            String.format(Locale.US, "%.1f", amount)
+        }
+    }
+
+    private fun formatChartHour(hour: Int): String {
+        return LocalTime.of(hour, 0)
+            .format(CHART_HOUR_FORMATTER)
+            .uppercase(Locale.getDefault())
+    }
+
+    private fun formatHourRange(hour: Int): String {
+        val start = LocalTime.of(hour, 0).format(INSIGHT_HOUR_FORMATTER)
+        val end = LocalTime.of((hour + 1) % 24, 0).format(INSIGHT_HOUR_FORMATTER)
+        return "$start - $end"
+    }
+
+    private fun stockRatio(ingredient: IngredientRowDto): Double {
+        return if (ingredient.minimumStock <= 0.0) {
+            Double.MAX_VALUE
+        } else {
+            ingredient.currentStock / ingredient.minimumStock
+        }
+    }
+
+    private data class RawDashboardData(
+        val orders: List<OrderRecord>,
+        val orderItems: List<OrderItemRowDto>,
+        val ingredients: List<IngredientRowDto>,
+        val recipes: List<RecipeRowDto>,
+        val productCatalog: List<ProductVariantStockDto>
+    )
+
+    private data class OrderRecord(
+        val id: String,
+        val createdAt: java.time.ZonedDateTime,
+        val localDate: LocalDate,
+        val total: Double,
+        val status: String,
+        val isCompleted: Boolean,
+        val isActive: Boolean
+    )
+
+    @Serializable
+    private data class OrderRowDto(
+        @SerialName("order_id")
+        val orderId: String,
+        @SerialName("created_at")
+        val createdAt: String,
+        @SerialName("order_total")
+        val orderTotal: Double,
+        @SerialName("order_status")
+        val orderStatus: String
+    )
+
+    @Serializable
+    private data class OrderItemRowDto(
+        @SerialName("order_id")
+        val orderId: String,
+        @SerialName("product_variant_id")
+        val productVariantId: String? = null,
+        @SerialName("order_item_product_name")
+        val productName: String,
+        @SerialName("order_item_variant_name")
+        val variantName: String,
+        @SerialName("order_item_quantity")
+        val quantity: Int,
+        @SerialName("order_item_line_total")
+        val lineTotal: Double
+    )
+
+    @Serializable
+    private data class IngredientRowDto(
+        @SerialName("ingredient_id")
+        val ingredientId: String,
+        @SerialName("ingredient_name")
+        val ingredientName: String,
+        @SerialName("ingredient_unit")
+        val ingredientUnit: String,
+        @SerialName("ingredient_current_stock")
+        val currentStock: Double,
+        @SerialName("ingredient_minimum_stock")
+        val minimumStock: Double,
+        @SerialName("ingredient_cost_per_unit")
+        val costPerUnit: Double
+    )
+
+    @Serializable
+    private data class RecipeRowDto(
+        @SerialName("product_variant_id")
+        val productVariantId: String,
+        @SerialName("ingredient_id")
+        val ingredientId: String,
+        @SerialName("required_quantity")
+        val requiredQuantity: Double
+    )
+
+    private companion object {
+        const val TAG = "DashboardRepository"
+        const val ORDERS_TABLE = "orders"
+        const val ORDER_ITEMS_TABLE = "order_items"
+        const val INGREDIENTS_TABLE = "ingredients"
+        const val VARIANT_INGREDIENTS_TABLE = "variant_ingredients"
+        const val PRODUCT_VARIANT_STOCK_VIEW = "product_variant_stock_view"
+
+        const val STATUS_COMPLETED = "completed"
+        const val STATUS_PENDING = "pending"
+        const val STATUS_PREPARING = "preparing"
+
+        const val STANDARD_VARIANT = "standard"
+        const val COMBO_VARIANT = "combo"
+        const val UNCATEGORIZED = "Uncategorized"
+
+        const val MAX_ALERT_COUNT = 3
+        const val MAX_TOP_ITEMS = 4
+        const val CRITICAL_THRESHOLD_RATIO = 0.5
+
+        val CHART_HOUR_FORMATTER: DateTimeFormatter =
+            DateTimeFormatter.ofPattern("ha", Locale.getDefault())
+        val INSIGHT_HOUR_FORMATTER: DateTimeFormatter =
+            DateTimeFormatter.ofPattern("h a", Locale.getDefault())
+    }
+}

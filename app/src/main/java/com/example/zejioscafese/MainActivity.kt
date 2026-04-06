@@ -34,9 +34,10 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
-import com.example.zejioscafese.dashboard.data.DashboardSampleData
 import com.example.zejioscafese.dashboard.model.AlertLevel
 import com.example.zejioscafese.dashboard.model.DashboardPeriod
+import com.example.zejioscafese.dashboard.model.DashboardSnapshot
+import com.example.zejioscafese.dashboard.presentation.DashboardViewModel
 import com.example.zejioscafese.dashboard.ui.DashboardAlertAdapter
 import com.example.zejioscafese.dashboard.ui.DashboardInsightAdapter
 import com.example.zejioscafese.dashboard.ui.DashboardTopItemAdapter
@@ -122,6 +123,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
     private lateinit var binding: ActivityMainBinding
     private val viewModel: PosViewModel by viewModels()
+    private val dashboardViewModel: DashboardViewModel by viewModels()
 
     private lateinit var productAdapter: ProductAdapter
     private lateinit var orderItemAdapter: OrderItemAdapter
@@ -139,6 +141,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private var hasCheckoutItems: Boolean = false
     private var isCheckoutSaving: Boolean = false
     private var pendingCheckoutReceipt: PendingCheckoutReceipt? = null
+    private var dashboardSnapshot: DashboardSnapshot = DashboardSnapshot.empty()
+    private var selectedDashboardPeriod: DashboardPeriod = DashboardPeriod.DAILY
 
     private var isSidebarExpanded: Boolean = true
     private var currentSection: Section = Section.POS
@@ -204,6 +208,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         setupStaffInteractions()
         setupProfileInteractions()
         observeViewModel()
+        observeDashboardViewModel()
         val initialSection = savedInstanceState
             ?.getInt(STATE_CURRENT_SECTION)
             ?.let { restoredOrdinal -> Section.entries.getOrNull(restoredOrdinal) }
@@ -255,8 +260,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     }
 
     private fun setupDashboard() {
-        val alerts = DashboardSampleData.alerts
-
         dashboardInsightAdapter = DashboardInsightAdapter()
         dashboardTopItemAdapter = DashboardTopItemAdapter()
         dashboardAlertAdapter = DashboardAlertAdapter()
@@ -290,12 +293,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             }
         }
 
-        dashboardInsightAdapter.submitList(DashboardSampleData.insights)
-        dashboardTopItemAdapter.submitList(DashboardSampleData.topItems)
-        dashboardAlertAdapter.submitList(alerts)
-
-        bindDashboardMetrics()
-        bindDashboardFocus(alerts)
+        bindDashboardSnapshot(dashboardSnapshot)
         setupDashboardChart()
         setupDashboardToggle()
     }
@@ -942,6 +940,16 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         return parts.take(2).map { it.first().uppercaseChar() }.joinToString("")
     }
 
+    private fun bindDashboardSnapshot(snapshot: DashboardSnapshot) {
+        dashboardSnapshot = snapshot
+        dashboardInsightAdapter.submitList(snapshot.insights)
+        dashboardTopItemAdapter.submitList(snapshot.topItems)
+        dashboardAlertAdapter.submitList(snapshot.alerts)
+        bindDashboardMetrics(snapshot)
+        bindDashboardFocus(snapshot.alerts)
+        updateDashboardChart(selectedDashboardPeriod)
+    }
+
     private fun bindDashboardFocus(alerts: List<com.example.zejioscafese.dashboard.model.DashboardAlert>) {
         val criticalCount = alerts.count { it.level == AlertLevel.CRITICAL }
         val warningCount = alerts.count { it.level == AlertLevel.WARNING }
@@ -960,42 +968,42 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         )
     }
 
-    private fun bindDashboardMetrics() {
+    private fun bindDashboardMetrics(snapshot: DashboardSnapshot) {
         val dashboardRoot = binding.dashboardContent.root
         bindMetric(
             dashboardRoot.findViewById(R.id.tvMetricSalesValue),
             dashboardRoot.findViewById(R.id.tvMetricSalesDelta),
-            getString(R.string.dashboard_metric_sales_value),
-            getString(R.string.dashboard_metric_sales_delta),
-            positive = true
+            snapshot.salesMetric.value,
+            snapshot.salesMetric.delta,
+            positive = snapshot.salesMetric.positive
         )
         bindMetric(
             dashboardRoot.findViewById(R.id.tvMetricOrdersValue),
             dashboardRoot.findViewById(R.id.tvMetricOrdersDelta),
-            getString(R.string.dashboard_metric_orders_value),
-            getString(R.string.dashboard_metric_orders_delta),
-            positive = true
+            snapshot.ordersMetric.value,
+            snapshot.ordersMetric.delta,
+            positive = snapshot.ordersMetric.positive
         )
         bindMetric(
             dashboardRoot.findViewById(R.id.tvMetricProfitValue),
             dashboardRoot.findViewById(R.id.tvMetricProfitDelta),
-            getString(R.string.dashboard_metric_profit_value),
-            getString(R.string.dashboard_metric_profit_delta),
-            positive = true
+            snapshot.profitMetric.value,
+            snapshot.profitMetric.delta,
+            positive = snapshot.profitMetric.positive
         )
         bindMetric(
             dashboardRoot.findViewById(R.id.tvMetricActiveOrdersValue),
             dashboardRoot.findViewById(R.id.tvMetricActiveOrdersDelta),
-            getString(R.string.dashboard_metric_active_orders_value),
-            getString(R.string.dashboard_metric_active_orders_delta),
-            positive = false
+            snapshot.activeOrdersMetric.value,
+            snapshot.activeOrdersMetric.delta,
+            positive = snapshot.activeOrdersMetric.positive
         )
         bindMetric(
             dashboardRoot.findViewById(R.id.tvMetricLowStockValue),
             dashboardRoot.findViewById(R.id.tvMetricLowStockDelta),
-            getString(R.string.dashboard_metric_low_stock_value),
-            getString(R.string.dashboard_metric_low_stock_delta),
-            positive = false
+            snapshot.lowStockMetric.value,
+            snapshot.lowStockMetric.delta,
+            positive = snapshot.lowStockMetric.positive
         )
     }
 
@@ -1042,26 +1050,26 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             }
         }
 
-        updateDashboardChart(DashboardPeriod.DAILY)
+        updateDashboardChart(selectedDashboardPeriod)
     }
 
     private fun setupDashboardToggle() {
         binding.dashboardContent.togglePeriodGroup.check(binding.dashboardContent.btnChartDaily.id)
         binding.dashboardContent.togglePeriodGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked) return@addOnButtonCheckedListener
-            val period = when (checkedId) {
+            selectedDashboardPeriod = when (checkedId) {
                 binding.dashboardContent.btnChartWeekly.id -> DashboardPeriod.WEEKLY
                 binding.dashboardContent.btnChartMonthly.id -> DashboardPeriod.MONTHLY
                 else -> DashboardPeriod.DAILY
             }
-            updateDashboardChart(period)
+            updateDashboardChart(selectedDashboardPeriod)
             styleDashboardToggleButtons()
         }
         styleDashboardToggleButtons()
     }
 
     private fun updateDashboardChart(period: DashboardPeriod) {
-        val points = DashboardSampleData.chart(period)
+        val points = dashboardSnapshot.charts[period].orEmpty()
         val entries = points.mapIndexed { index, point -> Entry(index.toFloat(), point.sales) }
         val labels = points.map { it.label }
 
@@ -1665,6 +1673,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 addOrReplaceOrder(savedOrder)
                 loadOrdersFromSupabase(showError = false)
                 viewModel.refreshMenu()
+                dashboardViewModel.refreshDashboard()
                 if (receipt != null) {
                     showReceiptDialog(savedOrder, receipt)
                 } else {
@@ -1686,6 +1695,23 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                     Snackbar.LENGTH_LONG
                 ).show()
                 viewModel.onCheckoutErrorConsumed()
+            }
+        }
+    }
+
+    private fun observeDashboardViewModel() {
+        dashboardViewModel.dashboardSnapshot.observe(this) { snapshot ->
+            bindDashboardSnapshot(snapshot)
+        }
+
+        dashboardViewModel.dashboardError.observe(this) { errorMessage ->
+            if (!errorMessage.isNullOrBlank()) {
+                Snackbar.make(
+                    binding.root,
+                    errorMessage,
+                    Snackbar.LENGTH_LONG
+                ).show()
+                dashboardViewModel.onDashboardErrorConsumed()
             }
         }
     }
@@ -1765,6 +1791,12 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         if (!showPos) {
             updatePosCategoryChipMode(compact = false)
             updatePosCategoryStripPadding(expanded = false)
+        }
+
+        if (showDashboard) {
+            dashboardViewModel.startAutoRefresh()
+        } else {
+            dashboardViewModel.stopAutoRefresh()
         }
 
         updateHostedFragment(section)
