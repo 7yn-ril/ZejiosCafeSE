@@ -12,6 +12,7 @@ import java.util.concurrent.Executors
 
 object RemoteImageLoader {
 
+    private const val ASSET_PREFIX = "asset:///"
     private val executor = Executors.newFixedThreadPool(4)
     private val cache = object : LruCache<String, Bitmap>(cacheSizeInKb()) {
         override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount / 1024
@@ -24,11 +25,16 @@ object RemoteImageLoader {
     ) {
         showFallback(imageView, fallbackResId)
         val normalizedUrl = imageUrl.orEmpty().trim()
-        imageView.tag = normalizedUrl
+        val cacheKey = if (normalizedUrl.startsWith(ASSET_PREFIX)) {
+            normalizedUrl
+        } else {
+            normalizedUrl
+        }
+        imageView.tag = cacheKey
 
         if (normalizedUrl.isEmpty()) return
 
-        cache.get(normalizedUrl)?.let { cachedBitmap ->
+        cache.get(cacheKey)?.let { cachedBitmap ->
             imageView.scaleType = ImageView.ScaleType.CENTER_CROP
             imageView.setPadding(0, 0, 0, 0)
             imageView.setImageBitmap(cachedBitmap)
@@ -36,10 +42,16 @@ object RemoteImageLoader {
         }
 
         executor.execute {
-            val bitmap = normalizedUrl.downloadBitmap() ?: return@execute
-            cache.put(normalizedUrl, bitmap)
+            val bitmap = when {
+                normalizedUrl.startsWith(ASSET_PREFIX) -> {
+                    normalizedUrl.removePrefix(ASSET_PREFIX).loadAssetBitmap(imageView)
+                }
+                else -> normalizedUrl.downloadBitmap()
+            } ?: return@execute
+
+            cache.put(cacheKey, bitmap)
             imageView.post {
-                if (imageView.tag == normalizedUrl) {
+                if (imageView.tag == cacheKey) {
                     imageView.scaleType = ImageView.ScaleType.CENTER_CROP
                     imageView.setPadding(0, 0, 0, 0)
                     imageView.setImageBitmap(bitmap)
@@ -64,6 +76,12 @@ object RemoteImageLoader {
                 doInput = true
             }
             connection.inputStream.use(BitmapFactory::decodeStream)
+        }.getOrNull()
+    }
+
+    private fun String.loadAssetBitmap(imageView: ImageView): Bitmap? {
+        return runCatching {
+            imageView.context.assets.open(this).use(BitmapFactory::decodeStream)
         }.getOrNull()
     }
 

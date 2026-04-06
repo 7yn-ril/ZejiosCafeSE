@@ -7,6 +7,7 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.content.res.ColorStateList
 import android.content.res.Configuration
+import android.graphics.BitmapFactory
 import android.graphics.Rect
 import android.graphics.Typeface
 import android.os.Bundle
@@ -154,6 +155,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         private const val STATE_CURRENT_SECTION = "current_section"
         private const val STATE_CHECKOUT_EXPANDED = "checkout_expanded"
         private const val CHECKOUT_COLLAPSED_GUIDE_PERCENT = 1f
+        private const val SIDEBAR_LOGO_ASSET_PATH = "other_assets/ZejiosCafeLogo.jpg"
     }
 
     private val sidebarTextViews by lazy {
@@ -214,6 +216,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             ?.let { restoredOrdinal -> Section.entries.getOrNull(restoredOrdinal) }
             ?: Section.POS
         renderSection(initialSection)
+        loadSidebarLogo()
         applySidebarState(isSidebarExpanded, animate = false)
         configureCashOnlyCheckout()
         viewModel.setPaymentMethod(PosViewModel.PaymentMethod.CASH)
@@ -234,7 +237,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         updatePosCategoryChipMode(compact = false)
         updatePosCategoryStripPadding(expanded = false)
 
-        productAdapter = ProductAdapter(onCardClick = viewModel::increaseProduct)
+        productAdapter = ProductAdapter(onCardClick = ::handleProductCardClick)
         binding.rvProducts.apply {
             val spanCount = resources.getInteger(R.integer.product_grid_span_count)
             adapter = productAdapter
@@ -365,6 +368,14 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 }
             }
         }
+    }
+
+    private fun handleProductCardClick(product: Product) {
+        viewModel.increaseProduct(product)
+        if (currentSection != Section.POS) {
+            renderSection(Section.POS)
+        }
+        setCheckoutExpanded(expanded = true, animate = true)
     }
 
     private fun addOrReplaceOrder(order: CafeOrder) {
@@ -1993,7 +2004,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         binding.profileCard.setBackgroundResource(
             if (profileSelected) R.drawable.bg_sidebar_item_selected else R.drawable.bg_profile_card
         )
-        binding.ivSidebarLogo.imageTintList = ColorStateList.valueOf(white)
+        binding.ivSidebarLogo.imageTintList = null
         binding.btnToggleSidebar.imageTintList = ColorStateList.valueOf(white)
         binding.tvSidebarTitle.setTextColor(white)
         binding.tvSidebarSubtitle.setTextColor(sidebarMuted)
@@ -2007,6 +2018,15 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             item.icon.imageTintList = ColorStateList.valueOf(itemColor)
             item.label.setTextColor(itemColor)
             item.label.setTypeface(null, if (isSelected) Typeface.BOLD else Typeface.NORMAL)
+        }
+    }
+
+    private fun loadSidebarLogo() {
+        runCatching {
+            assets.open(SIDEBAR_LOGO_ASSET_PATH).use(BitmapFactory::decodeStream)
+        }.getOrNull()?.let { bitmap ->
+            binding.ivSidebarLogo.scaleType = ImageView.ScaleType.CENTER_INSIDE
+            binding.ivSidebarLogo.setImageBitmap(bitmap)
         }
     }
 

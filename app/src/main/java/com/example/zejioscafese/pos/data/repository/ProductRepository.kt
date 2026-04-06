@@ -1,6 +1,7 @@
 package com.example.zejioscafese.pos.data.repository
 
 import com.example.zejioscafese.core.supabase.SupabaseProvider
+import com.example.zejioscafese.pos.data.local.ProductImageResolver
 import com.example.zejioscafese.pos.data.model.Product
 import com.example.zejioscafese.pos.data.remote.dto.ProductVariantStockDto
 import io.github.jan.supabase.SupabaseClient
@@ -26,6 +27,12 @@ class ProductRepository(
             .asSequence()
             .filter { it.productIsActive && it.variantIsActive }
             .map(ProductVariantStockDto::toProduct)
+            .map { product ->
+                ProductImageResolver.resolve(product.sourceProductName ?: product.name)
+                    ?.let { assetImageUrl ->
+                        product.copy(imageUrl = assetImageUrl)
+                    } ?: product
+            }
             .toList()
     }
 }
