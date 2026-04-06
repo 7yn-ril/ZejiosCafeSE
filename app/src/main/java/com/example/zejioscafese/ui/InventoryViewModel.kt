@@ -1,5 +1,8 @@
 package com.example.zejioscafese.ui
 
+import com.example.zejioscafese.inventory.data.model.ProductCategoryOption
+import com.example.zejioscafese.inventory.data.model.ProductEditorDraft
+import com.example.zejioscafese.inventory.data.model.ProductRecipeIngredient
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -20,6 +23,8 @@ class InventoryViewModel(
 
     private val allIngredients = mutableListOf<Ingredient>()
     private val allProducibleProducts = mutableListOf<ProducibleProduct>()
+    private val productCategories = mutableListOf<ProductCategoryOption>()
+    private val productRecipeMap = mutableMapOf<String, List<ProductRecipeIngredient>>()
 
     private val _ingredientList = MutableLiveData<List<Ingredient>>(emptyList())
     val ingredientList: LiveData<List<Ingredient>> = _ingredientList
@@ -155,6 +160,49 @@ class InventoryViewModel(
         }
     }
 
+    fun addProduct(draft: ProductEditorDraft) {
+        viewModelScope.launch {
+            try {
+                inventoryRepository.addProduct(draft)
+                syncInventoryFromRemote()
+                _inventoryError.value = null
+            } catch (exception: Exception) {
+                _inventoryError.value = exception.message ?: "Failed to add product."
+                syncInventorySafely()
+            }
+        }
+    }
+
+    fun updateProduct(draft: ProductEditorDraft) {
+        viewModelScope.launch {
+            try {
+                inventoryRepository.updateProduct(draft)
+                syncInventoryFromRemote()
+                _inventoryError.value = null
+            } catch (exception: Exception) {
+                _inventoryError.value = exception.message ?: "Failed to update product."
+                syncInventorySafely()
+            }
+        }
+    }
+
+    fun softDeleteProduct(product: ProducibleProduct) {
+        allProducibleProducts.removeAll { it.id == product.id }
+        productRecipeMap.remove(product.id)
+        applyFilters()
+
+        viewModelScope.launch {
+            try {
+                inventoryRepository.softDeleteProduct(product)
+                syncInventoryFromRemote()
+                _inventoryError.value = null
+            } catch (exception: Exception) {
+                _inventoryError.value = exception.message ?: "Failed to remove product."
+                syncInventorySafely()
+            }
+        }
+    }
+
     fun generateId(): String {
         val maxNum = allIngredients
             .mapNotNull { it.id.removePrefix(INGREDIENT_ID_PREFIX).toIntOrNull() }
@@ -174,6 +222,18 @@ class InventoryViewModel(
             .sorted()
     }
 
+    fun getIngredientOptionsForEditor(): List<Ingredient> {
+        return allIngredients.toList()
+    }
+
+    fun getProductCategoriesForEditor(): List<ProductCategoryOption> {
+        return productCategories.toList()
+    }
+
+    fun getRecipeForProduct(productVariantId: String): List<ProductRecipeIngredient> {
+        return productRecipeMap[productVariantId].orEmpty()
+    }
+
     fun onInventoryErrorConsumed() {
         _inventoryError.value = null
     }
@@ -182,10 +242,33 @@ class InventoryViewModel(
         val snapshot = coroutineScope {
             val ingredientsDeferred = async { inventoryRepository.fetchIngredients() }
             val producibleDeferred = async { inventoryRepository.fetchProducibleProducts() }
+            val categoriesDeferred = async { inventoryRepository.fetchProductCategories() }
+            val recipeLinksDeferred = async {
+                runCatching { inventoryRepository.fetchProductRecipeLinks() }.getOrDefault(emptyList())
+            }
+
+            val ingredients = ingredientsDeferred.await().distinctBy(Ingredient::id)
+            val ingredientDirectory = ingredients.associateBy(Ingredient::id)
+            val recipeLinks = recipeLinksDeferred.await()
 
             InventorySnapshot(
-                ingredients = ingredientsDeferred.await().distinctBy(Ingredient::id),
-                producibleProducts = producibleDeferred.await().distinctBy(ProducibleProduct::id)
+                ingredients = ingredients,
+                producibleProducts = producibleDeferred.await().distinctBy(ProducibleProduct::id),
+                productCategories = categoriesDeferred.await().distinctBy(ProductCategoryOption::id),
+                productRecipes = recipeLinks
+                    .groupBy { it.productVariantId }
+                    .mapValues { (_, links) ->
+                        links.mapNotNull { link ->
+                            ingredientDirectory[link.ingredientId]?.let { ingredient ->
+                                ProductRecipeIngredient(
+                                    ingredientId = ingredient.id,
+                                    ingredientName = ingredient.name,
+                                    ingredientUnit = ingredient.unit,
+                                    requiredQuantity = link.requiredQuantity
+                                )
+                            }
+                        }.sortedBy { it.ingredientName.lowercase(Locale.getDefault()) }
+                    }
             )
         }
 
@@ -194,6 +277,12 @@ class InventoryViewModel(
 
         allProducibleProducts.clear()
         allProducibleProducts.addAll(snapshot.producibleProducts)
+
+        productCategories.clear()
+        productCategories.addAll(snapshot.productCategories)
+
+        productRecipeMap.clear()
+        productRecipeMap.putAll(snapshot.productRecipes)
 
         if (selectedCategory != ALL_CATEGORY && selectedCategory !in getCategories()) {
             selectedCategory = ALL_CATEGORY
@@ -280,6 +369,8 @@ class InventoryViewModel(
 
     private data class InventorySnapshot(
         val ingredients: List<Ingredient>,
-        val producibleProducts: List<ProducibleProduct>
+        val producibleProducts: List<ProducibleProduct>,
+        val productCategories: List<ProductCategoryOption>,
+        val productRecipes: Map<String, List<ProductRecipeIngredient>>
     )
 }

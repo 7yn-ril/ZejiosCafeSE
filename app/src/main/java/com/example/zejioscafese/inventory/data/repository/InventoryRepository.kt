@@ -1,8 +1,12 @@
 package com.example.zejioscafese.inventory.data.repository
 
+import com.example.zejioscafese.inventory.data.model.ProductEditorDraft
+import com.example.zejioscafese.inventory.data.model.ProductCategoryOption
 import com.example.zejioscafese.core.supabase.SupabaseProvider
 import com.example.zejioscafese.inventory.data.model.ProducibleProduct
 import com.example.zejioscafese.inventory.data.remote.dto.IngredientDto
+import com.example.zejioscafese.inventory.data.remote.dto.ProductCategoryDto
+import com.example.zejioscafese.inventory.data.remote.dto.ProductRecipeLinkDto
 import com.example.zejioscafese.inventory.data.remote.dto.ProducibleProductDto
 import com.example.zejioscafese.pos.data.model.Ingredient
 import io.github.jan.supabase.SupabaseClient
@@ -44,6 +48,29 @@ class InventoryRepository(
             .filter { it.productIsActive && it.variantIsActive }
             .map(ProducibleProductDto::toProducibleProduct)
             .toList()
+    }
+
+    suspend fun fetchProductCategories(): List<ProductCategoryOption> {
+        return supabaseClient
+            .from(CATEGORIES_TABLE)
+            .select {
+                order(column = "category_display_order", order = Order.ASCENDING)
+            }
+            .decodeList<ProductCategoryDto>()
+            .asSequence()
+            .filter { it.categoryIsActive }
+            .map(ProductCategoryDto::toCategoryOption)
+            .toList()
+    }
+
+    suspend fun fetchProductRecipeLinks(): List<ProductRecipeLinkDto> {
+        return supabaseClient
+            .from(VARIANT_INGREDIENTS_TABLE)
+            .select {
+                order(column = "product_variant_id", order = Order.ASCENDING)
+                order(column = "variant_ingredient_id", order = Order.ASCENDING)
+            }
+            .decodeList<ProductRecipeLinkDto>()
     }
 
     suspend fun addIngredient(ingredient: Ingredient) {
@@ -103,6 +130,177 @@ class InventoryRepository(
             }
     }
 
+    suspend fun addProduct(draft: ProductEditorDraft) {
+        ensureAuthenticatedSession()
+
+        val normalizedProductName = draft.productName.trim()
+        val normalizedVariantName = draft.variantName.trim()
+        val ingredientRows = draft.ingredients.map {
+            it.copy(
+                requiredQuantity = it.requiredQuantity
+            )
+        }
+
+        val existingProducts = fetchProductRows()
+        val matchingProduct = existingProducts.firstOrNull {
+            it.categoryId == draft.categoryId &&
+                it.productName.equals(normalizedProductName, ignoreCase = true)
+        }
+
+        val productId = matchingProduct?.productId ?: nextId(
+            prefix = PRODUCT_ID_PREFIX,
+            existingIds = existingProducts.map(ProductRowDto::productId)
+        )
+
+        if (matchingProduct == null) {
+            supabaseClient
+                .from(PRODUCTS_TABLE)
+                .insert(
+                    ProductInsertDto(
+                        productId = productId,
+                        categoryId = draft.categoryId,
+                        productName = normalizedProductName,
+                        productDisplayOrder = nextProductDisplayOrder(
+                            categoryId = draft.categoryId,
+                            existingProducts = existingProducts
+                        )
+                    )
+                )
+        } else if (!matchingProduct.productIsActive || matchingProduct.categoryId != draft.categoryId) {
+            supabaseClient
+                .from(PRODUCTS_TABLE)
+                .update(
+                    {
+                        set("category_id", draft.categoryId)
+                        set("product_name", normalizedProductName)
+                        set("product_is_active", true)
+                    }
+                ) {
+                    filter {
+                        eq("product_id", productId)
+                    }
+                }
+        }
+
+        val existingVariants = fetchVariantRows()
+        val variantId = nextId(
+            prefix = VARIANT_ID_PREFIX,
+            existingIds = existingVariants.map(VariantRowDto::productVariantId)
+        )
+
+        supabaseClient
+            .from(PRODUCT_VARIANTS_TABLE)
+            .insert(
+                ProductVariantInsertDto(
+                    productVariantId = variantId,
+                    productId = productId,
+                    variantName = normalizedVariantName,
+                    variantPrice = draft.price,
+                    variantDisplayOrder = nextVariantDisplayOrder(
+                        productId = productId,
+                        existingVariants = existingVariants
+                    ),
+                    variantManualStockLeft = 0,
+                    variantTrackInventory = ingredientRows.isNotEmpty(),
+                    variantIsActive = true
+                )
+            )
+
+        replaceVariantIngredients(
+            productVariantId = variantId,
+            ingredients = ingredientRows
+        )
+    }
+
+    suspend fun updateProduct(draft: ProductEditorDraft) {
+        ensureAuthenticatedSession()
+
+        val productId = requireNotNull(draft.productId) { "Missing product id for update." }
+        val productVariantId = requireNotNull(draft.productVariantId) {
+            "Missing product variant id for update."
+        }
+
+        val normalizedProductName = draft.productName.trim()
+        val normalizedVariantName = draft.variantName.trim()
+
+        supabaseClient
+            .from(PRODUCTS_TABLE)
+            .update(
+                {
+                    set("category_id", draft.categoryId)
+                    set("product_name", normalizedProductName)
+                    set("product_is_active", true)
+                }
+            ) {
+                filter {
+                    eq("product_id", productId)
+                }
+            }
+
+        supabaseClient
+            .from(PRODUCT_VARIANTS_TABLE)
+            .update(
+                {
+                    set("variant_name", normalizedVariantName)
+                    set("variant_price", draft.price)
+                    set("variant_track_inventory", draft.ingredients.isNotEmpty())
+                    set("variant_is_active", true)
+                    if (draft.ingredients.isEmpty()) {
+                        set("variant_manual_stock_left", 0)
+                    }
+                }
+            ) {
+                filter {
+                    eq("product_variant_id", productVariantId)
+                }
+            }
+
+        replaceVariantIngredients(
+            productVariantId = productVariantId,
+            ingredients = draft.ingredients
+        )
+    }
+
+    suspend fun softDeleteProduct(product: ProducibleProduct) {
+        ensureAuthenticatedSession()
+
+        supabaseClient
+            .from(PRODUCT_VARIANTS_TABLE)
+            .update(
+                {
+                    set("variant_is_active", false)
+                }
+            ) {
+                filter {
+                    eq("product_variant_id", product.id)
+                }
+            }
+
+        val remainingActiveVariants = supabaseClient
+            .from(PRODUCT_VARIANTS_TABLE)
+            .select {
+                filter {
+                    eq("product_id", product.productId)
+                    eq("variant_is_active", true)
+                }
+            }
+            .decodeList<VariantRowDto>()
+
+        if (remainingActiveVariants.isEmpty()) {
+            supabaseClient
+                .from(PRODUCTS_TABLE)
+                .update(
+                    {
+                        set("product_is_active", false)
+                    }
+                ) {
+                    filter {
+                        eq("product_id", product.productId)
+                    }
+                }
+        }
+    }
+
     private suspend fun ensureAuthenticatedSession() {
         val auth = supabaseClient.pluginManager.getPlugin(Auth)
         auth.awaitInitialization()
@@ -116,6 +314,102 @@ class InventoryRepository(
 
     private fun currentTimestamp(): String {
         return OffsetDateTime.now(ZoneOffset.UTC).toString()
+    }
+
+    private suspend fun replaceVariantIngredients(
+        productVariantId: String,
+        ingredients: List<com.example.zejioscafese.inventory.data.model.ProductRecipeIngredient>
+    ) {
+        supabaseClient
+            .from(VARIANT_INGREDIENTS_TABLE)
+            .delete {
+                filter {
+                    eq("product_variant_id", productVariantId)
+                }
+            }
+
+        if (ingredients.isEmpty()) {
+            return
+        }
+
+        val existingRecipeLinks = fetchProductRecipeLinks()
+        val newRecipeIds = nextIds(
+            prefix = RECIPE_ID_PREFIX,
+            existingIds = existingRecipeLinks.map(ProductRecipeLinkDto::variantIngredientId),
+            count = ingredients.size
+        )
+
+        val inserts = ingredients.mapIndexed { index, ingredient ->
+            VariantIngredientInsertDto(
+                variantIngredientId = newRecipeIds[index],
+                productVariantId = productVariantId,
+                ingredientId = ingredient.ingredientId,
+                requiredQuantity = ingredient.requiredQuantity
+            )
+        }
+
+        supabaseClient
+            .from(VARIANT_INGREDIENTS_TABLE)
+            .insert(inserts)
+    }
+
+    private suspend fun fetchProductRows(): List<ProductRowDto> {
+        return supabaseClient
+            .from(PRODUCTS_TABLE)
+            .select {
+                order(column = "product_id", order = Order.ASCENDING)
+            }
+            .decodeList<ProductRowDto>()
+    }
+
+    private suspend fun fetchVariantRows(): List<VariantRowDto> {
+        return supabaseClient
+            .from(PRODUCT_VARIANTS_TABLE)
+            .select {
+                order(column = "product_variant_id", order = Order.ASCENDING)
+            }
+            .decodeList<VariantRowDto>()
+    }
+
+    private fun nextProductDisplayOrder(
+        categoryId: String,
+        existingProducts: List<ProductRowDto>
+    ): Int {
+        return existingProducts
+            .filter { it.categoryId == categoryId }
+            .maxOfOrNull(ProductRowDto::productDisplayOrder)
+            ?.plus(1) ?: 1
+    }
+
+    private fun nextVariantDisplayOrder(
+        productId: String,
+        existingVariants: List<VariantRowDto>
+    ): Int {
+        return existingVariants
+            .filter { it.productId == productId }
+            .maxOfOrNull(VariantRowDto::variantDisplayOrder)
+            ?.plus(1) ?: 1
+    }
+
+    private fun nextId(prefix: String, existingIds: List<String>): String {
+        val maxValue = existingIds
+            .mapNotNull { id ->
+                id.removePrefix(prefix).toIntOrNull()
+            }
+            .maxOrNull() ?: 0
+        return prefix + (maxValue + 1).toString().padStart(3, '0')
+    }
+
+    private fun nextIds(prefix: String, existingIds: List<String>, count: Int): List<String> {
+        val maxValue = existingIds
+            .mapNotNull { id ->
+                id.removePrefix(prefix).toIntOrNull()
+            }
+            .maxOrNull() ?: 0
+
+        return (1..count).map { offset ->
+            prefix + (maxValue + offset).toString().padStart(3, '0')
+        }
     }
 
     @Serializable
@@ -138,8 +432,85 @@ class InventoryRepository(
         val ingredientLastRestockedAt: String
     )
 
+    @Serializable
+    private data class ProductInsertDto(
+        @SerialName("product_id")
+        val productId: String,
+        @SerialName("category_id")
+        val categoryId: String,
+        @SerialName("product_name")
+        val productName: String,
+        @SerialName("product_display_order")
+        val productDisplayOrder: Int,
+        @SerialName("product_is_active")
+        val productIsActive: Boolean = true
+    )
+
+    @Serializable
+    private data class ProductVariantInsertDto(
+        @SerialName("product_variant_id")
+        val productVariantId: String,
+        @SerialName("product_id")
+        val productId: String,
+        @SerialName("variant_name")
+        val variantName: String,
+        @SerialName("variant_price")
+        val variantPrice: Double,
+        @SerialName("variant_display_order")
+        val variantDisplayOrder: Int,
+        @SerialName("variant_manual_stock_left")
+        val variantManualStockLeft: Int,
+        @SerialName("variant_track_inventory")
+        val variantTrackInventory: Boolean,
+        @SerialName("variant_is_active")
+        val variantIsActive: Boolean = true
+    )
+
+    @Serializable
+    private data class VariantIngredientInsertDto(
+        @SerialName("variant_ingredient_id")
+        val variantIngredientId: String,
+        @SerialName("product_variant_id")
+        val productVariantId: String,
+        @SerialName("ingredient_id")
+        val ingredientId: String,
+        @SerialName("required_quantity")
+        val requiredQuantity: Double
+    )
+
+    @Serializable
+    private data class ProductRowDto(
+        @SerialName("product_id")
+        val productId: String,
+        @SerialName("category_id")
+        val categoryId: String,
+        @SerialName("product_name")
+        val productName: String,
+        @SerialName("product_display_order")
+        val productDisplayOrder: Int = 0,
+        @SerialName("product_is_active")
+        val productIsActive: Boolean = true
+    )
+
+    @Serializable
+    private data class VariantRowDto(
+        @SerialName("product_variant_id")
+        val productVariantId: String,
+        @SerialName("product_id")
+        val productId: String,
+        @SerialName("variant_display_order")
+        val variantDisplayOrder: Int = 0
+    )
+
     private companion object {
+        const val CATEGORIES_TABLE = "categories"
         const val INGREDIENTS_TABLE = "ingredients"
+        const val PRODUCTS_TABLE = "products"
+        const val PRODUCT_VARIANTS_TABLE = "product_variants"
         const val PRODUCIBLE_PRODUCTS_VIEW = "product_variant_stock_view"
+        const val VARIANT_INGREDIENTS_TABLE = "variant_ingredients"
+        const val PRODUCT_ID_PREFIX = "PRD-"
+        const val VARIANT_ID_PREFIX = "VAR-"
+        const val RECIPE_ID_PREFIX = "RCP-"
     }
 }

@@ -8,6 +8,10 @@ import kotlinx.serialization.Serializable
 data class ProducibleProductDto(
     @SerialName("product_variant_id")
     val productVariantId: String,
+    @SerialName("product_id")
+    val productId: String,
+    @SerialName("category_id")
+    val categoryId: String,
     @SerialName("category_name")
     val categoryName: String,
     @SerialName("product_name")
@@ -27,18 +31,13 @@ data class ProducibleProductDto(
     fun toProducibleProduct(): ProducibleProduct {
         return ProducibleProduct(
             id = productVariantId,
-            name = displayName(),
+            productId = productId,
+            categoryId = categoryId,
             category = categoryName,
+            productName = productName,
+            variantName = variantName,
             price = variantPrice,
             availableQuantity = variantStockLeft.coerceAtLeast(0)
         )
-    }
-
-    private fun displayName(): String {
-        return when {
-            variantName.equals("standard", ignoreCase = true) -> productName
-            variantName.equals("combo", ignoreCase = true) -> productName
-            else -> "$productName ($variantName)"
-        }
     }
 }

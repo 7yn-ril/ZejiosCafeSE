@@ -1788,6 +1788,10 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             )
         }
 
+        if (showOrders) {
+            loadOrdersFromSupabase(showError = false)
+        }
+
         if (!showPos) {
             updatePosCategoryChipMode(compact = false)
             updatePosCategoryStripPadding(expanded = false)

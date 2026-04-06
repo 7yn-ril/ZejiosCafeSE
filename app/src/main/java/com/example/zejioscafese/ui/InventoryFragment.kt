@@ -6,8 +6,11 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
 import androidx.core.content.ContextCompat
@@ -17,6 +20,10 @@ import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.zejioscafese.R
 import com.example.zejioscafese.databinding.FragmentInventoryBinding
+import com.example.zejioscafese.inventory.data.model.ProductCategoryOption
+import com.example.zejioscafese.inventory.data.model.ProductEditorDraft
+import com.example.zejioscafese.inventory.data.model.ProductRecipeIngredient
+import com.example.zejioscafese.inventory.data.model.ProducibleProduct
 import com.example.zejioscafese.pos.data.model.Ingredient
 import com.google.android.material.snackbar.Snackbar
 import java.text.SimpleDateFormat
@@ -65,7 +72,11 @@ class InventoryFragment : Fragment() {
             onEditClick = { showEditDialog(it) },
             onRestockClick = { showRestockDialog(it) }
         )
-        producibleProductAdapter = ProducibleProductAdapter()
+        producibleProductAdapter = ProducibleProductAdapter(
+            onViewIngredientsClick = { showProductIngredientsDialog(it) },
+            onEditClick = { showProductDialog(product = it) },
+            onDeleteClick = { showSoftDeleteProductDialog(it) }
+        )
 
         binding.rvIngredients.apply {
             adapter = ingredientAdapter
@@ -173,7 +184,10 @@ class InventoryFragment : Fragment() {
 
     private fun setupAddButton() {
         binding.btnAddIngredient.setOnClickListener {
-            showAddDialog()
+            when (viewModel.screenMode.value ?: InventoryViewModel.ScreenMode.INGREDIENTS) {
+                InventoryViewModel.ScreenMode.INGREDIENTS -> showAddDialog()
+                InventoryViewModel.ScreenMode.PRODUCTION -> showProductDialog()
+            }
         }
     }
 
@@ -238,7 +252,11 @@ class InventoryFragment : Fragment() {
 
         binding.rvIngredients.visibility = if (isIngredientsMode) View.VISIBLE else View.GONE
         binding.rvProducibleProducts.visibility = if (isIngredientsMode) View.GONE else View.VISIBLE
-        binding.btnAddIngredient.visibility = if (isIngredientsMode) View.VISIBLE else View.GONE
+        binding.btnAddIngredient.visibility = View.VISIBLE
+        binding.btnAddIngredient.setText(
+            if (isIngredientsMode) R.string.inventory_add_ingredient
+            else R.string.inventory_add_product
+        )
 
         binding.tvInventoryHeaderTitle.setText(
             if (isIngredientsMode) R.string.inventory_header_ingredients_title
@@ -441,6 +459,340 @@ class InventoryFragment : Fragment() {
             .show()
     }
 
+    private fun showSoftDeleteProductDialog(product: ProducibleProduct) {
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.inventory_soft_delete_product))
+            .setMessage(
+                getString(
+                    R.string.inventory_soft_delete_confirmation,
+                    product.name
+                )
+            )
+            .setPositiveButton(R.string.inventory_soft_delete_action) { _, _ ->
+                viewModel.softDeleteProduct(product)
+            }
+            .setNegativeButton(R.string.inventory_dialog_cancel, null)
+            .show()
+    }
+
+    private fun showProductIngredientsDialog(product: ProducibleProduct) {
+        val recipe = viewModel.getRecipeForProduct(product.id)
+        val message = if (recipe.isEmpty()) {
+            getString(R.string.inventory_no_recipe_assigned)
+        } else {
+            recipe.joinToString(separator = "\n") { ingredient ->
+                getString(
+                    R.string.inventory_recipe_line,
+                    ingredient.ingredientName,
+                    formatQuantity(ingredient.requiredQuantity),
+                    ingredient.ingredientUnit
+                )
+            }
+        }
+
+        AlertDialog.Builder(requireContext())
+            .setTitle(
+                getString(
+                    R.string.inventory_product_ingredients_title,
+                    product.name
+                )
+            )
+            .setMessage(message)
+            .setPositiveButton(R.string.inventory_dialog_close, null)
+            .show()
+    }
+
+    private fun showProductDialog(product: ProducibleProduct? = null) {
+        val ctx = requireContext()
+        val categoryOptions = viewModel.getProductCategoriesForEditor()
+        val ingredientOptions = viewModel.getIngredientOptionsForEditor()
+
+        if (categoryOptions.isEmpty()) {
+            Snackbar.make(
+                binding.root,
+                R.string.inventory_missing_categories,
+                Snackbar.LENGTH_LONG
+            ).show()
+            return
+        }
+
+        if (ingredientOptions.isEmpty()) {
+            Snackbar.make(
+                binding.root,
+                R.string.inventory_missing_ingredients,
+                Snackbar.LENGTH_LONG
+            ).show()
+            return
+        }
+
+        val scrollView = ScrollView(ctx)
+        val container = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dpToPx(20), dpToPx(12), dpToPx(20), dpToPx(4))
+        }
+        scrollView.addView(container)
+
+        val categorySpinner = createLabeledSpinner(
+            container = container,
+            label = getString(R.string.inventory_field_category),
+            options = categoryOptions.map(ProductCategoryOption::name),
+            selectedIndex = categoryOptions.indexOfFirst { option ->
+                option.id == product?.categoryId
+            }.coerceAtLeast(0)
+        )
+
+        val etProductName = createLabeledField(
+            container,
+            getString(R.string.inventory_field_product_name),
+            product?.productName.orEmpty()
+        )
+        val etVariantName = createLabeledField(
+            container,
+            getString(R.string.inventory_field_variant_name),
+            product?.variantName
+                ?.takeUnless {
+                    it.equals("standard", ignoreCase = true) ||
+                        it.equals("combo", ignoreCase = true)
+                }
+                .orEmpty()
+        )
+        val etPrice = createLabeledField(
+            container,
+            getString(R.string.inventory_field_price),
+            product?.price?.toString().orEmpty(),
+            android.text.InputType.TYPE_CLASS_NUMBER or
+                android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        )
+
+        val recipeLabel = TextView(ctx).apply {
+            text = getString(R.string.inventory_field_recipe)
+            textSize = 12f
+            setTextColor(ContextCompat.getColor(ctx, R.color.pos_text_secondary))
+            setPadding(0, dpToPx(12), 0, dpToPx(4))
+        }
+        container.addView(recipeLabel)
+
+        val ingredientRowsContainer = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        container.addView(ingredientRowsContainer)
+
+        val rowHolders = mutableListOf<ProductIngredientRowHolder>()
+        val existingRecipe = product?.let { viewModel.getRecipeForProduct(it.id) }.orEmpty()
+
+        fun addIngredientRow(initial: ProductRecipeIngredient? = null) {
+            val row = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                setPadding(0, dpToPx(4), 0, dpToPx(4))
+            }
+
+            val ingredientSpinner = Spinner(ctx).apply {
+                adapter = ArrayAdapter(
+                    ctx,
+                    android.R.layout.simple_spinner_item,
+                    ingredientOptions.map(Ingredient::name)
+                ).also { adapter ->
+                    adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                }
+            }
+
+            val ingredientParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT)
+            ingredientParams.weight = 1f
+            row.addView(ingredientSpinner, ingredientParams)
+
+            val quantityInput = EditText(ctx).apply {
+                hint = getString(R.string.inventory_field_required_quantity)
+                inputType = android.text.InputType.TYPE_CLASS_NUMBER or
+                    android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+                setText(initial?.requiredQuantity?.toString().orEmpty())
+                setPadding(dpToPx(12), dpToPx(10), dpToPx(12), dpToPx(10))
+                setBackgroundResource(R.drawable.bg_input_field)
+            }
+            val quantityParams = LinearLayout.LayoutParams(dpToPx(120), LinearLayout.LayoutParams.WRAP_CONTENT)
+            quantityParams.marginStart = dpToPx(8)
+            row.addView(quantityInput, quantityParams)
+
+            val removeButton = ImageButton(ctx).apply {
+                setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
+                background = ContextCompat.getDrawable(ctx, android.R.color.transparent)
+                contentDescription = getString(R.string.inventory_remove_recipe_ingredient)
+            }
+            val removeParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            removeParams.marginStart = dpToPx(4)
+            row.addView(removeButton, removeParams)
+
+            val holder = ProductIngredientRowHolder(
+                container = row,
+                ingredientSpinner = ingredientSpinner,
+                quantityInput = quantityInput
+            )
+            rowHolders.add(holder)
+            ingredientRowsContainer.addView(row)
+
+            initial?.let { currentIngredient ->
+                val selectedIndex = ingredientOptions.indexOfFirst {
+                    it.id == currentIngredient.ingredientId
+                }
+                if (selectedIndex >= 0) {
+                    ingredientSpinner.setSelection(selectedIndex)
+                }
+            }
+
+            removeButton.setOnClickListener {
+                ingredientRowsContainer.removeView(row)
+                rowHolders.remove(holder)
+                if (rowHolders.isEmpty()) {
+                    addIngredientRow()
+                }
+            }
+        }
+
+        if (existingRecipe.isEmpty()) {
+            addIngredientRow()
+        } else {
+            existingRecipe.forEach(::addIngredientRow)
+        }
+
+        val addIngredientButton = Button(ctx).apply {
+            text = getString(R.string.inventory_add_recipe_ingredient)
+            setTextColor(ContextCompat.getColor(ctx, R.color.pos_secondary))
+            background = ContextCompat.getDrawable(ctx, R.drawable.bg_chip_unselected)
+            setPadding(dpToPx(12), dpToPx(10), dpToPx(12), dpToPx(10))
+        }
+        val addButtonParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+        addButtonParams.topMargin = dpToPx(8)
+        container.addView(addIngredientButton, addButtonParams)
+        addIngredientButton.setOnClickListener { addIngredientRow() }
+
+        val dialog = AlertDialog.Builder(ctx)
+            .setTitle(
+                if (product == null) {
+                    getString(R.string.inventory_add_product_title)
+                } else {
+                    getString(R.string.inventory_edit_product_title)
+                }
+            )
+            .setView(scrollView)
+            .setPositiveButton(
+                if (product == null) {
+                    getString(R.string.inventory_dialog_add)
+                } else {
+                    getString(R.string.inventory_dialog_save)
+                },
+                null
+            )
+            .setNegativeButton(R.string.inventory_dialog_cancel, null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val selectedCategory = categoryOptions.getOrNull(categorySpinner.selectedItemPosition)
+                val productName = etProductName.text.toString().trim()
+                val variantName = etVariantName.text.toString().trim().ifBlank { "Standard" }
+                val price = etPrice.text.toString().toDoubleOrNull()
+                val groupedIngredients = rowHolders.mapNotNull { holder ->
+                    val ingredient = ingredientOptions.getOrNull(holder.ingredientSpinner.selectedItemPosition)
+                        ?: return@mapNotNull null
+                    val requiredQuantity = holder.quantityInput.text.toString().toDoubleOrNull()
+                        ?: return@mapNotNull null
+                    if (requiredQuantity <= 0.0) {
+                        return@mapNotNull null
+                    }
+                    ProductRecipeIngredient(
+                        ingredientId = ingredient.id,
+                        ingredientName = ingredient.name,
+                        ingredientUnit = ingredient.unit,
+                        requiredQuantity = requiredQuantity
+                    )
+                }.groupBy(ProductRecipeIngredient::ingredientId)
+                    .mapNotNull { (_, ingredients) ->
+                        val first = ingredients.firstOrNull() ?: return@mapNotNull null
+                        first.copy(
+                            requiredQuantity = ingredients.sumOf(ProductRecipeIngredient::requiredQuantity)
+                        )
+                    }
+
+                when {
+                    selectedCategory == null -> {
+                        etProductName.error = getString(R.string.inventory_validation_category_required)
+                    }
+
+                    productName.isBlank() -> {
+                        etProductName.error = getString(R.string.inventory_validation_product_name_required)
+                    }
+
+                    price == null || price <= 0.0 -> {
+                        etPrice.error = getString(R.string.inventory_validation_price_required)
+                    }
+
+                    groupedIngredients.isEmpty() -> {
+                        Snackbar.make(
+                            binding.root,
+                            R.string.inventory_validation_ingredients_required,
+                            Snackbar.LENGTH_LONG
+                        ).show()
+                    }
+
+                    else -> {
+                        val draft = ProductEditorDraft(
+                            productId = product?.productId,
+                            productVariantId = product?.id,
+                            categoryId = selectedCategory.id,
+                            productName = productName,
+                            variantName = variantName,
+                            price = price,
+                            ingredients = groupedIngredients
+                        )
+
+                        if (product == null) {
+                            viewModel.addProduct(draft)
+                        } else {
+                            viewModel.updateProduct(draft)
+                        }
+                        dialog.dismiss()
+                    }
+                }
+            }
+        }
+
+        dialog.show()
+    }
+
+    private fun createLabeledSpinner(
+        container: LinearLayout,
+        label: String,
+        options: List<String>,
+        selectedIndex: Int = 0
+    ): Spinner {
+        val ctx = requireContext()
+        val labelView = TextView(ctx).apply {
+            text = label
+            textSize = 12f
+            setTextColor(ContextCompat.getColor(ctx, R.color.pos_text_secondary))
+            setPadding(0, dpToPx(8), 0, dpToPx(4))
+        }
+        container.addView(labelView)
+
+        return Spinner(ctx).apply {
+            adapter = ArrayAdapter(
+                ctx,
+                android.R.layout.simple_spinner_item,
+                options
+            ).also { adapter ->
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            }
+            setSelection(selectedIndex.coerceIn(0, options.lastIndex.coerceAtLeast(0)))
+            setBackgroundResource(R.drawable.bg_input_field)
+            container.addView(this)
+        }
+    }
+
     private fun createLabeledField(
         container: LinearLayout,
         label: String,
@@ -475,6 +827,16 @@ class InventoryFragment : Fragment() {
         return (dp * resources.displayMetrics.density).toInt()
     }
 
+    private fun formatQuantity(quantity: Double): String {
+        return if (quantity % 1.0 == 0.0) {
+            quantity.toInt().toString()
+        } else {
+            String.format(Locale.getDefault(), "%.2f", quantity)
+                .trimEnd('0')
+                .trimEnd('.')
+        }
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
@@ -483,4 +845,10 @@ class InventoryFragment : Fragment() {
     private companion object {
         const val ALL_CATEGORY = "All"
     }
+
+    private data class ProductIngredientRowHolder(
+        val container: View,
+        val ingredientSpinner: Spinner,
+        val quantityInput: EditText
+    )
 }

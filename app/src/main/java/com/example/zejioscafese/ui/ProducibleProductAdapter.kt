@@ -3,6 +3,7 @@ package com.example.zejioscafese.ui
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageButton
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
@@ -11,32 +12,59 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.zejioscafese.R
 import com.example.zejioscafese.inventory.data.model.ProducibleProduct
 
-class ProducibleProductAdapter :
+class ProducibleProductAdapter(
+    private val onViewIngredientsClick: (ProducibleProduct) -> Unit,
+    private val onEditClick: (ProducibleProduct) -> Unit,
+    private val onDeleteClick: (ProducibleProduct) -> Unit
+) :
     ListAdapter<ProducibleProduct, ProducibleProductAdapter.ProducibleProductViewHolder>(DiffCallback) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ProducibleProductViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_producible_product, parent, false)
-        return ProducibleProductViewHolder(view)
+        return ProducibleProductViewHolder(
+            itemView = view,
+            onViewIngredientsClick = onViewIngredientsClick,
+            onEditClick = onEditClick,
+            onDeleteClick = onDeleteClick
+        )
     }
 
     override fun onBindViewHolder(holder: ProducibleProductViewHolder, position: Int) {
         holder.bind(getItem(position))
     }
 
-    class ProducibleProductViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+    class ProducibleProductViewHolder(
+        itemView: View,
+        private val onViewIngredientsClick: (ProducibleProduct) -> Unit,
+        private val onEditClick: (ProducibleProduct) -> Unit,
+        private val onDeleteClick: (ProducibleProduct) -> Unit
+    ) : RecyclerView.ViewHolder(itemView) {
 
         private val tvCategory: TextView = itemView.findViewById(R.id.tvProducibleCategory)
         private val tvName: TextView = itemView.findViewById(R.id.tvProducibleName)
+        private val tvVariant: TextView = itemView.findViewById(R.id.tvProducibleVariant)
         private val tvPrice: TextView = itemView.findViewById(R.id.tvProduciblePrice)
         private val tvEstimatedValue: TextView = itemView.findViewById(R.id.tvProducibleValue)
         private val tvQuantity: TextView = itemView.findViewById(R.id.tvProducibleQuantity)
         private val tvStatus: TextView = itemView.findViewById(R.id.tvProducibleStatus)
+        private val btnViewIngredients: ImageButton =
+            itemView.findViewById(R.id.btnViewProductIngredients)
+        private val btnEdit: ImageButton = itemView.findViewById(R.id.btnEditProduct)
+        private val btnDelete: ImageButton = itemView.findViewById(R.id.btnDeleteProduct)
 
         fun bind(product: ProducibleProduct) {
             val context = itemView.context
             tvCategory.text = product.category
             tvName.text = product.name
+            tvVariant.text = if (
+                product.variantName.equals("standard", ignoreCase = true) ||
+                product.variantName.equals("combo", ignoreCase = true)
+            ) {
+                context.getString(R.string.inventory_standard_variant)
+            } else {
+                product.variantName
+            }
             tvPrice.text = context.getString(
                 R.string.inventory_producible_price,
                 context.getString(R.string.currency_format, product.price)
@@ -63,6 +91,10 @@ class ProducibleProductAdapter :
             )
             tvStatus.setTextColor(statusColor)
             tvQuantity.setTextColor(statusColor)
+
+            btnViewIngredients.setOnClickListener { onViewIngredientsClick(product) }
+            btnEdit.setOnClickListener { onEditClick(product) }
+            btnDelete.setOnClickListener { onDeleteClick(product) }
         }
     }
 
