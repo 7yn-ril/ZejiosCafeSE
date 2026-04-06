@@ -1694,6 +1694,13 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                         Snackbar.LENGTH_LONG
                     ).show()
                 }
+
+                // Close and reset the cart panel after a successful checkout.
+                // The cart data (items, subtotal, total) is already cleared by
+                // viewModel.clearOrder() inside checkout(), so collapsing the
+                // panel leaves it in its empty state for the next order.
+                setCheckoutExpanded(expanded = false, animate = true)
+
                 viewModel.onCheckoutEventConsumed()
             }
         }
