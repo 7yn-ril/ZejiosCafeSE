@@ -7,8 +7,36 @@
         <item name="colorOnSecondary">@color/white</item>
         <item name="fontFamily">@font/poppins</item>
         <item name="android:fontFamily">@font/poppins</item>
+        <item name="colorSecondaryContainer">#6B3F1F</item>
+        <item name="colorOnSecondaryContainer">@color/white</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@color/pos_background</item>
+
+        <!-- Bottom navigation dynamic theme attributes (light) -->
+        <item name="bottomNavBackground">@color/pos_surface</item>
+        <item name="bottomNavIconTint">#C4A882</item>
+        <item name="bottomNavTextColor">#6B3F1F</item>
+        <item name="bottomNavSelectedItemColor">#FFFFFF</item>
+    </style>
+
+    <!-- Dark theme: inherits light and overrides bottom nav + surface colors -->
+    <style name="Theme.ZejiosCafeSE.Dark" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/pos_primary_soft</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/pos_secondary</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="fontFamily">@font/poppins</item>
+        <item name="android:fontFamily">@font/poppins</item>
+        <item name="colorSecondaryContainer">#A1845E</item>
+        <item name="colorOnSecondaryContainer">@color/white</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">#1C1410</item>
+
+        <!-- Bottom navigation dynamic theme attributes (dark) -->
+        <item name="bottomNavBackground">#2A1F17</item>
+        <item name="bottomNavIconTint">#8C7A68</item>
+        <item name="bottomNavTextColor">#D4A574</item>
+        <item name="bottomNavSelectedItemColor">#2A1F17</item>
     </style>
 
     <style name="ShapeAppearanceOverlay.ZejiosCafe.Image" parent="">

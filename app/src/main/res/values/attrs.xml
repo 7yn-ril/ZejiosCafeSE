@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Custom theme attributes for dynamic bottom navigation coloring -->
+    <attr name="bottomNavBackground" format="color|reference" />
+    <attr name="bottomNavIconTint" format="color|reference" />
+    <attr name="bottomNavTextColor" format="color|reference" />
+    <attr name="bottomNavSelectedItemColor" format="color|reference" />
+</resources>

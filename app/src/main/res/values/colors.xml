@@ -20,6 +20,7 @@
     <color name="pos_text_on_sidebar">#FBF5EE</color>
     <color name="pos_text_on_sidebar_muted">#E3D1BD</color>
     <color name="pos_text_on_light_sidebar">#6E472A</color>
+    <color name="inventory_nav_inactive_bg">#F5EDE5</color>
 
     <color name="pos_chip_bg">#F2E7D9</color>
     <color name="pos_stepper_border">#E3D3C0</color>

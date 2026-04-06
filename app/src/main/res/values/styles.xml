@@ -94,4 +94,16 @@
         <item name="android:textSize">14sp</item>
         <item name="android:textStyle">normal</item>
     </style>
+
+    <style name="ShapeAppearance.Item.Indicator" parent="ShapeAppearance.Material3.Corner.Medium">
+        <item name="cornerSize">24dp</item>
+    </style>
+
+    <!-- Active indicator covers both icon and label text -->
+    <style name="Widget.ZejiosCafe.BottomNav.ActiveIndicator" parent="">
+        <item name="android:width">120dp</item>
+        <item name="android:height">72dp</item>
+        <item name="android:color">?attr/colorSecondaryContainer</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.Item.Indicator</item>
+    </style>
 </resources>

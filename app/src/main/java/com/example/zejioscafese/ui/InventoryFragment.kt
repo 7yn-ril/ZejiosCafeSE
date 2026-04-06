@@ -1,7 +1,10 @@
 package com.example.zejioscafese.ui
 
 import android.app.AlertDialog
+import android.content.res.ColorStateList
+import android.content.res.Configuration
 import android.os.Bundle
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -56,6 +59,7 @@ class InventoryFragment : Fragment() {
         setupRecyclerView()
         setupSearch()
         setupBottomNavigation()
+        applyBottomNavThemeColors()
         setupAddButton()
         setupSortSpinner()
         setupFilterChips()
@@ -821,6 +825,52 @@ class InventoryFragment : Fragment() {
 
     private fun formatCurrency(value: Double): String {
         return String.format(Locale.getDefault(), "PHP %,.2f", value)
+    }
+
+    /**
+     * Runtime fallback: resolves bottom nav colors from the current theme and
+     * applies them programmatically. Handles cases where the system night mode
+     * changes without an Activity recreation.
+     */
+    private fun applyBottomNavThemeColors() {
+        val ctx = requireContext()
+        val nightModeFlags = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+        val isNightMode = nightModeFlags == Configuration.UI_MODE_NIGHT_YES
+
+        // Resolve theme attributes for the current mode
+        val bgColor = resolveThemeColor(R.attr.bottomNavBackground)
+        val iconTint = resolveThemeColor(R.attr.bottomNavIconTint)
+        val textColor = resolveThemeColor(R.attr.bottomNavTextColor)
+        val selectedColor = resolveThemeColor(R.attr.bottomNavSelectedItemColor)
+
+        // Only apply if resolution succeeded (non-zero means the attr was found)
+        if (bgColor != 0 || iconTint != 0 || textColor != 0 || selectedColor != 0) {
+            val bottomNav = binding.bottomInventoryNavigation
+
+            if (bgColor != 0) {
+                bottomNav.setBackgroundColor(bgColor)
+            }
+
+            val states = arrayOf(
+                intArrayOf(android.R.attr.state_checked),
+                intArrayOf(-android.R.attr.state_checked)
+            )
+
+            if (iconTint != 0 && selectedColor != 0) {
+                bottomNav.itemIconTintList = ColorStateList(states, intArrayOf(selectedColor, iconTint))
+            }
+
+            if (textColor != 0) {
+                bottomNav.itemTextColor = ColorStateList(states, intArrayOf(textColor, textColor))
+            }
+        }
+    }
+
+    /** Resolves a theme attribute to its color int value; returns 0 if not found. */
+    private fun resolveThemeColor(attrRes: Int): Int {
+        val typedValue = TypedValue()
+        val resolved = requireContext().theme.resolveAttribute(attrRes, typedValue, true)
+        return if (resolved) typedValue.data else 0
     }
 
     private fun dpToPx(dp: Int): Int {
