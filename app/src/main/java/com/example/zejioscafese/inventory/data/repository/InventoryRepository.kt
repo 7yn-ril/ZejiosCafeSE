@@ -19,8 +19,6 @@ class InventoryRepository(
 ) {
 
     suspend fun fetchIngredients(): List<Ingredient> {
-        ensureAuthenticatedSession()
-
         return supabaseClient
             .from(INGREDIENTS_TABLE)
             .select {
@@ -31,8 +29,6 @@ class InventoryRepository(
     }
 
     suspend fun fetchProducibleProducts(): List<ProducibleProduct> {
-        ensureAuthenticatedSession()
-
         return supabaseClient
             .from(PRODUCIBLE_PRODUCTS_VIEW)
             .select {
