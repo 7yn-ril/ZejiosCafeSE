@@ -118,46 +118,34 @@
                     android:textColor="@color/pos_text_secondary"
                     android:textStyle="normal" />
 
-                <com.google.android.material.button.MaterialButtonToggleGroup
-                    android:id="@+id/togglePeriodGroup"
-                    android:layout_width="wrap_content"
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilDashboardChartPeriod"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:layout_width="152dp"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    app:singleSelection="true">
+                    android:hint="@string/reports_range_label"
+                    app:boxBackgroundColor="@color/pos_surface"
+                    app:boxCornerRadiusBottomEnd="18dp"
+                    app:boxCornerRadiusBottomStart="18dp"
+                    app:boxCornerRadiusTopEnd="18dp"
+                    app:boxCornerRadiusTopStart="18dp"
+                    app:boxStrokeColor="@color/pos_border"
+                    app:boxStrokeWidth="1dp"
+                    app:boxStrokeWidthFocused="1dp">
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnChartDaily"
-                        style="@style/Widget.Material3.Button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="40dp"
-                        android:minWidth="0dp"
-                        android:text="@string/daily"
-                        android:textAllCaps="false"
-                        android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
-                        app:cornerRadius="14dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnChartWeekly"
-                        style="@style/Widget.Material3.Button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="40dp"
-                        android:minWidth="0dp"
-                        android:text="@string/weekly"
-                        android:textAllCaps="false"
-                        android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
-                        app:cornerRadius="14dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnChartMonthly"
-                        style="@style/Widget.Material3.Button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="40dp"
-                        android:minWidth="0dp"
-                        android:text="@string/monthly"
-                        android:textAllCaps="false"
-                        android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
-                        app:cornerRadius="14dp" />
-                </com.google.android.material.button.MaterialButtonToggleGroup>
+                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                        android:id="@+id/dropdownDashboardChartPeriod"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:completionThreshold="1"
+                        android:dropDownHeight="wrap_content"
+                        android:inputType="none"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp"
+                        android:textColor="@color/pos_text_primary"
+                        android:textSize="13sp" />
+                </com.google.android.material.textfield.TextInputLayout>
 
                 <com.github.mikephil.charting.charts.LineChart
                     android:id="@+id/chartSalesPerformance"

@@ -14,6 +14,7 @@ import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
 import android.view.View
+import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -1068,18 +1069,22 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     }
 
     private fun setupDashboardToggle() {
-        binding.dashboardContent.togglePeriodGroup.check(binding.dashboardContent.btnChartDaily.id)
-        binding.dashboardContent.togglePeriodGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (!isChecked) return@addOnButtonCheckedListener
-            selectedDashboardPeriod = when (checkedId) {
-                binding.dashboardContent.btnChartWeekly.id -> DashboardPeriod.WEEKLY
-                binding.dashboardContent.btnChartMonthly.id -> DashboardPeriod.MONTHLY
-                else -> DashboardPeriod.DAILY
-            }
+        val periods = DashboardPeriod.entries.toTypedArray()
+        val labels = periods.map { getString(it.labelRes) }
+        val adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_dropdown_item_1line,
+            labels
+        )
+        binding.dashboardContent.dropdownDashboardChartPeriod.setAdapter(adapter)
+        binding.dashboardContent.dropdownDashboardChartPeriod.setText(
+            getString(selectedDashboardPeriod.labelRes),
+            false
+        )
+        binding.dashboardContent.dropdownDashboardChartPeriod.setOnItemClickListener { _, _, position, _ ->
+            selectedDashboardPeriod = periods[position]
             updateDashboardChart(selectedDashboardPeriod)
-            styleDashboardToggleButtons()
         }
-        styleDashboardToggleButtons()
     }
 
     private fun updateDashboardChart(period: DashboardPeriod) {
@@ -1108,26 +1113,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         binding.dashboardContent.chartSalesPerformance.data = LineData(dataSet)
         binding.dashboardContent.chartSalesPerformance.animateX(400)
         binding.dashboardContent.chartSalesPerformance.invalidate()
-    }
-
-    private fun styleDashboardToggleButtons() {
-        val selectedBg = ContextCompat.getColor(this, R.color.pos_primary)
-        val unselectedBg = ContextCompat.getColor(this, R.color.pos_surface_soft)
-        val selectedText = ContextCompat.getColor(this, R.color.white)
-        val unselectedText = ContextCompat.getColor(this, R.color.pos_text_primary)
-        val stroke = ContextCompat.getColor(this, R.color.pos_border)
-
-        listOf(
-            binding.dashboardContent.btnChartDaily,
-            binding.dashboardContent.btnChartWeekly,
-            binding.dashboardContent.btnChartMonthly
-        ).forEach { button ->
-            val checked = binding.dashboardContent.togglePeriodGroup.checkedButtonId == button.id
-            button.backgroundTintList = ColorStateList.valueOf(if (checked) selectedBg else unselectedBg)
-            button.setTextColor(if (checked) selectedText else unselectedText)
-            button.strokeColor = ColorStateList.valueOf(if (checked) selectedBg else stroke)
-            button.strokeWidth = if (checked) 0 else resources.getDimensionPixelSize(R.dimen.payment_button_stroke_width)
-        }
     }
 
     private fun setupSidebar() {

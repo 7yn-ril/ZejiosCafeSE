@@ -106,4 +106,21 @@
         <item name="android:color">?attr/colorSecondaryContainer</item>
         <item name="shapeAppearance">@style/ShapeAppearance.Item.Indicator</item>
     </style>
+
+    <style name="Widget.ZejiosCafe.BottomNav.NoIndicator" parent="">
+        <item name="android:width">1dp</item>
+        <item name="android:height">1dp</item>
+        <item name="android:color">@android:color/transparent</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.Item.Indicator</item>
+    </style>
+
+    <style name="Widget.ZejiosCafe.ReportSegmentedButton" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:minWidth">0dp</item>
+        <item name="android:minHeight">40dp</item>
+        <item name="android:textSize">13sp</item>
+        <item name="textAllCaps">false</item>
+        <item name="android:paddingStart">14dp</item>
+        <item name="android:paddingEnd">14dp</item>
+        <item name="strokeWidth">1dp</item>
+    </style>
 </resources>

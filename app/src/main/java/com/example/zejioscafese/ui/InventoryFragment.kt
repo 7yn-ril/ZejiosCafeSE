@@ -240,7 +240,7 @@ class InventoryFragment : Fragment() {
             renderCurrentMetrics()
         }
 
-        viewModel.estimatedProductionValue.observe(viewLifecycleOwner) {
+        viewModel.averageProduciblePrice.observe(viewLifecycleOwner) {
             renderCurrentMetrics()
         }
 
@@ -358,7 +358,7 @@ class InventoryFragment : Fragment() {
                 binding.tvLowStockCount.text =
                     (viewModel.outOfStockProducts.value?.size ?: 0).toString()
                 binding.tvInventoryValue.text =
-                    formatCurrency(viewModel.estimatedProductionValue.value ?: 0.0)
+                    formatCurrency(viewModel.averageProduciblePrice.value ?: 0.0)
             }
         }
     }
@@ -861,17 +861,11 @@ class InventoryFragment : Fragment() {
      * changes without an Activity recreation.
      */
     private fun applyBottomNavThemeColors() {
-        val ctx = requireContext()
-        val nightModeFlags = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-        val isNightMode = nightModeFlags == Configuration.UI_MODE_NIGHT_YES
-
-        // Resolve theme attributes for the current mode
         val bgColor = resolveThemeColor(R.attr.bottomNavBackground)
         val iconTint = resolveThemeColor(R.attr.bottomNavIconTint)
         val textColor = resolveThemeColor(R.attr.bottomNavTextColor)
         val selectedColor = resolveThemeColor(R.attr.bottomNavSelectedItemColor)
 
-        // Only apply if resolution succeeded (non-zero means the attr was found)
         if (bgColor != 0 || iconTint != 0 || textColor != 0 || selectedColor != 0) {
             val bottomNav = binding.bottomInventoryNavigation
 
@@ -889,7 +883,7 @@ class InventoryFragment : Fragment() {
             }
 
             if (textColor != 0) {
-                bottomNav.itemTextColor = ColorStateList(states, intArrayOf(textColor, textColor))
+                bottomNav.itemTextColor = ColorStateList(states, intArrayOf(selectedColor, textColor))
             }
         }
     }

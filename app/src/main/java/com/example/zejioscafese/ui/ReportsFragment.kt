@@ -1,5 +1,6 @@
 package com.example.zejioscafese.ui
 
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -14,6 +15,8 @@ import androidx.fragment.app.viewModels
 import com.example.zejioscafese.R
 import com.example.zejioscafese.databinding.FragmentReportsBinding
 import com.example.zejioscafese.pos.data.model.CategorySalesRecord
+import com.example.zejioscafese.reports.data.model.ReportTransaction
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.snackbar.Snackbar
 import java.util.Locale
 
@@ -25,11 +28,24 @@ class ReportsFragment : Fragment() {
 
     private val categoryColors by lazy {
         mapOf(
-            "Drinks" to ContextCompat.getColor(requireContext(), R.color.cat_drinks),
-            "Meals" to ContextCompat.getColor(requireContext(), R.color.cat_meals),
-            "Desserts" to ContextCompat.getColor(requireContext(), R.color.cat_desserts),
-            "Snacks" to ContextCompat.getColor(requireContext(), R.color.cat_snacks),
-            "Specials" to ContextCompat.getColor(requireContext(), R.color.cat_specials)
+            "Milk Tea" to ContextCompat.getColor(requireContext(), R.color.cat_drinks),
+            "Coffee" to ContextCompat.getColor(requireContext(), R.color.pos_primary),
+            "Non-Coffee" to ContextCompat.getColor(requireContext(), R.color.cat_specials),
+            "Burgers" to ContextCompat.getColor(requireContext(), R.color.cat_meals),
+            "Wings" to ContextCompat.getColor(requireContext(), R.color.cat_snacks),
+            "Rice Meals" to ContextCompat.getColor(requireContext(), R.color.cat_meals),
+            "Appetizers & Sides" to ContextCompat.getColor(requireContext(), R.color.cat_desserts),
+            "Combo Meals" to ContextCompat.getColor(requireContext(), R.color.pos_secondary)
+        )
+    }
+    private val fallbackCategoryPalette by lazy {
+        listOf(
+            ContextCompat.getColor(requireContext(), R.color.cat_drinks),
+            ContextCompat.getColor(requireContext(), R.color.cat_meals),
+            ContextCompat.getColor(requireContext(), R.color.cat_desserts),
+            ContextCompat.getColor(requireContext(), R.color.cat_snacks),
+            ContextCompat.getColor(requireContext(), R.color.cat_specials),
+            ContextCompat.getColor(requireContext(), R.color.pos_secondary)
         )
     }
 
@@ -50,15 +66,22 @@ class ReportsFragment : Fragment() {
         observeViewModel()
     }
 
+    override fun onResume() {
+        super.onResume()
+        viewModel.refreshReports()
+    }
+
     private fun setupDateRangeButtons() {
-        binding.btnToday.setOnClickListener {
-            viewModel.setDateRange(ReportsViewModel.DateRange.TODAY)
-        }
-        binding.btnThisWeek.setOnClickListener {
-            viewModel.setDateRange(ReportsViewModel.DateRange.THIS_WEEK)
-        }
-        binding.btnThisMonth.setOnClickListener {
-            viewModel.setDateRange(ReportsViewModel.DateRange.THIS_MONTH)
+        binding.toggleReportRangeGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+
+            val range = when (checkedId) {
+                R.id.btnReportHourly -> ReportsViewModel.DateRange.HOURLY
+                R.id.btnReportWeekly -> ReportsViewModel.DateRange.WEEKLY
+                R.id.btnReportMonthly -> ReportsViewModel.DateRange.MONTHLY
+                else -> ReportsViewModel.DateRange.DAILY
+            }
+            viewModel.setDateRange(range)
         }
     }
 
@@ -100,26 +123,79 @@ class ReportsFragment : Fragment() {
         viewModel.transactions.observe(viewLifecycleOwner) { transactions ->
             buildTransactionTable(transactions)
         }
+
+        viewModel.reportError.observe(viewLifecycleOwner) { errorMessage ->
+            if (!errorMessage.isNullOrBlank()) {
+                Snackbar.make(binding.root, errorMessage, Snackbar.LENGTH_LONG).show()
+                viewModel.onReportErrorConsumed()
+            }
+        }
     }
 
     private fun updateDateRangeUI(range: ReportsViewModel.DateRange) {
-        val buttons = listOf(
-            binding.btnToday to ReportsViewModel.DateRange.TODAY,
-            binding.btnThisWeek to ReportsViewModel.DateRange.THIS_WEEK,
-            binding.btnThisMonth to ReportsViewModel.DateRange.THIS_MONTH
+        val selectedButtonId = when (range) {
+            ReportsViewModel.DateRange.HOURLY -> R.id.btnReportHourly
+            ReportsViewModel.DateRange.DAILY -> R.id.btnReportDaily
+            ReportsViewModel.DateRange.WEEKLY -> R.id.btnReportWeekly
+            ReportsViewModel.DateRange.MONTHLY -> R.id.btnReportMonthly
+        }
+
+        if (binding.toggleReportRangeGroup.checkedButtonId != selectedButtonId) {
+            binding.toggleReportRangeGroup.check(selectedButtonId)
+        }
+
+        styleDateRangeButtons(selectedButtonId)
+        binding.tvRevenueTrendSubtitle.setText(range.subtitleRes)
+    }
+
+    private fun styleDateRangeButtons(selectedButtonId: Int) {
+        val selectedBackground = ColorStateList.valueOf(
+            ContextCompat.getColor(requireContext(), R.color.pos_primary)
         )
-        buttons.forEach { (btn, r) ->
-            val isActive = r == range
-            btn.setBackgroundResource(
-                if (isActive) R.drawable.bg_date_selector_active else R.drawable.bg_date_selector
-            )
-            btn.setTextColor(
-                ContextCompat.getColor(
-                    requireContext(),
-                    if (isActive) R.color.white else R.color.pos_text_primary
-                )
+        val unselectedBackground = ColorStateList.valueOf(
+            ContextCompat.getColor(requireContext(), R.color.pos_surface)
+        )
+        val selectedTextColor = ContextCompat.getColor(requireContext(), R.color.white)
+        val unselectedTextColor = ContextCompat.getColor(requireContext(), R.color.pos_text_secondary)
+        val selectedStroke = ColorStateList.valueOf(
+            ContextCompat.getColor(requireContext(), R.color.pos_primary)
+        )
+        val unselectedStroke = ColorStateList.valueOf(
+            ContextCompat.getColor(requireContext(), R.color.pos_border)
+        )
+
+        listOf(
+            binding.btnReportHourly,
+            binding.btnReportDaily,
+            binding.btnReportWeekly,
+            binding.btnReportMonthly
+        ).forEach { button ->
+            styleDateRangeButton(
+                button = button,
+                selected = button.id == selectedButtonId,
+                selectedBackground = selectedBackground,
+                unselectedBackground = unselectedBackground,
+                selectedTextColor = selectedTextColor,
+                unselectedTextColor = unselectedTextColor,
+                selectedStroke = selectedStroke,
+                unselectedStroke = unselectedStroke
             )
         }
+    }
+
+    private fun styleDateRangeButton(
+        button: MaterialButton,
+        selected: Boolean,
+        selectedBackground: ColorStateList,
+        unselectedBackground: ColorStateList,
+        selectedTextColor: Int,
+        unselectedTextColor: Int,
+        selectedStroke: ColorStateList,
+        unselectedStroke: ColorStateList
+    ) {
+        button.backgroundTintList = if (selected) selectedBackground else unselectedBackground
+        button.setTextColor(if (selected) selectedTextColor else unselectedTextColor)
+        button.strokeColor = if (selected) selectedStroke else unselectedStroke
     }
 
     private fun buildCategoryBreakdown(categories: List<CategorySalesRecord>) {
@@ -127,9 +203,20 @@ class ReportsFragment : Fragment() {
         container.removeAllViews()
         val ctx = requireContext()
 
+        if (categories.isEmpty()) {
+            container.addView(
+                TextView(ctx).apply {
+                    text = getString(R.string.reports_empty_categories)
+                    textSize = 13f
+                    setTextColor(ContextCompat.getColor(ctx, R.color.pos_text_secondary))
+                }
+            )
+            return
+        }
+
         val maxRevenue = categories.maxOfOrNull { it.totalRevenue } ?: 1.0
 
-        categories.forEach { record ->
+        categories.forEachIndexed { index, record ->
             val rowLayout = LinearLayout(ctx).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(0, dpToPx(6), 0, dpToPx(6))
@@ -170,7 +257,7 @@ class ReportsFragment : Fragment() {
                 layoutParams = FrameLayout.LayoutParams(0, FrameLayout.LayoutParams.MATCH_PARENT)
                 setBackgroundResource(R.drawable.bg_stock_bar_fill)
                 val color = categoryColors[record.categoryName]
-                    ?: ContextCompat.getColor(ctx, R.color.chart_bar)
+                    ?: fallbackCategoryPalette[index % fallbackCategoryPalette.size]
                 backgroundTintList = android.content.res.ColorStateList.valueOf(color)
 
                 post {
@@ -185,10 +272,22 @@ class ReportsFragment : Fragment() {
         }
     }
 
-    private fun buildTransactionTable(transactions: List<ReportsViewModel.TransactionRecord>) {
+    private fun buildTransactionTable(transactions: List<ReportTransaction>) {
         val container = binding.transactionTableBody
         container.removeAllViews()
         val ctx = requireContext()
+
+        if (transactions.isEmpty()) {
+            container.addView(
+                TextView(ctx).apply {
+                    text = getString(R.string.reports_empty_transactions)
+                    textSize = 13f
+                    setTextColor(ContextCompat.getColor(ctx, R.color.pos_text_secondary))
+                    setPadding(dpToPx(12), dpToPx(14), dpToPx(12), dpToPx(6))
+                }
+            )
+            return
+        }
 
         transactions.forEachIndexed { index, tx ->
             // Row

@@ -12,7 +12,6 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- Header Card -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -36,7 +35,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Reports"
+                        android:text="@string/reports"
                         android:textColor="@color/pos_text_primary"
                         android:textSize="22sp"
                         android:textStyle="bold" />
@@ -45,76 +44,65 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="Financial overview"
+                        android:text="@string/reports_financial_overview"
                         android:textColor="@color/pos_text_secondary"
                         android:textSize="13sp" />
                 </LinearLayout>
 
-                <!-- Date Range Selector -->
-                <LinearLayout
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/toggleReportRangeGroup"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                    app:checkedButton="@+id/btnReportDaily"
+                    app:selectionRequired="true"
+                    app:singleSelection="true">
 
-                    <TextView
-                        android:id="@+id/btnToday"
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnReportHourly"
+                        style="@style/Widget.ZejiosCafe.ReportSegmentedButton"
                         android:layout_width="wrap_content"
-                        android:layout_height="36dp"
-                        android:background="@drawable/bg_date_selector"
-                        android:gravity="center"
-                        android:paddingStart="14dp"
-                        android:paddingEnd="14dp"
-                        android:text="Today"
-                        android:textColor="@color/pos_text_primary"
-                        android:textSize="13sp" />
+                        android:layout_height="wrap_content"
+                        android:text="@string/reports_range_hourly" />
 
-                    <TextView
-                        android:id="@+id/btnThisWeek"
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnReportDaily"
+                        style="@style/Widget.ZejiosCafe.ReportSegmentedButton"
                         android:layout_width="wrap_content"
-                        android:layout_height="36dp"
-                        android:layout_marginStart="6dp"
-                        android:background="@drawable/bg_date_selector"
-                        android:gravity="center"
-                        android:paddingStart="14dp"
-                        android:paddingEnd="14dp"
-                        android:text="This Week"
-                        android:textColor="@color/pos_text_primary"
-                        android:textSize="13sp" />
+                        android:layout_height="wrap_content"
+                        android:text="@string/reports_range_daily" />
 
-                    <TextView
-                        android:id="@+id/btnThisMonth"
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnReportWeekly"
+                        style="@style/Widget.ZejiosCafe.ReportSegmentedButton"
                         android:layout_width="wrap_content"
-                        android:layout_height="36dp"
-                        android:layout_marginStart="6dp"
-                        android:background="@drawable/bg_date_selector_active"
-                        android:gravity="center"
-                        android:paddingStart="14dp"
-                        android:paddingEnd="14dp"
-                        android:text="This Month"
-                        android:textColor="@color/white"
-                        android:textSize="13sp" />
-                </LinearLayout>
+                        android:layout_height="wrap_content"
+                        android:text="@string/reports_range_weekly" />
 
-                <!-- Export Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnReportMonthly"
+                        style="@style/Widget.ZejiosCafe.ReportSegmentedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/reports_range_monthly" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnExport"
                     style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="wrap_content"
                     android:layout_height="36dp"
                     android:layout_marginStart="12dp"
-                    android:text="Export"
+                    android:text="@string/reports_export"
                     android:textSize="13sp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- KPI Summary Cards -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:orientation="horizontal">
 
-            <!-- Total Revenue -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -132,7 +120,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Total Revenue"
+                        android:text="@string/reports_metric_total_revenue"
                         android:textColor="@color/pos_text_secondary"
                         android:textSize="12sp" />
 
@@ -141,7 +129,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="PHP 0.00"
+                        android:text="@string/reports_zero_currency"
                         android:textColor="@color/pos_secondary"
                         android:textSize="20sp"
                         android:textStyle="bold" />
@@ -150,13 +138,12 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="Gross sales"
+                        android:text="@string/reports_metric_total_revenue_subtitle"
                         android:textColor="@color/pos_secondary"
                         android:textSize="11sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Total Orders -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -175,7 +162,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Total Orders"
+                        android:text="@string/reports_metric_total_orders"
                         android:textColor="@color/pos_text_secondary"
                         android:textSize="12sp" />
 
@@ -193,13 +180,12 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="Total transactions"
+                        android:text="@string/reports_metric_total_orders_subtitle"
                         android:textColor="@color/pos_text_secondary"
                         android:textSize="11sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Avg Order Value -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -218,7 +204,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Avg. Order Value"
+                        android:text="@string/reports_metric_avg_order"
                         android:textColor="@color/pos_text_secondary"
                         android:textSize="12sp" />
 
@@ -227,7 +213,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="PHP 0.00"
+                        android:text="@string/reports_zero_currency"
                         android:textColor="@color/pos_primary"
                         android:textSize="20sp"
                         android:textStyle="bold" />
@@ -236,13 +222,12 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="Per transaction"
+                        android:text="@string/reports_metric_avg_order_subtitle"
                         android:textColor="@color/pos_text_secondary"
                         android:textSize="11sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Best-Selling Category -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -261,7 +246,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Best Seller"
+                        android:text="@string/reports_metric_best_seller"
                         android:textColor="@color/pos_text_secondary"
                         android:textSize="12sp" />
 
@@ -270,7 +255,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="N/A"
+                        android:text="@string/reports_best_seller_empty"
                         android:textColor="@color/pos_primary"
                         android:textSize="20sp"
                         android:textStyle="bold" />
@@ -279,14 +264,13 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="Top category"
+                        android:text="@string/reports_metric_best_seller_subtitle"
                         android:textColor="@color/pos_text_secondary"
                         android:textSize="11sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
 
-        <!-- Section 1: Revenue Trend (Canvas bar chart) -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -304,16 +288,17 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Revenue Trend"
+                    android:text="@string/reports_revenue_trend_title"
                     android:textColor="@color/pos_text_primary"
                     android:textSize="16sp"
                     android:textStyle="bold" />
 
                 <TextView
+                    android:id="@+id/tvRevenueTrendSubtitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="Daily revenue for selected period"
+                    android:text="@string/reports_granularity_daily_subtitle"
                     android:textColor="@color/pos_text_secondary"
                     android:textSize="12sp" />
 
@@ -325,7 +310,6 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Section 2: Sales by Category -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -343,7 +327,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Sales by Category"
+                    android:text="@string/reports_sales_by_category_title"
                     android:textColor="@color/pos_text_primary"
                     android:textSize="16sp"
                     android:textStyle="bold" />
@@ -357,7 +341,6 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Section 3: Recent Transactions -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -376,12 +359,11 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Recent Transactions"
+                    android:text="@string/reports_recent_transactions_title"
                     android:textColor="@color/pos_text_primary"
                     android:textSize="16sp"
                     android:textStyle="bold" />
 
-                <!-- Table Header -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -394,7 +376,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Order ID"
+                        android:text="@string/order_id_label"
                         android:textColor="@color/pos_text_secondary"
                         android:textSize="12sp"
                         android:textStyle="bold" />
@@ -403,7 +385,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1.5"
-                        android:text="Items"
+                        android:text="@string/items_label"
                         android:textColor="@color/pos_text_secondary"
                         android:textSize="12sp"
                         android:textStyle="bold" />
@@ -412,7 +394,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Total (PHP)"
+                        android:text="@string/reports_total_php_label"
                         android:textColor="@color/pos_text_secondary"
                         android:textSize="12sp"
                         android:textStyle="bold" />
@@ -421,7 +403,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="0.8"
-                        android:text="Status"
+                        android:text="@string/status_label"
                         android:textColor="@color/pos_text_secondary"
                         android:textSize="12sp"
                         android:textStyle="bold" />
@@ -430,13 +412,12 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Date"
+                        android:text="@string/time_label"
                         android:textColor="@color/pos_text_secondary"
                         android:textSize="12sp"
                         android:textStyle="bold" />
                 </LinearLayout>
 
-                <!-- Transaction rows will be added dynamically -->
                 <LinearLayout
                     android:id="@+id/transactionTableBody"
                     android:layout_width="match_parent"

@@ -12,7 +12,7 @@
         android:layout_height="0dp"
         android:fillViewport="true"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/bottomInventoryNavigation">
+        app:layout_constraintBottom_toTopOf="@id/bottomInventoryNavigationCard">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -360,18 +360,38 @@
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
-    <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/bottomInventoryNavigation"
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/bottomInventoryNavigationCard"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:background="?attr/bottomNavBackground"
-        app:itemIconTint="@color/bottomnav_icon_color"
-        app:itemTextColor="@color/bottomnav_text_color"
-        app:itemActiveIndicatorStyle="@style/Widget.ZejiosCafe.BottomNav.ActiveIndicator"
-        app:labelVisibilityMode="labeled"
-        app:menu="@menu/inventory_bottom_navigation"
+        android:layout_marginStart="56dp"
+        android:layout_marginEnd="56dp"
+        android:layout_marginBottom="10dp"
+        app:cardBackgroundColor="@color/pos_background"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <com.google.android.material.bottomnavigation.BottomNavigationView
+            android:id="@+id/bottomInventoryNavigation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            android:minHeight="64dp"
+            android:paddingStart="6dp"
+            android:paddingTop="4dp"
+            android:paddingEnd="6dp"
+            android:paddingBottom="4dp"
+            app:itemBackground="@drawable/bg_bottomnav_item"
+            app:itemHorizontalTranslationEnabled="false"
+            app:itemIconTint="@color/bottomnav_icon_color"
+            app:itemTextColor="@color/bottomnav_text_color"
+            app:itemActiveIndicatorStyle="@style/Widget.ZejiosCafe.BottomNav.NoIndicator"
+            app:labelVisibilityMode="labeled"
+            app:menu="@menu/inventory_bottom_navigation" />
+    </com.google.android.material.card.MaterialCardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

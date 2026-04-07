@@ -18,10 +18,13 @@ import io.github.jan.supabase.postgrest.query.Order
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.OffsetDateTime
+import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.time.format.TextStyle
+import java.time.temporal.TemporalAdjusters
+import java.time.DayOfWeek
 import java.util.Locale
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -43,7 +46,11 @@ class DashboardRepository(
         val yesterday = today.minusDays(1)
         val monthStart = today.withDayOfMonth(1)
         val lastThirtyDaysStart = today.minusDays(29)
-        val lastTwentyEightDaysStart = today.minusDays(27)
+        val lastSevenDaysStart = today.minusDays(6)
+        val lastEightWeeksStart = today
+            .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+            .minusWeeks(7)
+        val lastTwelveMonthsStart = today.withDayOfMonth(1).minusMonths(11)
 
         val rawData = RawDashboardData(
             orders = fetchOrders()
@@ -185,9 +192,10 @@ class DashboardRepository(
         )
 
         val charts = mapOf(
-            DashboardPeriod.DAILY to buildDailyChart(todayCompleted),
-            DashboardPeriod.WEEKLY to buildWeeklyChart(completedOrders, today),
-            DashboardPeriod.MONTHLY to buildMonthlyChart(completedOrders, lastTwentyEightDaysStart)
+            DashboardPeriod.HOURLY to buildHourlyChart(todayCompleted),
+            DashboardPeriod.DAILY to buildDailyChart(completedOrders, lastSevenDaysStart, today),
+            DashboardPeriod.WEEKLY to buildWeeklyChart(completedOrders, lastEightWeeksStart, today),
+            DashboardPeriod.MONTHLY to buildMonthlyChart(completedOrders, lastTwelveMonthsStart, today)
         )
 
         return DashboardSnapshot(
@@ -373,7 +381,7 @@ class DashboardRepository(
         }
     }
 
-    private fun buildDailyChart(todayOrders: List<OrderRecord>): List<DashboardChartPoint> {
+    private fun buildHourlyChart(todayOrders: List<OrderRecord>): List<DashboardChartPoint> {
         val buckets = listOf(8, 10, 12, 14, 16, 18, 20)
         return buckets.mapIndexed { index, hour ->
             val endExclusive = buckets.getOrNull(index + 1) ?: 24
@@ -388,11 +396,11 @@ class DashboardRepository(
         }
     }
 
-    private fun buildWeeklyChart(
+    private fun buildDailyChart(
         completedOrders: List<OrderRecord>,
-        today: LocalDate
+        startDate: LocalDate,
+        endDate: LocalDate
     ): List<DashboardChartPoint> {
-        val startDate = today.minusDays(6)
         return (0L..6L).map { dayOffset ->
             val date = startDate.plusDays(dayOffset)
             DashboardChartPoint(
@@ -405,21 +413,44 @@ class DashboardRepository(
         }
     }
 
-    private fun buildMonthlyChart(
+    private fun buildWeeklyChart(
         completedOrders: List<OrderRecord>,
-        startDate: LocalDate
+        startDate: LocalDate,
+        endDate: LocalDate
     ): List<DashboardChartPoint> {
-        return (0..3).map { weekIndex ->
-            val rangeStart = startDate.plusDays((weekIndex * 7).toLong())
-            val rangeEnd = rangeStart.plusDays(6)
+        val lastWeekStart = endDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        return generateSequence(startDate) { current ->
+            current.plusWeeks(1).takeIf { !it.isAfter(lastWeekStart) }
+        }.map { weekStart ->
+            val weekEnd = weekStart.plusDays(6)
             DashboardChartPoint(
-                label = "W${weekIndex + 1}",
+                label = weekStart.format(WEEK_LABEL_FORMATTER),
                 sales = completedOrders
-                    .filter { it.localDate in rangeStart..rangeEnd }
+                    .filter { it.localDate in weekStart..weekEnd }
                     .sumOf(OrderRecord::total)
                     .toFloat()
             )
-        }
+        }.toList()
+    }
+
+    private fun buildMonthlyChart(
+        completedOrders: List<OrderRecord>,
+        startDate: LocalDate,
+        endDate: LocalDate
+    ): List<DashboardChartPoint> {
+        val startMonth = YearMonth.from(startDate)
+        val endMonth = YearMonth.from(endDate)
+        return generateSequence(startMonth) { current ->
+            current.plusMonths(1).takeIf { !it.isAfter(endMonth) }
+        }.map { month ->
+            DashboardChartPoint(
+                label = month.format(MONTH_LABEL_FORMATTER),
+                sales = completedOrders
+                    .filter { YearMonth.from(it.localDate) == month }
+                    .sumOf(OrderRecord::total)
+                    .toFloat()
+            )
+        }.toList()
     }
 
     private fun formatCurrency(amount: Double): String {
@@ -548,6 +579,10 @@ class DashboardRepository(
 
         val CHART_HOUR_FORMATTER: DateTimeFormatter =
             DateTimeFormatter.ofPattern("ha", Locale.getDefault())
+        val WEEK_LABEL_FORMATTER: DateTimeFormatter =
+            DateTimeFormatter.ofPattern("MMM d", Locale.getDefault())
+        val MONTH_LABEL_FORMATTER: DateTimeFormatter =
+            DateTimeFormatter.ofPattern("MMM", Locale.getDefault())
         val INSIGHT_HOUR_FORMATTER: DateTimeFormatter =
             DateTimeFormatter.ofPattern("h a", Locale.getDefault())
     }

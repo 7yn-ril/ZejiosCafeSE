@@ -51,7 +51,7 @@ object DashboardSampleData {
 
     fun chart(period: DashboardPeriod): List<DashboardChartPoint> {
         return when (period) {
-            DashboardPeriod.DAILY -> listOf(
+            DashboardPeriod.HOURLY -> listOf(
                 DashboardChartPoint("8AM", 2.4f),
                 DashboardChartPoint("10AM", 4.8f),
                 DashboardChartPoint("12PM", 8.7f),
@@ -60,7 +60,7 @@ object DashboardSampleData {
                 DashboardChartPoint("6PM", 10.2f),
                 DashboardChartPoint("8PM", 7.1f)
             )
-            DashboardPeriod.WEEKLY -> listOf(
+            DashboardPeriod.DAILY -> listOf(
                 DashboardChartPoint("Mon", 12.5f),
                 DashboardChartPoint("Tue", 14.2f),
                 DashboardChartPoint("Wed", 13.1f),
@@ -69,11 +69,17 @@ object DashboardSampleData {
                 DashboardChartPoint("Sat", 22.8f),
                 DashboardChartPoint("Sun", 20.3f)
             )
-            DashboardPeriod.MONTHLY -> listOf(
+            DashboardPeriod.WEEKLY -> listOf(
                 DashboardChartPoint("W1", 72f),
                 DashboardChartPoint("W2", 78f),
                 DashboardChartPoint("W3", 81f),
                 DashboardChartPoint("W4", 94f)
+            )
+            DashboardPeriod.MONTHLY -> listOf(
+                DashboardChartPoint("Jan", 248f),
+                DashboardChartPoint("Feb", 262f),
+                DashboardChartPoint("Mar", 279f),
+                DashboardChartPoint("Apr", 301f)
             )
         }
     }

@@ -57,8 +57,8 @@ class InventoryViewModel(
     private val _outOfStockProducts = MutableLiveData<List<ProducibleProduct>>(emptyList())
     val outOfStockProducts: LiveData<List<ProducibleProduct>> = _outOfStockProducts
 
-    private val _estimatedProductionValue = MutableLiveData(0.0)
-    val estimatedProductionValue: LiveData<Double> = _estimatedProductionValue
+    private val _averageProduciblePrice = MutableLiveData(0.0)
+    val averageProduciblePrice: LiveData<Double> = _averageProduciblePrice
 
     private val _totalProducibleProductCount = MutableLiveData(0)
     val totalProducibleProductCount: LiveData<Int> = _totalProducibleProductCount
@@ -446,7 +446,11 @@ class InventoryViewModel(
         _totalInventoryValue.value = allIngredients.sumOf { it.currentStock * it.costPerUnit }
         _totalIngredientCount.value = allIngredients.size
         _outOfStockProducts.value = allProducibleProducts.filter { it.availableQuantity <= 0 }
-        _estimatedProductionValue.value = allProducibleProducts.sumOf { it.estimatedValue }
+        _averageProduciblePrice.value = allProducibleProducts
+            .map(ProducibleProduct::price)
+            .average()
+            .takeUnless(Double::isNaN)
+            ?: 0.0
         _totalProducibleProductCount.value = allProducibleProducts.size
     }
 

@@ -8,12 +8,11 @@ import android.util.AttributeSet
 import android.view.View
 import androidx.core.content.ContextCompat
 import com.example.zejioscafese.R
-import com.example.zejioscafese.pos.data.model.DailySalesRecord
-import java.text.SimpleDateFormat
+import com.example.zejioscafese.reports.data.model.SalesTimelinePoint
 import java.util.Locale
 
 /**
- * A simple Canvas-based vertical bar chart for showing daily revenue.
+ * A simple Canvas-based vertical bar chart for showing revenue across the selected report granularity.
  * No external charting library required.
  */
 class RevenueBarChartView @JvmOverloads constructor(
@@ -22,7 +21,7 @@ class RevenueBarChartView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
-    private var data: List<DailySalesRecord> = emptyList()
+    private var data: List<SalesTimelinePoint> = emptyList()
 
     private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = ContextCompat.getColor(context, R.color.chart_bar)
@@ -54,7 +53,7 @@ class RevenueBarChartView @JvmOverloads constructor(
 
     private val barRadius = 6f
 
-    fun setData(records: List<DailySalesRecord>) {
+    fun setData(records: List<SalesTimelinePoint>) {
         data = records
         invalidate()
     }
@@ -90,9 +89,6 @@ class RevenueBarChartView @JvmOverloads constructor(
         val barWidth = chartWidth / (barCount + (barCount - 1) * totalGapRatio)
         val gapWidth = barWidth * totalGapRatio
 
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val displayFormat = SimpleDateFormat("dd", Locale.getDefault())
-
         data.forEachIndexed { index, record ->
             val barHeight = (record.totalSales / maxSales * chartHeight).toFloat()
             val x = paddingLeft + index * (barWidth + gapWidth)
@@ -104,11 +100,7 @@ class RevenueBarChartView @JvmOverloads constructor(
 
             // Date label below
             if (barCount <= 14 || index % (barCount / 7 + 1) == 0) {
-                try {
-                    val date = dateFormat.parse(record.date)
-                    val dayLabel = if (date != null) displayFormat.format(date) else ""
-                    canvas.drawText(dayLabel, x + barWidth / 2, height.toFloat() - 4f, labelPaint)
-                } catch (_: Exception) { }
+                canvas.drawText(record.label, x + barWidth / 2, height.toFloat() - 4f, labelPaint)
             }
         }
     }

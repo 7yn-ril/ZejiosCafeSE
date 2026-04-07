@@ -1,5 +1,8 @@
 package com.example.zejioscafese.dashboard.model
 
+import androidx.annotation.StringRes
+import com.example.zejioscafese.R
+
 data class DashboardMetric(
     val title: String,
     val value: String,
@@ -91,8 +94,11 @@ enum class AlertLevel {
     CRITICAL
 }
 
-enum class DashboardPeriod {
-    DAILY,
-    WEEKLY,
-    MONTHLY
+enum class DashboardPeriod(
+    @StringRes val labelRes: Int
+) {
+    HOURLY(R.string.hourly),
+    DAILY(R.string.daily),
+    WEEKLY(R.string.weekly),
+    MONTHLY(R.string.monthly)
 }
