@@ -359,6 +359,15 @@
     <string name="dashboard_item_php_1368">PHP 1,368</string>
     <string name="dashboard_item_php_1167">PHP 1,167</string>
 
+    <string name="recent_orders_title">Recent Orders</string>
+    <string name="quick_actions_title">Quick Actions</string>
+    <string name="action_new_order">+ New Order</string>
+    <string name="action_check_inventory">Add Inventory</string>
+    <string name="action_add_staff">Add Staff</string>
+    <string name="action_generate_report">Generate Report</string>
+    <string name="dashboard_recent_order_items_format">%1$d items</string>
+    <string name="dashboard_recent_order_item_single">1 item</string>
+
     <string name="section_ready_title">%1$s Workspace</string>
     <string name="section_ready_message">This screen is ready for the next build phase. It already matches the refreshed POS and dashboard styling so navigation feels complete.</string>
     <string name="section_ready_chip">Design foundation ready</string>
