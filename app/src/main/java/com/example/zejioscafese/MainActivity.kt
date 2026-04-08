@@ -53,6 +53,7 @@ import com.example.zejioscafese.pos.presentation.PosViewModel
 import com.example.zejioscafese.pos.ui.CategoryAdapter
 import com.example.zejioscafese.pos.ui.OrderItemAdapter
 import com.example.zejioscafese.pos.ui.ProductAdapter
+import com.example.zejioscafese.pos.ui.MenuBrowseDialogFragment
 import com.example.zejioscafese.ui.InventoryFragment
 import com.example.zejioscafese.ui.NavigationHost
 import com.example.zejioscafese.ui.ReportsFragment
@@ -151,6 +152,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private var isCheckoutExpanded: Boolean = false
     private var checkoutExpandedGuidePercent: Float = 0.70f
     private var checkoutAnimator: ValueAnimator? = null
+    private val categoryThumbnails = mutableMapOf<String, String?>()
 
     companion object {
         private const val STATE_CURRENT_SECTION = "current_section"
@@ -1132,6 +1134,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
         binding.btnFilterSort.setOnClickListener { showSortMenu(it) }
 
+        binding.btnBrowseMenu.setOnClickListener { showMenuBrowseDialog() }
+
         binding.btnClear.setOnClickListener { viewModel.clearOrder() }
         binding.btnCheckout.setOnClickListener {
             if (viewModel.orderItems.value.isNullOrEmpty()) {
@@ -1599,6 +1603,16 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         return valueView
     }
 
+    private fun showMenuBrowseDialog() {
+        if (supportFragmentManager.findFragmentByTag(MenuBrowseDialogFragment.TAG) != null) {
+            return
+        }
+        val dialog = MenuBrowseDialogFragment().apply {
+            setThumbnails(categoryThumbnails)
+        }
+        dialog.show(supportFragmentManager, MenuBrowseDialogFragment.TAG)
+    }
+
     private fun dpToPx(dp: Int): Int {
         return (dp * resources.displayMetrics.density).toInt()
     }
@@ -1619,6 +1633,12 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         viewModel.products.observe(this) { products ->
             productAdapter.submitList(products)
             binding.rvProducts.scrollToPosition(0)
+            // Accumulate one representative image per category for the picker dialog.
+            products.forEach { product ->
+                if (!categoryThumbnails.containsKey(product.category) && !product.imageUrl.isNullOrBlank()) {
+                    categoryThumbnails[product.category] = product.imageUrl
+                }
+            }
         }
 
         viewModel.productPaginationState.observe(this) { state ->
@@ -1787,9 +1807,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         binding.fragmentContainer.visibility = if (showFragmentScreen) View.VISIBLE else View.GONE
 
         if (showPos) {
-            if (isCheckoutExpanded && isSidebarExpanded) {
-                setSidebarExpanded(expanded = false, animate = false)
-            }
             applyCheckoutPanelState(expanded = isCheckoutExpanded, animate = false)
         } else {
             checkoutAnimator?.cancel()
@@ -1837,9 +1854,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         if (isCheckoutExpanded == expanded && currentSection == Section.POS) {
             return
         }
-        if (expanded && currentSection == Section.POS && isSidebarExpanded) {
-            setSidebarExpanded(expanded = false, animate = animate)
-        }
         isCheckoutExpanded = expanded
         if (currentSection == Section.POS) {
             applyCheckoutPanelState(expanded = expanded, animate = animate)
@@ -1849,9 +1863,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private fun setSidebarExpanded(expanded: Boolean, animate: Boolean) {
         if (isSidebarExpanded == expanded) {
             return
-        }
-        if (expanded && currentSection == Section.POS && isCheckoutExpanded) {
-            setCheckoutExpanded(expanded = false, animate = animate)
         }
         isSidebarExpanded = expanded
         applySidebarState(expanded, animate = animate)

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/categoryPickerCard"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="6dp"
+    app:cardBackgroundColor="@color/pos_surface"
+    app:cardCornerRadius="18dp"
+    app:cardElevation="2dp"
+    app:strokeColor="@color/pos_border"
+    app:strokeWidth="1dp">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <!-- Product image thumbnail -->
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/ivCategoryThumb"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="@drawable/bg_product_placeholder"
+            android:contentDescription="@string/product_image"
+            android:scaleType="centerCrop"
+            app:layout_constraintDimensionRatio="H,16:10"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.ZejiosCafe.Image"
+            tools:src="@drawable/ic_coffee_24" />
+
+        <!-- Selected check overlay -->
+        <View
+            android:id="@+id/selectedOverlay"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="#336B3F1F"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="@id/ivCategoryThumb"
+            app:layout_constraintEnd_toEndOf="@id/ivCategoryThumb"
+            app:layout_constraintStart_toStartOf="@id/ivCategoryThumb"
+            app:layout_constraintTop_toTopOf="@id/ivCategoryThumb" />
+
+        <!-- Category name -->
+        <TextView
+            android:id="@+id/tvCategoryName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="1"
+            android:paddingHorizontal="10dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="12dp"
+            android:textColor="@color/pos_text_primary"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/ivCategoryThumb"
+            tools:text="Coffee" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</com.google.android.material.card.MaterialCardView>
