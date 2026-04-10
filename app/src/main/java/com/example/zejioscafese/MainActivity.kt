@@ -24,6 +24,7 @@ import androidx.activity.viewModels
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
+import androidx.appcompat.widget.TooltipCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePaddingRelative
@@ -152,6 +153,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private var isCheckoutExpanded: Boolean = false
     private var checkoutExpandedGuidePercent: Float = 0.70f
     private var checkoutAnimator: ValueAnimator? = null
+    private var sidebarAnimator: ValueAnimator? = null
     private val categoryThumbnails = mutableMapOf<String, String?>()
 
     companion object {
@@ -163,19 +165,24 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         private const val POS_PAGE_SIZE = 12
     }
 
-    private val sidebarTextViews by lazy {
+    private val sidebarExpandedOnlyViews by lazy {
         listOf<View>(
-            binding.tvSidebarTitle,
-            binding.tvSidebarSubtitle,
+            binding.sidebarHeaderTextContainer,
+            binding.sidebarHeaderDivider,
+            binding.sidebarSectionDivider,
+            binding.profileTextContainer
+        )
+    }
+
+    private val sidebarLabelViews by lazy {
+        listOf<View>(
             binding.tvSidebarDashboard,
             binding.tvSidebarPos,
             binding.tvSidebarOrders,
             binding.tvSidebarInventory,
             binding.tvSidebarReports,
             binding.tvSidebarStaff,
-            binding.tvSidebarSettings,
-            binding.tvProfileName,
-            binding.tvProfileEmail
+            binding.tvSidebarSettings
         )
     }
 
@@ -196,7 +203,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        isSidebarExpanded = savedInstanceState?.getBoolean(STATE_SIDEBAR_EXPANDED) ?: false
+        isSidebarExpanded = savedInstanceState?.getBoolean(STATE_SIDEBAR_EXPANDED)
+            ?: shouldDefaultSidebarBeExpanded()
         captureCheckoutExpandedGuidePercent()
         isCheckoutExpanded = savedInstanceState?.getBoolean(STATE_CHECKOUT_EXPANDED) ?: false
         userProfileState = UserProfileState(
@@ -1123,8 +1131,15 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         }
 
         sidebarItems.forEach { item ->
+            val label = getString(item.section.labelRes)
+            item.row.contentDescription = label
+            TooltipCompat.setTooltipText(item.row, label)
             item.row.setOnClickListener { renderSection(item.section) }
         }
+
+        val profileLabel = getString(R.string.profile)
+        binding.profileCard.contentDescription = profileLabel
+        TooltipCompat.setTooltipText(binding.profileCard, profileLabel)
     }
 
     private fun setupInteractions() {
@@ -1850,6 +1865,10 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         }
     }
 
+    private fun shouldDefaultSidebarBeExpanded(): Boolean {
+        return resources.configuration.smallestScreenWidthDp >= 600
+    }
+
     private fun setCheckoutExpanded(expanded: Boolean, animate: Boolean) {
         if (isCheckoutExpanded == expanded && currentSection == Section.POS) {
             return
@@ -1979,8 +1998,12 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val targetWidth = resources.getDimensionPixelSize(
             if (expanded) R.dimen.sidebar_expanded_width else R.dimen.sidebar_collapsed_width
         )
+        sidebarAnimator?.cancel()
 
-        sidebarTextViews.forEach { view ->
+        sidebarExpandedOnlyViews.forEach { view ->
+            view.visibility = if (expanded) View.VISIBLE else View.GONE
+        }
+        sidebarLabelViews.forEach { view ->
             view.visibility = if (expanded) View.VISIBLE else View.GONE
         }
 
@@ -1999,6 +2022,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         }
 
         binding.profileCard.gravity = if (expanded) Gravity.CENTER_VERTICAL else Gravity.CENTER
+        binding.profileCard.updatePaddingRelative(start = horizontalPadding, end = horizontalPadding)
         binding.profileCard.updateLayoutParams<LinearLayout.LayoutParams> {
             marginStart = rowMargin
             marginEnd = rowMargin
@@ -2007,22 +2031,35 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         binding.mainContainer.updateLayoutParams<androidx.constraintlayout.widget.ConstraintLayout.LayoutParams> {
             marginStart = contentGap
         }
-        binding.btnToggleSidebar.rotation = if (expanded) 0f else 180f
+        binding.btnToggleSidebar.rotation = if (expanded) 90f else -90f
+        updateSidebarToggleAccessibility(expanded)
         applySidebarAppearance(expanded)
 
-        val startWidth = binding.sidebarContainer.layoutParams.width
+        val startWidth = binding.sidebarContainer.width.takeIf { it > 0 }
+            ?: binding.sidebarContainer.layoutParams.width
         if (!animate || startWidth <= 0) {
             binding.sidebarContainer.updateLayoutParams { width = targetWidth }
             return
         }
 
-        ValueAnimator.ofInt(startWidth, targetWidth).apply {
+        sidebarAnimator = ValueAnimator.ofInt(startWidth, targetWidth).apply {
             duration = 220L
             addUpdateListener { animator ->
                 binding.sidebarContainer.updateLayoutParams {
                     width = animator.animatedValue as Int
                 }
             }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationCancel(animation: Animator) {
+                    binding.sidebarContainer.updateLayoutParams { width = targetWidth }
+                    sidebarAnimator = null
+                }
+
+                override fun onAnimationEnd(animation: Animator) {
+                    binding.sidebarContainer.updateLayoutParams { width = targetWidth }
+                    sidebarAnimator = null
+                }
+            })
             start()
         }
     }
@@ -2043,11 +2080,18 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val sidebarText = ContextCompat.getColor(this, R.color.pos_text_on_sidebar)
         val sidebarMuted = ContextCompat.getColor(this, R.color.pos_text_on_sidebar_muted)
         val white = ContextCompat.getColor(this, R.color.white)
+        val selectedBackground = if (expanded) {
+            R.drawable.bg_sidebar_item_selected
+        } else {
+            R.drawable.bg_sidebar_item_selected_compact
+        }
 
         binding.sidebarSurface.setBackgroundResource(R.drawable.bg_sidebar_surface)
         val profileSelected = currentSection == Section.PROFILE
         binding.profileCard.setBackgroundResource(
-            if (profileSelected) R.drawable.bg_sidebar_item_selected else R.drawable.bg_profile_card
+            if (profileSelected) selectedBackground else {
+                if (expanded) R.drawable.bg_profile_card else R.drawable.bg_profile_card_compact
+            }
         )
         binding.ivSidebarLogo.imageTintList = null
         binding.btnToggleSidebar.imageTintList = ColorStateList.valueOf(white)
@@ -2058,12 +2102,20 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
         sidebarItems.forEach { item ->
             val isSelected = item.section == currentSection
-            item.row.setBackgroundResource(if (isSelected) R.drawable.bg_sidebar_item_selected else 0)
+            item.row.setBackgroundResource(if (isSelected) selectedBackground else 0)
             val itemColor = if (isSelected) white else sidebarText
             item.icon.imageTintList = ColorStateList.valueOf(itemColor)
             item.label.setTextColor(itemColor)
             item.label.setTypeface(null, if (isSelected) Typeface.BOLD else Typeface.NORMAL)
         }
+    }
+
+    private fun updateSidebarToggleAccessibility(expanded: Boolean) {
+        val description = getString(
+            if (expanded) R.string.collapse_sidebar else R.string.expand_sidebar
+        )
+        binding.btnToggleSidebar.contentDescription = description
+        TooltipCompat.setTooltipText(binding.btnToggleSidebar, description)
     }
 
     private fun loadSidebarLogo() {

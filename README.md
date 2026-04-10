@@ -42,8 +42,15 @@ You can also provide `SUPABASE_URL` and `SUPABASE_ANON_KEY` through project `gra
 
 Install the generated APK from `app/build/outputs/apk/debug/` on an emulator or device.
 
+To build, recover `adb`, launch `Pixel_Tablet`, install, and open the app in one step:
+
+```powershell
+.\run_pixel_tablet.ps1
+```
+
 ## Common Team Issues
 
 - If the app opens but menu/inventory screens fail, check that `SUPABASE_URL` and `SUPABASE_ANON_KEY` are set locally.
 - If the project does not build, make sure Android SDK Platform 36 is installed in Android Studio SDK Manager.
 - If checkout fails, make sure the shared Supabase project has the SQL migrations and RPC functions already applied.
+- If Android Studio says `adb.exe: device offline`, the build may still be fine and only the deploy step failed. Run `.\run_pixel_tablet.ps1` to restart `adb`, boot the tablet emulator cleanly, reinstall the APK, and relaunch the app.

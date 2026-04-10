@@ -215,6 +215,8 @@
     <string name="receipt_walk_in_customer">Walk-in Customer</string>
 
     <string name="toggle_sidebar">Toggle sidebar</string>
+    <string name="expand_sidebar">Expand sidebar</string>
+    <string name="collapse_sidebar">Collapse sidebar</string>
     <string name="notifications">Notifications</string>
     <string name="cart">Cart</string>
     <string name="close_checkout">Close checkout</string>
