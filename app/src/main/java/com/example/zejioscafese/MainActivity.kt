@@ -147,6 +147,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private var pendingCheckoutReceipt: PendingCheckoutReceipt? = null
     private var dashboardSnapshot: DashboardSnapshot = DashboardSnapshot.empty()
     private var selectedDashboardPeriod: DashboardPeriod = DashboardPeriod.DAILY
+    private var hasRenderedDashboardChart: Boolean = false
 
     private var isSidebarExpanded: Boolean = true
     private var currentSection: Section = Section.POS
@@ -972,7 +973,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         dashboardAlertAdapter.submitList(snapshot.alerts)
         bindDashboardMetrics(snapshot)
         bindDashboardFocus(snapshot.alerts)
-        updateDashboardChart(selectedDashboardPeriod)
+        updateDashboardChart(selectedDashboardPeriod, animate = false)
     }
 
     private fun bindDashboardFocus(alerts: List<com.example.zejioscafese.dashboard.model.DashboardAlert>) {
@@ -1033,12 +1034,13 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     }
 
     private fun bindMetric(
-        valueView: TextView,
-        deltaView: TextView,
+        valueView: TextView?,
+        deltaView: TextView?,
         value: String,
         delta: String,
         positive: Boolean
     ) {
+        if (valueView == null || deltaView == null) return
         valueView.text = value
         deltaView.text = delta
         deltaView.setTextColor(
@@ -1057,11 +1059,13 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             setScaleEnabled(false)
             setPinchZoom(false)
             setNoDataText("")
-            setViewPortOffsets(28f, 18f, 24f, 42f)
+            setViewPortOffsets(22f, 16f, 18f, 34f)
             axisRight.isEnabled = false
             axisLeft.apply {
                 axisMinimum = 0f
+                setLabelCount(4, true)
                 textColor = ContextCompat.getColor(this@MainActivity, R.color.pos_text_secondary)
+                textSize = 11f
                 gridColor = ContextCompat.getColor(this@MainActivity, R.color.pos_border)
                 setDrawAxisLine(false)
             }
@@ -1069,13 +1073,15 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 position = XAxis.XAxisPosition.BOTTOM
                 granularity = 1f
                 textColor = ContextCompat.getColor(this@MainActivity, R.color.pos_text_secondary)
+                textSize = 11f
+                yOffset = 8f
                 gridColor = ContextCompat.getColor(this@MainActivity, R.color.pos_border)
                 setDrawAxisLine(false)
                 setDrawGridLines(false)
             }
         }
 
-        updateDashboardChart(selectedDashboardPeriod)
+        updateDashboardChart(selectedDashboardPeriod, animate = false)
     }
 
     private fun setupDashboardToggle() {
@@ -1093,11 +1099,11 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         )
         binding.dashboardContent.dropdownDashboardChartPeriod.setOnItemClickListener { _, _, position, _ ->
             selectedDashboardPeriod = periods[position]
-            updateDashboardChart(selectedDashboardPeriod)
+            updateDashboardChart(selectedDashboardPeriod, animate = true)
         }
     }
 
-    private fun updateDashboardChart(period: DashboardPeriod) {
+    private fun updateDashboardChart(period: DashboardPeriod, animate: Boolean = false) {
         val points = dashboardSnapshot.charts[period].orEmpty()
         val entries = points.mapIndexed { index, point -> Entry(index.toFloat(), point.sales) }
         val labels = points.map { it.label }
@@ -1107,27 +1113,41 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
         val dataSet = LineDataSet(entries, getString(R.string.revenue)).apply {
             color = lineColor
-            lineWidth = 3f
-            setCircleColor(lineColor)
-            circleRadius = 4f
-            circleHoleRadius = 2f
-            setCircleHoleColor(ContextCompat.getColor(this@MainActivity, R.color.white))
+            lineWidth = 2.5f
+            setDrawCircles(false)
             setDrawValues(false)
             setDrawFilled(true)
             fillColor = fillShade
-            fillAlpha = 110
+            fillAlpha = 88
+            setDrawHorizontalHighlightIndicator(false)
+            setDrawVerticalHighlightIndicator(false)
             mode = LineDataSet.Mode.CUBIC_BEZIER
         }
 
         binding.dashboardContent.chartSalesPerformance.xAxis.valueFormatter = IndexAxisValueFormatter(labels)
         binding.dashboardContent.chartSalesPerformance.data = LineData(dataSet)
-        binding.dashboardContent.chartSalesPerformance.animateX(400)
+        if (animate || !hasRenderedDashboardChart) {
+            binding.dashboardContent.chartSalesPerformance.animateX(280)
+            hasRenderedDashboardChart = true
+        }
         binding.dashboardContent.chartSalesPerformance.invalidate()
     }
 
     private fun setupSidebar() {
         binding.btnToggleSidebar.setOnClickListener {
-            setSidebarExpanded(expanded = !isSidebarExpanded, animate = true)
+            toggleSidebar(animate = true)
+        }
+        binding.sidebarHeader.setOnClickListener {
+            toggleSidebar(animate = true)
+        }
+        binding.sidebarHeaderTapArea.setOnClickListener {
+            toggleSidebar(animate = true)
+        }
+        binding.ivSidebarLogo.setOnClickListener {
+            toggleSidebar(animate = true)
+        }
+        binding.sidebarHeaderTextContainer.setOnClickListener {
+            toggleSidebar(animate = true)
         }
 
         sidebarItems.forEach { item ->
@@ -1887,6 +1907,14 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         applySidebarState(expanded, animate = animate)
     }
 
+    private fun toggleSidebar(animate: Boolean) {
+        val collapsedWidth = resources.getDimensionPixelSize(R.dimen.sidebar_collapsed_width)
+        val currentWidth = binding.sidebarContainer.width.takeIf { it > 0 }
+            ?: binding.sidebarContainer.layoutParams.width
+        val currentlyExpanded = currentWidth > collapsedWidth || binding.btnToggleSidebar.visibility == View.VISIBLE
+        setSidebarExpanded(expanded = !currentlyExpanded, animate = animate)
+    }
+
     private fun applyCheckoutPanelState(expanded: Boolean, animate: Boolean) {
         val guideParams = binding.contentGuide.layoutParams as? ConstraintLayout.LayoutParams ?: return
         val targetPercent = if (expanded) checkoutExpandedGuidePercent else CHECKOUT_COLLAPSED_GUIDE_PERCENT
@@ -1995,6 +2023,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     }
 
     private fun applySidebarState(expanded: Boolean, animate: Boolean) {
+        isSidebarExpanded = expanded
         val targetWidth = resources.getDimensionPixelSize(
             if (expanded) R.dimen.sidebar_expanded_width else R.dimen.sidebar_collapsed_width
         )
@@ -2027,7 +2056,15 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             marginStart = rowMargin
             marginEnd = rowMargin
         }
-        val contentGap = if (expanded) 0 else resources.getDimensionPixelSize(R.dimen.main_content_gap_collapsed)
+        binding.btnToggleSidebar.visibility = if (expanded) View.VISIBLE else View.GONE
+        binding.ivSidebarLogo.updateLayoutParams<ConstraintLayout.LayoutParams> {
+            startToStart = ConstraintLayout.LayoutParams.PARENT_ID
+            endToEnd = if (expanded) ConstraintLayout.LayoutParams.UNSET else ConstraintLayout.LayoutParams.PARENT_ID
+            horizontalBias = if (expanded) 0f else 0.5f
+        }
+        val contentGap = resources.getDimensionPixelSize(
+            if (expanded) R.dimen.main_content_gap_expanded else R.dimen.main_content_gap_collapsed
+        )
         binding.mainContainer.updateLayoutParams<androidx.constraintlayout.widget.ConstraintLayout.LayoutParams> {
             marginStart = contentGap
         }
@@ -2090,10 +2127,16 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val profileSelected = currentSection == Section.PROFILE
         binding.profileCard.setBackgroundResource(
             if (profileSelected) selectedBackground else {
-                if (expanded) R.drawable.bg_profile_card else R.drawable.bg_profile_card_compact
+                if (expanded) R.drawable.bg_profile_card else 0
             }
         )
         binding.ivSidebarLogo.imageTintList = null
+        binding.ivProfileAvatar.setBackgroundResource(
+            if (expanded) R.drawable.bg_avatar_circle else 0
+        )
+        binding.ivProfileAvatar.imageTintList = ColorStateList.valueOf(
+            if (expanded) ContextCompat.getColor(this, R.color.pos_primary) else white
+        )
         binding.btnToggleSidebar.imageTintList = ColorStateList.valueOf(white)
         binding.tvSidebarTitle.setTextColor(white)
         binding.tvSidebarSubtitle.setTextColor(sidebarMuted)

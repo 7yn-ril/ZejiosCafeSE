@@ -27,7 +27,7 @@ class DashboardTopItemAdapter :
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(item: DashboardTopItem) {
-            RemoteImageLoader.load(binding.ivTopProduct, item.imageUrl, R.drawable.ic_coffee_24)
+            RemoteImageLoader.load(binding.ivTopProduct, resolveImageUrl(item), R.drawable.ic_coffee_24)
             binding.tvTopProductName.text = item.name
             binding.tvTopProductOrders.text = binding.root.context.getString(
                 R.string.orders_count_format,
@@ -37,6 +37,23 @@ class DashboardTopItemAdapter :
                 R.string.revenue_short_format,
                 item.revenue
             )
+        }
+
+        private fun resolveImageUrl(item: DashboardTopItem): String {
+            val current = item.imageUrl.trim()
+            if (current.isNotEmpty()) return current
+
+            val name = item.name.lowercase()
+            return when {
+                "latte" in name || "cappuccino" in name || "espresso" in name || "coffee" in name ->
+                    "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80"
+                "croissant" in name || "pastry" in name || "muffin" in name || "bread" in name ->
+                    "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=800&q=80"
+                "burger" in name || "sandwich" in name || "panini" in name ->
+                    "https://images.unsplash.com/photo-1550317138-10000687a72b?auto=format&fit=crop&w=800&q=80"
+                else ->
+                    "https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=800&q=80"
+            }
         }
     }
 

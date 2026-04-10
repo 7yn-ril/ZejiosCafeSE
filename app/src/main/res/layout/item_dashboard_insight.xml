@@ -3,9 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="@dimen/content_inline_gap"
-    app:cardBackgroundColor="@color/pos_surface_soft"
-    app:cardCornerRadius="20dp"
+    app:cardBackgroundColor="@color/white"
+    app:cardCornerRadius="22dp"
     app:cardElevation="0dp"
     app:strokeColor="@color/pos_border"
     app:strokeWidth="1dp">
@@ -14,30 +13,38 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
+        android:minHeight="144dp"
         android:padding="16dp">
+
+        <View
+            android:layout_width="34dp"
+            android:layout_height="4dp"
+            android:background="@drawable/bg_hint_chip"
+            android:backgroundTint="@color/pos_secondary" />
 
         <TextView
             android:id="@+id/tvInsightTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
+            android:layout_marginTop="12dp"
+            android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
             android:textColor="@color/pos_text_secondary"
-            android:textStyle="normal" />
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/tvInsightValue"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="10dp"
             android:textAppearance="@style/TextAppearance.ZejiosCafe.Headline"
             android:textColor="@color/pos_text_primary"
-            android:textStyle="normal" />
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/tvInsightSupporting"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="10dp"
             android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
             android:textColor="@color/pos_text_secondary"
             android:textStyle="normal" />

@@ -30,7 +30,9 @@
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:id="@+id/sidebarHeader"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true">
 
                 <ImageView
                     android:id="@+id/ivSidebarLogo"
@@ -44,7 +46,7 @@
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
                     app:layout_constraintBottom_toBottomOf="parent"
-                    app:tint="@color/white" />
+                    app:tint="@color/pos_sidebar_bg" />
 
                 <LinearLayout
                     android:id="@+id/sidebarHeaderTextContainer"
@@ -77,6 +79,18 @@
                         android:textColor="@color/pos_text_on_sidebar_muted"
                         android:textStyle="normal" />
                 </LinearLayout>
+
+                <View
+                    android:id="@+id/sidebarHeaderTapArea"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:background="@android:color/transparent"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
 
                 <ImageButton
                     android:id="@+id/btnToggleSidebar"
@@ -324,6 +338,7 @@
                 android:padding="12dp">
 
                 <ImageView
+                    android:id="@+id/ivProfileAvatar"
                     android:layout_width="34dp"
                     android:layout_height="34dp"
                     android:background="@drawable/bg_avatar_circle"
@@ -367,6 +382,7 @@
         android:id="@+id/mainContainer"
         android:layout_width="0dp"
         android:layout_height="0dp"
+        android:layout_marginStart="@dimen/main_content_gap_expanded"
         android:layout_marginTop="@dimen/screen_padding"
         android:layout_marginEnd="@dimen/screen_padding"
         android:layout_marginBottom="@dimen/screen_padding"
@@ -380,9 +396,9 @@
             android:id="@+id/topBar"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            app:cardBackgroundColor="@color/pos_surface"
-            app:cardCornerRadius="@dimen/card_corner_radius"
-            app:cardElevation="2dp"
+            app:cardBackgroundColor="@color/pos_surface_header"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="0dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
@@ -401,7 +417,7 @@
                     android:text="@string/pos_title"
                     android:textAppearance="@style/TextAppearance.ZejiosCafe.Title"
                     android:textColor="@color/pos_text_primary"
-                    android:textStyle="normal"
+                    android:textStyle="bold"
                     app:layout_constraintEnd_toStartOf="@+id/notificationFrame"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent" />
@@ -412,7 +428,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
                     android:text="@string/pos_subtitle"
-                    android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyLarge"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
                     android:textColor="@color/pos_text_secondary"
                     android:textStyle="normal"
                     app:layout_constraintEnd_toStartOf="@+id/notificationFrame"

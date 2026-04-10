@@ -1,60 +1,74 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="pos_primary">#6B5435</color>
-    <color name="pos_primary_dark">#4F3D25</color>
-    <color name="pos_primary_soft">#A1845E</color>
-    <color name="pos_secondary">#2E7D32</color>
-    <color name="pos_secondary_dark">#1F5A24</color>
+    <color name="pos_primary">#5D4037</color>
+    <color name="pos_primary_dark">#472F29</color>
+    <color name="pos_primary_soft">#8A6A5D</color>
+    <color name="pos_secondary">#228B22</color>
+    <color name="pos_secondary_dark">#176A19</color>
 
-    <color name="pos_background">#F7F1E8</color>
-    <color name="pos_surface">#FFFCF8</color>
-    <color name="pos_surface_soft">#FBF5ED</color>
-    <color name="pos_canvas_highlight">#FFF8EF</color>
-    <color name="pos_sidebar_bg">#7C4F2C</color>
-    <color name="pos_sidebar_bg_light">#FFFBF6</color>
-    <color name="pos_sidebar_selected">#8A5A34</color>
-    <color name="pos_border">#E8DCCD</color>
+    <color name="pos_background">#E8E3E0</color>
+    <color name="pos_surface">#FCF8F5</color>
+    <color name="pos_surface_header">#FFFCFA</color>
+    <color name="pos_surface_soft">#F2ECE8</color>
+    <color name="pos_canvas_highlight">#F5F0EC</color>
+    <color name="pos_sidebar_bg">#261D20</color>
+    <color name="pos_sidebar_bg_light">#F8F4F2</color>
+    <color name="pos_sidebar_selected">#B7683D</color>
+    <color name="pos_sidebar_selected_dark">#512E1B</color>
+    <color name="pos_border">#D7CBC5</color>
 
-    <color name="pos_text_primary">#2F2116</color>
-    <color name="pos_text_secondary">#846F5C</color>
-    <color name="pos_text_on_sidebar">#FBF5EE</color>
-    <color name="pos_text_on_sidebar_muted">#E3D1BD</color>
-    <color name="pos_text_on_light_sidebar">#6E472A</color>
-    <color name="inventory_nav_inactive_bg">#F5EDE5</color>
+    <color name="pos_text_primary">#241B1E</color>
+    <color name="pos_text_secondary">#726668</color>
+    <color name="pos_text_on_sidebar">#FFFFFF</color>
+    <color name="pos_text_on_sidebar_muted">#CDBFC1</color>
+    <color name="pos_text_on_light_sidebar">#60484A</color>
+    <color name="inventory_nav_inactive_bg">#EEE8E4</color>
 
-    <color name="pos_chip_bg">#F2E7D9</color>
-    <color name="pos_stepper_border">#E3D3C0</color>
+    <color name="pos_chip_bg">#E9E1DC</color>
+    <color name="pos_stepper_border">#D6CBC5</color>
     <color name="pos_checkout_text">#FFFFFFFF</color>
-    <color name="pos_clear_bg">#EDE3D6</color>
-    <color name="pos_badge">#CC6A49</color>
-    <color name="pos_stock_badge">#58B66A</color>
-    <color name="pos_chart_fill">#E8D0B6</color>
-    <color name="pos_chart_bar">#B87944</color>
-    <color name="pos_warning">#D97706</color>
-    <color name="pos_warning_soft">#FFF4E5</color>
-    <color name="pos_critical_soft">#FAECE6</color>
-    <color name="pos_info">#4A7CE0</color>
-    <color name="pos_info_soft">#EAF1FF</color>
-    <color name="pos_success_soft">#EAF7EC</color>
-    <color name="pos_page_button">#F4ECE2</color>
+    <color name="pos_clear_bg">#E7DFDB</color>
+    <color name="pos_badge">#B7683D</color>
+    <color name="pos_stock_badge">#45A251</color>
+    <color name="pos_chart_fill">#D8CAC2</color>
+    <color name="pos_chart_bar">#876051</color>
+    <color name="pos_warning">#B7683D</color>
+    <color name="pos_warning_soft">#F7EDE7</color>
+    <color name="pos_critical_soft">#F5E8E3</color>
+    <color name="pos_info">#69737F</color>
+    <color name="pos_info_soft">#ECEFF2</color>
+    <color name="pos_success_soft">#E9F4E9</color>
+    <color name="pos_page_button">#EEE7E3</color>
 
-    <color name="chip_selected_bg">#6B5435</color>
-    <color name="stock_good">#58B66A</color>
-    <color name="stock_bar_bg">#E8DCCD</color>
-    <color name="pos_divider">#E8DCCD</color>
-    <color name="stock_critical">#D32F2F</color>
+    <color name="chip_selected_bg">#5D4037</color>
+    <color name="stock_good">#45A251</color>
+    <color name="stock_bar_bg">#D8CCC6</color>
+    <color name="pos_divider">#D8CCC6</color>
+    <color name="stock_critical">#B25A42</color>
 
     <color name="chip_selected_text">#FFFFFF</color>
     <color name="stock_warning">#D97706</color>
 
-    <color name="cat_drinks">#6B5435</color>
-    <color name="cat_meals">#CC6A49</color>
-    <color name="cat_desserts">#D97706</color>
-    <color name="cat_snacks">#58B66A</color>
-    <color name="cat_specials">#4A7CE0</color>
+    <color name="cat_drinks">#5D4037</color>
+    <color name="cat_meals">#B7683D</color>
+    <color name="cat_desserts">#A86F47</color>
+    <color name="cat_snacks">#228B22</color>
+    <color name="cat_specials">#6C7887</color>
 
-    <color name="chart_bar">#B87944</color>
-    <color name="chart_bar_light">#E8D0B6</color>
+    <color name="chart_bar">#876051</color>
+    <color name="chart_bar_light">#D8CAC2</color>
+
+    <color name="dashboard_shell_bg">#F4EFEB</color>
+    <color name="dashboard_hero_start">#F4EDE8</color>
+    <color name="dashboard_hero_end">#E8DDD5</color>
+    <color name="dashboard_profit_start">#EEF4EC</color>
+    <color name="dashboard_profit_end">#D9E7D7</color>
+    <color name="dashboard_metric_sales_bg">#F1E8E2</color>
+    <color name="dashboard_metric_orders_bg">#F5EFEB</color>
+    <color name="dashboard_metric_profit_bg">#E9F0E7</color>
+    <color name="dashboard_metric_active_bg">#EAF1EA</color>
+    <color name="dashboard_metric_low_bg">#F4E8E2</color>
+    <color name="dashboard_section_soft">#F8F4F1</color>
 
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>

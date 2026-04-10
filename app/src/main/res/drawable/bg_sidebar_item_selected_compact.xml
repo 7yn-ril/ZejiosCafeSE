@@ -4,9 +4,9 @@
     <corners android:radius="20dp" />
     <gradient
         android:angle="0"
-        android:endColor="#A4744A"
-        android:startColor="#BC936B" />
+        android:endColor="@color/pos_sidebar_selected_dark"
+        android:startColor="@color/pos_sidebar_selected" />
     <stroke
         android:width="1dp"
-        android:color="#26FFFFFF" />
+        android:color="#22FFFFFF" />
 </shape>

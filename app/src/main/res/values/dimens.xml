@@ -13,7 +13,8 @@
     <dimen name="sidebar_row_horizontal_padding">14dp</dimen>
     <dimen name="sidebar_row_collapsed_padding">8dp</dimen>
     <dimen name="sidebar_row_collapsed_margin">8dp</dimen>
-    <dimen name="main_content_gap_collapsed">14dp</dimen>
+    <dimen name="main_content_gap_expanded">28dp</dimen>
+    <dimen name="main_content_gap_collapsed">20dp</dimen>
 
     <dimen name="menu_item_height">54dp</dimen>
     <dimen name="topbar_avatar_size">44dp</dimen>
