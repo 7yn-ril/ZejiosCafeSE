@@ -73,6 +73,12 @@ import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity(), NavigationHost {
 
+    private enum class MetricTone {
+        POSITIVE,
+        NEGATIVE,
+        NEUTRAL
+    }
+
     private enum class Section(
         @StringRes val labelRes: Int,
         @StringRes val titleRes: Int,
@@ -182,8 +188,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             binding.tvSidebarOrders,
             binding.tvSidebarInventory,
             binding.tvSidebarReports,
-            binding.tvSidebarStaff,
-            binding.tvSidebarSettings
+            binding.tvSidebarStaff
         )
     }
 
@@ -194,8 +199,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             SidebarItem(Section.ORDERS, binding.itemOrders, binding.ivSidebarOrders, binding.tvSidebarOrders),
             SidebarItem(Section.INVENTORY, binding.itemInventory, binding.ivSidebarInventory, binding.tvSidebarInventory),
             SidebarItem(Section.REPORTS, binding.itemReports, binding.ivSidebarReports, binding.tvSidebarReports),
-            SidebarItem(Section.STAFF, binding.itemStaff, binding.ivSidebarStaff, binding.tvSidebarStaff),
-            SidebarItem(Section.SETTINGS, binding.itemSettings, binding.ivSidebarSettings, binding.tvSidebarSettings)
+            SidebarItem(Section.STAFF, binding.itemStaff, binding.ivSidebarStaff, binding.tvSidebarStaff)
         )
     }
 
@@ -254,14 +258,17 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
         productAdapter = ProductAdapter(onCardClick = ::handleProductCardClick)
         binding.rvProducts.apply {
-            val spanCount = resources.getInteger(R.integer.product_grid_span_count)
             adapter = productAdapter
-            layoutManager = GridLayoutManager(this@MainActivity, spanCount)
+            layoutManager = GridLayoutManager(
+                this@MainActivity,
+                resources.getInteger(R.integer.product_grid_span_count)
+            )
             itemAnimator = null
             if (itemDecorationCount == 0) {
                 addItemDecoration(GridSpacingItemDecoration(resources.getDimensionPixelSize(R.dimen.product_grid_spacing)))
             }
         }
+        updateProductGridSpanCount()
 
         orderItemAdapter = OrderItemAdapter(
             onIncreaseClick = viewModel::increaseOrderItem,
@@ -997,58 +1004,99 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private fun bindDashboardMetrics(snapshot: DashboardSnapshot) {
         val dashboardRoot = binding.dashboardContent.root
         bindMetric(
+            dashboardRoot.findViewById(R.id.tvMetricProfitValue),
+            dashboardRoot.findViewById(R.id.tvMetricProfitDelta),
+            dashboardRoot.findViewById(R.id.ivMetricProfitIcon),
+            snapshot.profitMetric.value,
+            snapshot.profitMetric.delta,
+            positive = snapshot.profitMetric.positive,
+            monetary = true
+        )
+        bindMetric(
             dashboardRoot.findViewById(R.id.tvMetricSalesValue),
             dashboardRoot.findViewById(R.id.tvMetricSalesDelta),
+            dashboardRoot.findViewById(R.id.ivMetricSalesIcon),
             snapshot.salesMetric.value,
             snapshot.salesMetric.delta,
-            positive = snapshot.salesMetric.positive
+            positive = snapshot.salesMetric.positive,
+            monetary = true
         )
         bindMetric(
             dashboardRoot.findViewById(R.id.tvMetricOrdersValue),
             dashboardRoot.findViewById(R.id.tvMetricOrdersDelta),
+            dashboardRoot.findViewById(R.id.ivMetricOrdersIcon),
             snapshot.ordersMetric.value,
             snapshot.ordersMetric.delta,
             positive = snapshot.ordersMetric.positive
         )
         bindMetric(
-            dashboardRoot.findViewById(R.id.tvMetricProfitValue),
-            dashboardRoot.findViewById(R.id.tvMetricProfitDelta),
-            snapshot.profitMetric.value,
-            snapshot.profitMetric.delta,
-            positive = snapshot.profitMetric.positive
-        )
-        bindMetric(
-            dashboardRoot.findViewById(R.id.tvMetricActiveOrdersValue),
-            dashboardRoot.findViewById(R.id.tvMetricActiveOrdersDelta),
-            snapshot.activeOrdersMetric.value,
-            snapshot.activeOrdersMetric.delta,
-            positive = snapshot.activeOrdersMetric.positive
-        )
-        bindMetric(
             dashboardRoot.findViewById(R.id.tvMetricLowStockValue),
             dashboardRoot.findViewById(R.id.tvMetricLowStockDelta),
+            dashboardRoot.findViewById(R.id.ivMetricLowStockIcon),
             snapshot.lowStockMetric.value,
             snapshot.lowStockMetric.delta,
-            positive = snapshot.lowStockMetric.positive
+            positive = snapshot.lowStockMetric.positive,
+            allowPositiveTone = false
         )
     }
 
     private fun bindMetric(
         valueView: TextView?,
         deltaView: TextView?,
+        iconView: ImageView?,
         value: String,
         delta: String,
-        positive: Boolean
+        positive: Boolean,
+        monetary: Boolean = false,
+        allowPositiveTone: Boolean = true
     ) {
         if (valueView == null || deltaView == null) return
-        valueView.text = value
-        deltaView.text = delta
-        deltaView.setTextColor(
-            ContextCompat.getColor(
-                this,
-                if (positive) R.color.pos_secondary else R.color.pos_badge
-            )
+        val tone = resolveMetricTone(value, delta, positive, allowPositiveTone)
+        val metricColor = ContextCompat.getColor(
+            this,
+            when (tone) {
+                MetricTone.POSITIVE -> R.color.pos_secondary
+                MetricTone.NEGATIVE -> R.color.pos_warning
+                MetricTone.NEUTRAL -> R.color.pos_primary
+            }
         )
+
+        valueView.text = normalizeDashboardCurrency(value, monetary)
+        valueView.setTextColor(metricColor)
+        deltaView.text = normalizeDashboardCurrency(delta, monetary)
+        deltaView.setTextColor(metricColor)
+        iconView?.imageTintList = ColorStateList.valueOf(metricColor)
+    }
+
+    private fun resolveMetricTone(
+        value: String,
+        delta: String,
+        positive: Boolean,
+        allowPositiveTone: Boolean
+    ): MetricTone {
+        val normalizedDelta = delta.trim().lowercase(Locale.US)
+        val normalizedValue = value.trim().lowercase(Locale.US)
+        if (allowPositiveTone && positive && (normalizedDelta.startsWith("all ") || normalizedDelta.contains("above minimum stock"))) {
+            return MetricTone.POSITIVE
+        }
+        val isNeutral = normalizedDelta.startsWith("no ")
+            || normalizedDelta.startsWith("no change")
+            || normalizedValue == "0"
+            || normalizedValue == "php 0.00"
+            || normalizedValue == "\u20b10.00"
+
+        return when {
+            isNeutral -> MetricTone.NEUTRAL
+            positive && allowPositiveTone -> MetricTone.POSITIVE
+            else -> MetricTone.NEGATIVE
+        }
+    }
+
+    private fun normalizeDashboardCurrency(value: String, monetary: Boolean): String {
+        if (!monetary) {
+            return value
+        }
+        return value.replaceFirst("PHP ", "\u20B1")
     }
 
     private fun setupDashboardChart() {
@@ -1203,9 +1251,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             viewModel.setPaymentMethod(PosViewModel.PaymentMethod.CASH)
         }
 
-        binding.avatar.setOnClickListener {
-            showAvatarMenu(it)
-        }
+        binding.avatar.setOnClickListener { renderSection(Section.PROFILE) }
+        binding.topProfileCluster.setOnClickListener { renderSection(Section.PROFILE) }
     }
 
     private fun setupStaffInteractions() {
@@ -1254,6 +1301,9 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private fun setupProfileInteractions() {
         binding.profileCard.setOnClickListener {
             renderSection(Section.PROFILE)
+        }
+        binding.ivProfileAvatar.setOnClickListener {
+            showAvatarMenu(it)
         }
 
         binding.profileContent.btnEditProfile.setOnClickListener {
@@ -1407,6 +1457,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private fun applyUserProfileStateToUi() {
         binding.tvProfileName.text = userProfileState.name
         binding.tvProfileEmail.text = userProfileState.email
+        binding.tvTopProfileName.text = userProfileState.name
+        binding.tvTopProfileEmail.text = userProfileState.email
 
         binding.profileContent.tvProfilePageName.text = userProfileState.name
         binding.profileContent.tvProfilePageRole.text = userProfileState.role
@@ -1417,6 +1469,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         binding.profileContent.tvProfilePageRoleDetail.text = userProfileState.role
 
         binding.avatar.contentDescription = getString(R.string.profile_avatar_for, userProfileState.name)
+        binding.ivProfileAvatar.contentDescription = getString(R.string.profile_avatar_for, userProfileState.name)
     }
 
     private fun showStaffDialog(card: StaffCardViews?) {
@@ -1680,6 +1733,10 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             renderProductPagination(state)
         }
 
+        viewModel.selectedSortOption.observe(this) { option ->
+            updateSortButtonLabel(option)
+        }
+
         viewModel.orderQuantities.observe(this) { quantities ->
             productAdapter.submitQuantities(quantities)
         }
@@ -1805,6 +1862,15 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         }.show()
     }
 
+    private fun updateSortButtonLabel(option: PosViewModel.SortOption) {
+        binding.btnFilterSort.text = when (option) {
+            PosViewModel.SortOption.NAME_ASC -> getString(R.string.sort_name_asc)
+            PosViewModel.SortOption.NAME_DESC -> getString(R.string.sort_name_desc)
+            PosViewModel.SortOption.PRICE_ASC -> getString(R.string.sort_price_asc)
+            PosViewModel.SortOption.PRICE_DESC -> getString(R.string.sort_price_desc)
+        }
+    }
+
     override fun navigateTo(screen: Screen) {
         val section = when (screen) {
             Screen.DASHBOARD -> Section.DASHBOARD
@@ -1924,7 +1990,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val slideOffset = resources.getDimension(R.dimen.checkout_panel_slide_offset)
 
         checkoutAnimator?.cancel()
-        updatePosCategoryChipMode(compact = expanded && isLandscape)
+        updatePosCategoryChipMode(compact = false)
         updatePosCategoryStripPadding(expanded)
 
         if (!animate || abs(startPercent - targetPercent) < 0.001f) {
@@ -2057,6 +2123,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             marginEnd = rowMargin
         }
         binding.btnToggleSidebar.visibility = if (expanded) View.VISIBLE else View.GONE
+        binding.topProfileTextContainer.visibility = if (expanded) View.GONE else View.VISIBLE
         binding.ivSidebarLogo.updateLayoutParams<ConstraintLayout.LayoutParams> {
             startToStart = ConstraintLayout.LayoutParams.PARENT_ID
             endToEnd = if (expanded) ConstraintLayout.LayoutParams.UNSET else ConstraintLayout.LayoutParams.PARENT_ID
@@ -2071,6 +2138,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         binding.btnToggleSidebar.rotation = if (expanded) 90f else -90f
         updateSidebarToggleAccessibility(expanded)
         applySidebarAppearance(expanded)
+        updateProductGridSpanCount()
 
         val startWidth = binding.sidebarContainer.width.takeIf { it > 0 }
             ?: binding.sidebarContainer.layoutParams.width
@@ -2243,6 +2311,25 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             return
         }
         categoryAdapter.compactMode = compact
+    }
+
+    private fun updateProductGridSpanCount() {
+        val layoutManager = binding.rvProducts.layoutManager as? GridLayoutManager ?: return
+        val configuration = resources.configuration
+        val isTablet = configuration.smallestScreenWidthDp >= 600
+        val targetSpanCount = when {
+            !isTablet -> 2
+            configuration.orientation == Configuration.ORIENTATION_LANDSCAPE -> {
+                if (isSidebarExpanded) 3 else 4
+            }
+            else -> {
+                if (isSidebarExpanded) 2 else 3
+            }
+        }
+
+        if (layoutManager.spanCount != targetSpanCount) {
+            layoutManager.spanCount = targetSpanCount
+        }
     }
 
     private class GridSpacingItemDecoration(

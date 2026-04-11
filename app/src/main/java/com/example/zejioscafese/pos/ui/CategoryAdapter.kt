@@ -64,10 +64,10 @@ class CategoryAdapter(
         }
 
         private fun updateButtonLayout(compactMode: Boolean) {
-            val targetPaddingStart = dpToPx(if (compactMode) 12 else 18)
-            val targetPaddingEnd = dpToPx(if (compactMode) 12 else 20)
-            val targetIconPadding = dpToPx(if (compactMode) 0 else 10)
-            val targetMarginEnd = dpToPx(if (compactMode) 6 else 12)
+            val targetPaddingStart = dpToPx(if (compactMode) 10 else 14)
+            val targetPaddingEnd = dpToPx(if (compactMode) 10 else 16)
+            val targetIconPadding = dpToPx(if (compactMode) 0 else 8)
+            val targetMarginEnd = dpToPx(if (compactMode) 6 else 10)
 
             val button = binding.btnCategory
             val params = button.layoutParams as MarginLayoutParams

@@ -4,9 +4,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="@dimen/content_section_gap"
-    app:cardBackgroundColor="@color/pos_surface_soft"
-    app:cardCornerRadius="22dp"
+    android:layout_marginBottom="10dp"
+    app:cardBackgroundColor="@color/white"
+    app:cardCornerRadius="18dp"
     app:cardElevation="0dp"
     app:strokeColor="@color/pos_border"
     app:strokeWidth="1dp">
@@ -14,7 +14,7 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="16dp">
+        android:padding="12dp">
 
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/ivOrderItem"
@@ -37,9 +37,9 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:textColor="@color/pos_text_primary"
-            android:textSize="15sp"
+            android:textSize="14sp"
             android:textStyle="bold"
-            app:layout_constraintEnd_toStartOf="@id/tvOrderItemPrice"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/ivOrderItem"
             app:layout_constraintTop_toTopOf="@id/ivOrderItem"
             tools:text="Aloha Fruit Punch" />
@@ -49,9 +49,10 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/content_inline_gap"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="2dp"
             android:textColor="@color/pos_text_secondary"
-            android:textSize="12sp"
+            android:textSize="11sp"
+            android:maxLines="1"
             app:layout_constraintEnd_toStartOf="@id/tvOrderItemPrice"
             app:layout_constraintStart_toEndOf="@id/ivOrderItem"
             app:layout_constraintTop_toBottomOf="@id/tvOrderItemName"
@@ -61,25 +62,27 @@
             android:id="@+id/tvOrderItemPrice"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
             android:textColor="@color/pos_primary"
-            android:textSize="16sp"
+            android:textSize="15sp"
             android:textStyle="bold"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@id/tvOrderItemName"
+            app:layout_constraintBottom_toBottomOf="@id/orderQuantityContainer"
+            app:layout_constraintEnd_toStartOf="@id/orderQuantityContainer"
+            app:layout_constraintTop_toTopOf="@id/orderQuantityContainer"
             tools:text="PHP 141.75" />
 
         <LinearLayout
             android:id="@+id/orderQuantityContainer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/content_inline_gap"
+            android:layout_marginTop="8dp"
             android:background="@drawable/bg_stepper_container"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:padding="4dp"
-            app:layout_constraintBottom_toBottomOf="@id/ivOrderItem"
+            android:padding="3dp"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tvOrderItemPrice">
+            app:layout_constraintTop_toBottomOf="@id/tvOrderItemUnitPrice">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnOrderItemDecrease"
@@ -101,11 +104,11 @@
 
             <TextView
                 android:id="@+id/tvOrderItemQty"
-                android:layout_width="36dp"
+                android:layout_width="30dp"
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:textColor="@color/pos_text_primary"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textStyle="bold"
                 tools:text="1" />
 

@@ -218,7 +218,7 @@
                         android:id="@+id/ivSidebarInventory"
                         android:layout_width="@dimen/sidebar_icon_size"
                         android:layout_height="@dimen/sidebar_icon_size"
-                        android:src="@drawable/ic_inventory_24"
+                        android:src="@drawable/ic_inventory_filled_24"
                         app:tint="@color/pos_text_on_sidebar" />
 
                     <TextView
@@ -305,7 +305,8 @@
                     android:layout_marginTop="8dp"
                     android:gravity="center"
                     android:orientation="horizontal"
-                    android:paddingHorizontal="12dp">
+                    android:paddingHorizontal="12dp"
+                    android:visibility="gone">
 
                     <ImageView
                         android:id="@+id/ivSidebarSettings"
@@ -409,71 +410,124 @@
                 android:layout_height="wrap_content"
                 android:padding="@dimen/section_spacing">
 
-                <TextView
-                    android:id="@+id/tvTopTitle"
+                <LinearLayout
+                    android:id="@+id/topTitleContainer"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="@string/pos_title"
-                    android:textAppearance="@style/TextAppearance.ZejiosCafe.Title"
-                    android:textColor="@color/pos_text_primary"
-                    android:textStyle="bold"
-                    app:layout_constraintEnd_toStartOf="@+id/notificationFrame"
+                    android:layout_marginStart="2dp"
+                    android:layout_marginEnd="14dp"
+                    android:orientation="vertical"
+                    app:layout_constraintBottom_toBottomOf="@id/topBarActions"
+                    app:layout_constraintEnd_toStartOf="@id/topBarActions"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
-
-                <TextView
-                    android:id="@+id/tvTopSubtitle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="@string/pos_subtitle"
-                    android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                    android:textColor="@color/pos_text_secondary"
-                    android:textStyle="normal"
-                    app:layout_constraintEnd_toStartOf="@+id/notificationFrame"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@id/tvTopTitle" />
-
-                <FrameLayout
-                    android:id="@+id/notificationFrame"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
-                    android:layout_marginEnd="12dp"
-                    android:background="@drawable/bg_notification_container"
-                    app:layout_constraintBottom_toBottomOf="@id/avatar"
-                    app:layout_constraintEnd_toStartOf="@id/avatar"
-                    app:layout_constraintTop_toTopOf="@id/avatar">
-
-                    <ImageView
-                        android:layout_width="20dp"
-                        android:layout_height="20dp"
-                        android:layout_gravity="center"
-                        android:contentDescription="@string/notifications"
-                        android:src="@drawable/ic_notification_24" />
+                    app:layout_constraintTop_toTopOf="@id/topBarActions">
 
                     <TextView
-                        android:layout_width="18dp"
-                        android:layout_height="18dp"
-                        android:layout_gravity="end|top"
-                        android:background="@drawable/bg_notification_badge"
-                        android:gravity="center"
-                        android:text="@string/notification_count"
+                        android:id="@+id/tvTopTitle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/pos_title"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.Title"
                         android:textColor="@color/pos_text_primary"
-                        android:textSize="10sp"
                         android:textStyle="bold" />
-                </FrameLayout>
 
-                <ImageView
-                    android:id="@+id/avatar"
-                    android:layout_width="@dimen/topbar_avatar_size"
-                    android:layout_height="@dimen/topbar_avatar_size"
-                    android:background="@drawable/bg_avatar_circle"
-                    android:contentDescription="@string/profile_name"
-                    android:padding="8dp"
-                    android:src="@drawable/ic_staff_24"
+                    <TextView
+                        android:id="@+id/tvTopSubtitle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="1dp"
+                        android:text="@string/pos_subtitle"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
+                        android:textColor="@color/pos_text_secondary"
+                        android:textStyle="normal" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/topBarActions"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
                     app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:tint="@color/pos_primary" />
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <FrameLayout
+                        android:id="@+id/notificationFrame"
+                        android:layout_width="42dp"
+                        android:layout_height="42dp"
+                        android:background="@drawable/bg_notification_container">
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:layout_gravity="center"
+                            android:contentDescription="@string/notifications"
+                            android:src="@drawable/ic_notification_24"
+                            app:tint="@color/pos_primary" />
+
+                        <TextView
+                            android:id="@+id/tvNotificationBadge"
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
+                            android:layout_gravity="end|top"
+                            android:layout_marginTop="2dp"
+                            android:layout_marginEnd="2dp"
+                            android:background="@drawable/bg_notification_badge"
+                            android:gravity="center"
+                            android:text="@string/notification_count"
+                            android:textColor="@color/white"
+                            android:textSize="9sp"
+                            android:textStyle="bold" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:id="@+id/topProfileCluster"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:id="@+id/avatar"
+                            android:layout_width="@dimen/topbar_avatar_size"
+                            android:layout_height="@dimen/topbar_avatar_size"
+                            android:background="@drawable/bg_avatar_circle"
+                            android:contentDescription="@string/profile_name"
+                            android:padding="8dp"
+                            android:src="@drawable/ic_staff_24"
+                            app:tint="@color/pos_primary" />
+
+                        <LinearLayout
+                            android:id="@+id/topProfileTextContainer"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvTopProfileName"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:maxLines="1"
+                                android:text="@string/profile_name"
+                                android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
+                                android:textColor="@color/pos_text_primary"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tvTopProfileEmail"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="1dp"
+                                android:maxLines="1"
+                                android:text="@string/profile_email"
+                                android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
+                                android:textColor="@color/pos_text_secondary"
+                                android:textStyle="normal" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
             </androidx.constraintlayout.widget.ConstraintLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -549,7 +603,7 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_marginTop="@dimen/section_spacing"
-            android:background="@drawable/bg_order_summary"
+            android:background="@drawable/bg_dashboard_shell"
             android:padding="@dimen/section_spacing"
             app:layout_constraintBottom_toTopOf="@id/contentGuide"
             app:layout_constraintEnd_toEndOf="parent"
@@ -562,7 +616,7 @@
                 android:layout_width="0dp"
                 android:layout_height="@dimen/search_height"
                 android:hint="@string/search_hint"
-                app:boxBackgroundColor="@color/pos_surface_soft"
+                app:boxBackgroundColor="@color/pos_surface_header"
                 app:boxCornerRadiusBottomEnd="18dp"
                 app:boxCornerRadiusBottomStart="18dp"
                 app:boxCornerRadiusTopEnd="18dp"
@@ -592,12 +646,17 @@
                 android:insetBottom="0dp"
                 android:text="@string/filter_sort"
                 android:textAllCaps="false"
+                android:textSize="12sp"
+                android:minWidth="134dp"
+                android:maxLines="1"
+                android:ellipsize="end"
                 android:textColor="@color/pos_text_primary"
-                app:backgroundTint="@color/pos_surface"
-                app:cornerRadius="16dp"
+                app:backgroundTint="@color/pos_surface_header"
+                app:cornerRadius="14dp"
                 app:icon="@drawable/ic_filter_24"
-                app:iconSize="18dp"
-                app:iconPadding="6dp"
+                app:iconGravity="textStart"
+                app:iconSize="16dp"
+                app:iconPadding="4dp"
                 app:iconTint="@color/pos_primary"
                 app:layout_constraintBottom_toBottomOf="@id/searchInputLayout"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -644,6 +703,8 @@
                 android:layout_height="0dp"
                 android:layout_marginTop="@dimen/section_spacing"
                 android:clipToPadding="false"
+                android:paddingStart="2dp"
+                android:paddingEnd="2dp"
                 android:paddingBottom="12dp"
                 app:layout_constraintBottom_toTopOf="@id/productPaginationContainer"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -705,9 +766,9 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_marginTop="@dimen/section_spacing"
-            app:cardBackgroundColor="@color/pos_surface"
-            app:cardCornerRadius="@dimen/card_corner_radius"
-            app:cardElevation="2dp"
+            app:cardBackgroundColor="@color/pos_surface_header"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="0dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -719,7 +780,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:orientation="vertical"
-                android:padding="@dimen/content_panel_padding">
+                android:padding="16dp">
 
                 <FrameLayout
                     android:layout_width="match_parent"
@@ -766,7 +827,7 @@
                     android:id="@+id/emptyOrderState"
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="12dp"
                     android:layout_weight="1"
                     android:gravity="center"
                     android:orientation="vertical">
@@ -790,8 +851,10 @@
                     android:id="@+id/rvOrderItems"
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
-                    android:layout_marginTop="@dimen/content_inline_gap"
+                    android:layout_marginTop="10dp"
                     android:layout_weight="1"
+                    android:clipToPadding="false"
+                    android:paddingBottom="4dp"
                     android:visibility="gone"
                     tools:listitem="@layout/item_order" />
 
@@ -807,10 +870,13 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/content_section_gap"
-                    android:background="@drawable/bg_order_summary"
+                    android:layout_marginTop="8dp"
+                    android:background="@android:color/transparent"
                     android:orientation="vertical"
-                    android:padding="@dimen/content_card_padding">
+                    android:paddingStart="0dp"
+                    android:paddingTop="8dp"
+                    android:paddingEnd="0dp"
+                    android:paddingBottom="0dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -895,14 +961,14 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/content_section_gap"
+                    android:layout_marginTop="12dp"
                     android:orientation="horizontal">
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnCash"
                         style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="0dp"
-                        android:layout_height="42dp"
+                        android:layout_height="40dp"
                         android:layout_weight="1"
                         android:text="@string/cash"
                         android:textAllCaps="false"
@@ -912,7 +978,7 @@
                         android:id="@+id/btnGcash"
                         style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="0dp"
-                        android:layout_height="42dp"
+                        android:layout_height="40dp"
                         android:layout_marginStart="8dp"
                         android:layout_weight="1"
                         android:text="@string/gcash"
@@ -923,7 +989,7 @@
                         android:id="@+id/btnCard"
                         style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="0dp"
-                        android:layout_height="42dp"
+                        android:layout_height="40dp"
                         android:layout_marginStart="8dp"
                         android:layout_weight="1"
                         android:text="@string/card"
@@ -935,14 +1001,14 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/content_inline_gap"
+                    android:layout_marginTop="10dp"
                     android:orientation="horizontal">
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnClear"
                         style="@style/Widget.Material3.Button.UnelevatedButton"
                         android:layout_width="0dp"
-                        android:layout_height="46dp"
+                        android:layout_height="44dp"
                         android:layout_weight="1"
                         android:text="@string/clear"
                         android:textAllCaps="false"
@@ -952,7 +1018,7 @@
                         android:id="@+id/btnCheckout"
                         style="@style/Widget.Material3.Button.UnelevatedButton"
                         android:layout_width="0dp"
-                        android:layout_height="50dp"
+                        android:layout_height="46dp"
                         android:layout_marginStart="10dp"
                         android:layout_weight="1.35"
                         android:insetTop="0dp"

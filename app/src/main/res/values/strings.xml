@@ -173,11 +173,11 @@
 
     <string name="search_hint">Search menu items, categories, or favorites...</string>
     <string name="filter_sort">Sort</string>
-    <string name="current_order">Checkout</string>
+    <string name="current_order">Current Order</string>
     <string name="current_order_hint">Adjust quantities here after adding from the menu cards</string>
     <string name="order_number_label">Order Number</string>
     <string name="order_number_format">Order %1$s</string>
-    <string name="no_items_added">Tap a menu card to start this order</string>
+    <string name="no_items_added">No items added yet</string>
     <string name="no_products_found">No menu items match this filter.</string>
     <string name="payment_method">Payment Method</string>
 
