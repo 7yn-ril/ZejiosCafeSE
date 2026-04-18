@@ -22,7 +22,11 @@ object SupabaseProvider {
             supabaseUrl = supabaseUrl,
             supabaseKey = supabaseAnonKey
         ) {
-            install(Auth)
+            install(Auth) {
+                alwaysAutoRefresh = true
+                autoLoadFromStorage = true
+                autoSaveToStorage = true
+            }
             install(Postgrest) {
                 defaultSchema = "public"
             }

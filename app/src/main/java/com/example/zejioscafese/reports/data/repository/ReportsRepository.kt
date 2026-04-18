@@ -1,13 +1,13 @@
 package com.example.zejioscafese.reports.data.repository
 
 import com.example.zejioscafese.core.supabase.SupabaseProvider
+import com.example.zejioscafese.core.supabase.SupabaseSessionHelper
 import com.example.zejioscafese.pos.data.model.CategorySalesRecord
 import com.example.zejioscafese.pos.data.remote.dto.ProductVariantStockDto
 import com.example.zejioscafese.reports.data.model.ReportTransaction
 import com.example.zejioscafese.reports.data.model.ReportsSnapshot
 import com.example.zejioscafese.reports.data.model.SalesTimelinePoint
 import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.gotrue.Auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import java.time.DayOfWeek
@@ -145,14 +145,7 @@ class ReportsRepository(
     }
 
     private suspend fun ensureAuthenticatedSession() {
-        val auth = supabaseClient.pluginManager.getPlugin(Auth)
-        auth.awaitInitialization()
-
-        if (auth.currentUserOrNull() != null) {
-            return
-        }
-
-        auth.signInAnonymously()
+        SupabaseSessionHelper.ensureValidSession(supabaseClient)
     }
 
     private fun buildSalesTimeline(

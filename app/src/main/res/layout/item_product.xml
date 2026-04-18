@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="4dp">
+    android:padding="5dp">
 
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/productCard"
@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:foreground="?attr/selectableItemBackground"
         app:cardBackgroundColor="@color/pos_surface_header"
-        app:cardCornerRadius="18dp"
+        app:cardCornerRadius="16dp"
         app:cardElevation="0dp"
         app:strokeColor="@color/pos_border"
         app:strokeWidth="1dp">
@@ -20,12 +20,15 @@
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:padding="12dp">
+            android:paddingStart="10dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="10dp">
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/ivProduct"
                 android:layout_width="0dp"
-                android:layout_height="@dimen/product_image_height"
+                android:layout_height="92dp"
                 android:background="@drawable/bg_product_placeholder"
                 android:contentDescription="@string/product_image"
                 android:scaleType="centerCrop"
@@ -39,12 +42,12 @@
                 android:id="@+id/tvStockLeft"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="7dp"
-                android:layout_marginEnd="7dp"
+                android:layout_marginTop="6dp"
+                android:layout_marginEnd="6dp"
                 android:background="@drawable/bg_stock_badge"
-                android:paddingStart="8dp"
+                android:paddingStart="7dp"
                 android:paddingTop="3dp"
-                android:paddingEnd="8dp"
+                android:paddingEnd="7dp"
                 android:paddingBottom="3dp"
                 android:textColor="@color/white"
                 android:textSize="9sp"
@@ -68,11 +71,11 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:ellipsize="end"
-                android:minLines="1"
-                android:maxLines="2"
+                android:lines="2"
                 android:textColor="@color/pos_text_primary"
-                android:textSize="13sp"
+                android:textSize="12sp"
                 android:textStyle="bold"
+                android:lineSpacingMultiplier="1.1"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/ivProduct"
@@ -82,28 +85,99 @@
                 android:id="@+id/tvProductPrice"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="3dp"
                 android:textColor="@color/pos_primary"
-                android:textSize="16sp"
+                android:textSize="15sp"
                 android:textStyle="bold"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/tvProductName"
                 tools:text="PHP 141.52" />
 
+            <!-- Default "Add to Dish" button shown when qty == 0 -->
+            <TextView
+                android:id="@+id/btnAddToDish"
+                android:layout_width="match_parent"
+                android:layout_height="36dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_add_to_dish"
+                android:gravity="center"
+                android:text="@string/add_to_dish"
+                android:textColor="@color/white"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tvProductPrice" />
+
+            <!-- Stepper shown when qty >= 1 -->
+            <LinearLayout
+                android:id="@+id/productStepper"
+                android:layout_width="match_parent"
+                android:layout_height="36dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_cart_stepper"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="3dp"
+                android:visibility="gone"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tvProductPrice"
+                tools:visibility="visible">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnProductDecrease"
+                    style="@style/Widget.Material3.Button"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:contentDescription="@string/decrease_quantity"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minWidth="0dp"
+                    android:padding="0dp"
+                    app:backgroundTint="@color/white"
+                    app:cornerRadius="10dp"
+                    app:elevation="0dp"
+                    app:icon="@drawable/ic_remove_18"
+                    app:iconSize="14dp"
+                    app:iconTint="@color/pos_primary" />
+
+                <TextView
+                    android:id="@+id/tvProductQuantity"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:textColor="@color/pos_text_primary"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    tools:text="1" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnProductIncrease"
+                    style="@style/Widget.Material3.Button"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:contentDescription="@string/increase_quantity"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minWidth="0dp"
+                    android:padding="0dp"
+                    app:backgroundTint="@color/pos_primary"
+                    app:cornerRadius="10dp"
+                    app:elevation="0dp"
+                    app:icon="@drawable/ic_add_18"
+                    app:iconSize="14dp"
+                    app:iconTint="@color/white" />
+            </LinearLayout>
+
+            <!-- kept for backward compatibility with ProductAdapter references -->
             <TextView
                 android:id="@+id/tvTapToAdd"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:background="@drawable/bg_hint_chip"
-                android:paddingStart="9dp"
-                android:paddingTop="4dp"
-                android:paddingEnd="9dp"
-                android:paddingBottom="4dp"
                 android:text="@string/tap_to_add"
-                android:textColor="@color/pos_text_secondary"
-                android:textSize="10sp"
-                app:layout_constraintBottom_toBottomOf="parent"
+                android:visibility="gone"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/tvProductPrice" />
 
@@ -111,21 +185,9 @@
                 android:id="@+id/tvQuantityBadge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:background="@drawable/bg_quantity_badge"
-                android:paddingStart="10dp"
-                android:paddingTop="4dp"
-                android:paddingEnd="10dp"
-                android:paddingBottom="4dp"
-                android:textColor="@color/white"
-                android:textSize="10sp"
-                android:textStyle="bold"
                 android:visibility="gone"
-                app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/tvProductPrice"
-                tools:text="2 in cart"
-                tools:visibility="visible" />
+                app:layout_constraintTop_toBottomOf="@id/tvProductPrice" />
         </androidx.constraintlayout.widget.ConstraintLayout>
     </com.google.android.material.card.MaterialCardView>
 </FrameLayout>

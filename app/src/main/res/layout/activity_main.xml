@@ -666,38 +666,51 @@
                 app:strokeColor="@color/pos_border"
                 app:strokeWidth="1dp" />
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rvCategories"
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/categoryContainer"
                 android:layout_width="0dp"
-                android:layout_height="@dimen/category_tab_height"
-                android:layout_marginTop="@dimen/section_spacing"
-                android:clipToPadding="false"
-                android:paddingEnd="4dp"
-                app:layout_constraintEnd_toStartOf="@+id/btnBrowseMenu"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/searchInputLayout"
-                tools:listitem="@layout/item_category_tab" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnBrowseMenu"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="@dimen/category_tab_height"
-                android:layout_height="@dimen/category_tab_height"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:minWidth="0dp"
-                android:paddingStart="0dp"
-                android:paddingEnd="0dp"
-                app:backgroundTint="@color/pos_primary"
-                app:cornerRadius="14dp"
-                app:icon="@drawable/ic_grid_24"
-                app:iconGravity="textStart"
-                app:iconPadding="0dp"
-                app:iconSize="20dp"
-                app:iconTint="@color/white"
-                app:layout_constraintBottom_toBottomOf="@id/rvCategories"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_category_strip"
+                android:padding="6dp"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="@id/rvCategories" />
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/searchInputLayout">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvCategories"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/category_tab_height"
+                    android:clipToPadding="false"
+                    android:paddingEnd="4dp"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toStartOf="@+id/btnBrowseMenu"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    tools:listitem="@layout/item_category_tab" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnBrowseMenu"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="@dimen/category_tab_height"
+                    android:layout_height="@dimen/category_tab_height"
+                    android:contentDescription="@string/toggle_categories"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minWidth="0dp"
+                    android:paddingStart="0dp"
+                    android:paddingEnd="0dp"
+                    app:backgroundTint="@color/pos_primary"
+                    app:cornerRadius="12dp"
+                    app:icon="@drawable/ic_expand_more_24"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
+                    app:iconSize="22dp"
+                    app:iconTint="@color/white"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvProducts"
@@ -711,7 +724,7 @@
                 app:layout_constraintBottom_toTopOf="@id/productPaginationContainer"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/rvCategories"
+                app:layout_constraintTop_toBottomOf="@id/categoryContainer"
                 tools:listitem="@layout/item_product" />
 
             <LinearLayout
@@ -826,6 +839,88 @@
                         app:tint="@color/pos_text_secondary" />
                 </FrameLayout>
 
+                <!-- Table chip + edit -->
+                <LinearLayout
+                    android:id="@+id/tableHeaderRow"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/bg_table_chip"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="12dp"
+                    android:paddingTop="6dp"
+                    android:paddingEnd="6dp"
+                    android:paddingBottom="6dp">
+
+                    <TextView
+                        android:id="@+id/tvTableLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/pos_text_primary"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        tools:text="Table 01" />
+
+                    <ImageButton
+                        android:id="@+id/btnEditTable"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:layout_marginStart="6dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/edit_table"
+                        android:padding="4dp"
+                        android:src="@drawable/ic_edit_18"
+                        app:tint="@color/pos_primary" />
+                </LinearLayout>
+
+                <!-- Order type segment control (Dine In / Take Away / Delivery) -->
+                <LinearLayout
+                    android:id="@+id/orderTypeSegment"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_segment_container"
+                    android:orientation="horizontal"
+                    android:padding="4dp">
+
+                    <TextView
+                        android:id="@+id/btnOrderTypeDineIn"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_segment_selected"
+                        android:gravity="center"
+                        android:text="@string/dine_in"
+                        android:textColor="@color/white"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/btnOrderTypeTakeAway"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_segment_unselected"
+                        android:gravity="center"
+                        android:text="@string/take_away"
+                        android:textColor="@color/pos_text_primary"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/btnOrderTypeDelivery"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_segment_unselected"
+                        android:gravity="center"
+                        android:text="@string/delivery"
+                        android:textColor="@color/pos_text_primary"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
                 <LinearLayout
                     android:id="@+id/emptyOrderState"
                     android:layout_width="match_parent"
@@ -873,13 +968,13 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:background="@android:color/transparent"
+                    android:layout_marginTop="6dp"
+                    android:background="@drawable/bg_order_summary"
                     android:orientation="vertical"
-                    android:paddingStart="0dp"
-                    android:paddingTop="8dp"
-                    android:paddingEnd="0dp"
-                    android:paddingBottom="0dp">
+                    android:paddingStart="12dp"
+                    android:paddingTop="10dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="10dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -907,8 +1002,9 @@
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:orientation="horizontal">
+                        android:layout_marginTop="5dp"
+                        android:orientation="horizontal"
+                        android:visibility="gone">
 
                         <TextView
                             android:layout_width="0dp"
@@ -932,8 +1028,10 @@
                     <View
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
-                        android:layout_marginVertical="8dp"
-                        android:background="@color/pos_divider" />
+                        android:layout_marginTop="8dp"
+                        android:layout_marginBottom="8dp"
+                        android:background="@color/pos_divider"
+                        android:visibility="gone" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -954,50 +1052,70 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:textAppearance="@style/TextAppearance.ZejiosCafe.KpiValue"
-                            android:textColor="@color/pos_text_primary"
-                            android:textStyle="normal"
+                            android:textColor="@color/pos_primary"
+                            android:textStyle="bold"
                             tools:text="PHP 263.20" />
                     </LinearLayout>
                 </LinearLayout>
+
+                <!-- Payment method label -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginBottom="6dp"
+                    android:text="@string/payment_method"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
+                    android:textColor="@color/pos_text_secondary"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.06" />
 
                 <!-- Payment method toggle buttons -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
                     android:orientation="horizontal">
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnCash"
                         style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="0dp"
-                        android:layout_height="40dp"
+                        android:layout_height="44dp"
                         android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
                         android:text="@string/cash"
                         android:textAllCaps="false"
-                        app:cornerRadius="14dp" />
+                        android:textSize="12sp"
+                        app:cornerRadius="12dp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnGcash"
                         style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="0dp"
-                        android:layout_height="40dp"
-                        android:layout_marginStart="8dp"
+                        android:layout_height="44dp"
+                        android:layout_marginStart="6dp"
                         android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
                         android:text="@string/gcash"
                         android:textAllCaps="false"
-                        app:cornerRadius="14dp" />
+                        android:textSize="12sp"
+                        app:cornerRadius="12dp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnCard"
                         style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="0dp"
-                        android:layout_height="40dp"
-                        android:layout_marginStart="8dp"
+                        android:layout_height="44dp"
+                        android:layout_marginStart="6dp"
                         android:layout_weight="1"
-                        android:text="@string/card"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text="@string/maya"
                         android:textAllCaps="false"
-                        app:cornerRadius="14dp" />
+                        android:textSize="12sp"
+                        app:cornerRadius="12dp" />
                 </LinearLayout>
 
                 <!-- Clear + Checkout row -->
@@ -1011,11 +1129,13 @@
                         android:id="@+id/btnClear"
                         style="@style/Widget.Material3.Button.UnelevatedButton"
                         android:layout_width="0dp"
-                        android:layout_height="44dp"
+                        android:layout_height="46dp"
                         android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
                         android:text="@string/clear"
                         android:textAllCaps="false"
-                        app:cornerRadius="14dp" />
+                        app:cornerRadius="12dp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnCheckout"
@@ -1023,13 +1143,13 @@
                         android:layout_width="0dp"
                         android:layout_height="46dp"
                         android:layout_marginStart="10dp"
-                        android:layout_weight="1.35"
+                        android:layout_weight="1.4"
                         android:insetTop="0dp"
                         android:insetBottom="0dp"
                         android:text="@string/checkout"
                         android:textAllCaps="false"
                         android:textStyle="bold"
-                        app:cornerRadius="14dp" />
+                        app:cornerRadius="12dp" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -1038,8 +1158,8 @@
             android:id="@+id/fabCart"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="4dp"
-            android:layout_marginBottom="4dp"
+            android:layout_marginEnd="20dp"
+            android:layout_marginBottom="20dp"
             android:contentDescription="@string/cart"
             android:src="@drawable/ic_cart_outline_24"
             app:backgroundTint="@color/pos_secondary"

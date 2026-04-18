@@ -33,7 +33,10 @@ class OrderItemAdapter(
             RemoteImageLoader.load(binding.ivOrderItem, item.product.imageUrl, item.product.imageResId)
             binding.tvOrderItemName.text = item.product.name
             binding.tvOrderItemQty.text = item.quantity.toString()
-            binding.tvOrderItemUnitPrice.text = item.product.category
+            binding.tvOrderItemUnitPrice.text = binding.root.context.getString(
+                R.string.unit_price_format,
+                item.product.price
+            )
             binding.tvOrderItemPrice.text = binding.root.context.getString(
                 R.string.currency_format,
                 item.lineTotal

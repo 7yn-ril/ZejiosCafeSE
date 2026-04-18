@@ -2,6 +2,7 @@ package com.example.zejioscafese.dashboard.data.repository
 
 import android.util.Log
 import com.example.zejioscafese.core.supabase.SupabaseProvider
+import com.example.zejioscafese.core.supabase.SupabaseSessionHelper
 import com.example.zejioscafese.dashboard.model.AlertLevel
 import com.example.zejioscafese.dashboard.model.DashboardAlert
 import com.example.zejioscafese.dashboard.model.DashboardChartPoint
@@ -12,7 +13,6 @@ import com.example.zejioscafese.dashboard.model.DashboardSnapshot
 import com.example.zejioscafese.dashboard.model.DashboardTopItem
 import com.example.zejioscafese.pos.data.remote.dto.ProductVariantStockDto
 import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.gotrue.Auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import java.time.LocalDate
@@ -292,14 +292,7 @@ class DashboardRepository(
     }
 
     private suspend fun ensureAuthenticatedSession() {
-        val auth = supabaseClient.pluginManager.getPlugin(Auth)
-        auth.awaitInitialization()
-
-        if (auth.currentUserOrNull() != null) {
-            return
-        }
-
-        auth.signInAnonymously()
+        SupabaseSessionHelper.ensureValidSession(supabaseClient)
     }
 
     private suspend fun <T> fetchOptionalData(

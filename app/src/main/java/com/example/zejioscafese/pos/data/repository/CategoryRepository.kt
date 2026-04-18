@@ -1,6 +1,7 @@
 package com.example.zejioscafese.pos.data.repository
 
 import com.example.zejioscafese.core.supabase.SupabaseProvider
+import com.example.zejioscafese.core.supabase.SupabaseSessionHelper
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
@@ -15,6 +16,8 @@ class CategoryRepository(
         get() = clientProvider()
 
     suspend fun fetchCategories(): List<String> {
+        SupabaseSessionHelper.ensureValidSession(supabaseClient)
+
         val categories = supabaseClient
             .from("categories")
             .select {

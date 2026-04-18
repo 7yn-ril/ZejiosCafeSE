@@ -180,14 +180,36 @@
     <string name="no_items_added">No items added yet</string>
     <string name="no_products_found">No menu items match this filter.</string>
     <string name="payment_method">Payment Method</string>
+    <string name="order_type">Order Type</string>
+    <string name="dine_in">Dine In</string>
+    <string name="take_away">Take Away</string>
+    <string name="delivery">Delivery</string>
+    <string name="table_number_label">Table %1$s</string>
+    <string name="table_default">01</string>
+    <string name="edit_table">Edit table</string>
+    <string name="add_to_dish">Add to Dish</string>
+    <string name="remove_item_title">Remove item?</string>
+    <string name="remove_item_message">Remove %1$s from this order?</string>
+    <string name="remove_item_confirm">Remove</string>
+    <string name="remove_item_cancel">Keep</string>
+    <string name="toggle_categories">Toggle categories</string>
+    <string name="place_order">Place Order</string>
 
     <string name="subtotal">Subtotal</string>
-    <string name="tax">Tax (12%%)</string>
+    <string name="tax">Tax</string>
     <string name="total">Total</string>
+    <string name="items_count_label">%1$d item(s)</string>
+    <string name="receipt_brand_name">Zejios Cafe</string>
+    <string name="receipt_brand_tagline">Thank you for your order!</string>
+    <string name="receipt_thank_you">- Thank you, visit us again -</string>
+    <string name="receipt_items_header">Items</string>
+    <string name="receipt_order_type_label">Order Type</string>
+    <string name="receipt_table_label">Table</string>
 
     <string name="cash">Cash</string>
     <string name="gcash">GCash</string>
     <string name="card">Card</string>
+    <string name="maya">Maya</string>
     <string name="clear">Clear</string>
     <string name="checkout">Checkout</string>
     <string name="checkout_requires_items">Add at least one item before checkout.</string>

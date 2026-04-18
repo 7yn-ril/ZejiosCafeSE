@@ -823,6 +823,88 @@
                         app:tint="@color/pos_text_secondary" />
                 </FrameLayout>
 
+                <!-- Table chip + edit -->
+                <LinearLayout
+                    android:id="@+id/tableHeaderRow"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/bg_table_chip"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="12dp"
+                    android:paddingTop="6dp"
+                    android:paddingEnd="6dp"
+                    android:paddingBottom="6dp">
+
+                    <TextView
+                        android:id="@+id/tvTableLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/pos_text_primary"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        tools:text="Table 01" />
+
+                    <ImageButton
+                        android:id="@+id/btnEditTable"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:layout_marginStart="6dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/edit_table"
+                        android:padding="4dp"
+                        android:src="@drawable/ic_edit_18"
+                        app:tint="@color/pos_primary" />
+                </LinearLayout>
+
+                <!-- Order type segment control (Dine In / Take Away / Delivery) -->
+                <LinearLayout
+                    android:id="@+id/orderTypeSegment"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_segment_container"
+                    android:orientation="horizontal"
+                    android:padding="4dp">
+
+                    <TextView
+                        android:id="@+id/btnOrderTypeDineIn"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_segment_selected"
+                        android:gravity="center"
+                        android:text="@string/dine_in"
+                        android:textColor="@color/white"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/btnOrderTypeTakeAway"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_segment_unselected"
+                        android:gravity="center"
+                        android:text="@string/take_away"
+                        android:textColor="@color/pos_text_primary"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/btnOrderTypeDelivery"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_segment_unselected"
+                        android:gravity="center"
+                        android:text="@string/delivery"
+                        android:textColor="@color/pos_text_primary"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
                 <LinearLayout
                     android:id="@+id/emptyOrderState"
                     android:layout_width="match_parent"
@@ -905,7 +987,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:orientation="horizontal">
+                        android:orientation="horizontal"
+                        android:visibility="gone">
 
                         <TextView
                             android:layout_width="0dp"

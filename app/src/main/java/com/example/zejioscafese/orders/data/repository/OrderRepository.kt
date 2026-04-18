@@ -1,10 +1,10 @@
 package com.example.zejioscafese.orders.data.repository
 
 import com.example.zejioscafese.core.supabase.SupabaseProvider
+import com.example.zejioscafese.core.supabase.SupabaseSessionHelper
 import com.example.zejioscafese.orders.model.CafeOrder
 import com.example.zejioscafese.orders.model.CafeOrderStatus
 import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.gotrue.Auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
@@ -139,24 +139,10 @@ class OrderRepository(
     }
 
     private suspend fun ensureAuthenticatedUserId(): String {
-        val auth = supabaseClient.pluginManager.getPlugin(Auth)
-        auth.awaitInitialization()
-
-        val existingUserId = auth.currentUserOrNull()?.id
-        if (existingUserId != null) {
-            return existingUserId
-        }
-
-        try {
-            auth.signInAnonymously()
-        } catch (exception: Exception) {
-            throw IllegalStateException(
-                "Enable Anonymous Sign-Ins in Supabase Authentication so the app can save orders.",
-                exception
-            )
-        }
-
-        return auth.currentUserOrNull()?.id
+        return SupabaseSessionHelper.ensureValidSession(
+            client = supabaseClient,
+            signInErrorMessage = "Enable Anonymous Sign-Ins in Supabase Authentication so the app can save orders."
+        )
             ?: throw IllegalStateException("Supabase authentication did not return a staff session.")
     }
 

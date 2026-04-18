@@ -1,8 +1,9 @@
 package com.example.zejioscafese.inventory.data.repository
 
-import com.example.zejioscafese.inventory.data.model.ProductEditorDraft
-import com.example.zejioscafese.inventory.data.model.ProductCategoryOption
 import com.example.zejioscafese.core.supabase.SupabaseProvider
+import com.example.zejioscafese.core.supabase.SupabaseSessionHelper
+import com.example.zejioscafese.inventory.data.model.ProductCategoryOption
+import com.example.zejioscafese.inventory.data.model.ProductEditorDraft
 import com.example.zejioscafese.inventory.data.model.ProducibleProduct
 import com.example.zejioscafese.inventory.data.remote.dto.IngredientDto
 import com.example.zejioscafese.inventory.data.remote.dto.ProductCategoryDto
@@ -10,7 +11,6 @@ import com.example.zejioscafese.inventory.data.remote.dto.ProductRecipeLinkDto
 import com.example.zejioscafese.inventory.data.remote.dto.ProducibleProductDto
 import com.example.zejioscafese.pos.data.model.Ingredient
 import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.gotrue.Auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import java.time.OffsetDateTime
@@ -26,6 +26,8 @@ class InventoryRepository(
         get() = clientProvider()
 
     suspend fun fetchIngredients(): List<Ingredient> {
+        ensureAuthenticatedSession()
+
         return supabaseClient
             .from(INGREDIENTS_TABLE)
             .select {
@@ -36,6 +38,8 @@ class InventoryRepository(
     }
 
     suspend fun fetchProducibleProducts(): List<ProducibleProduct> {
+        ensureAuthenticatedSession()
+
         return supabaseClient
             .from(PRODUCIBLE_PRODUCTS_VIEW)
             .select {
@@ -51,6 +55,8 @@ class InventoryRepository(
     }
 
     suspend fun fetchProductCategories(): List<ProductCategoryOption> {
+        ensureAuthenticatedSession()
+
         return supabaseClient
             .from(CATEGORIES_TABLE)
             .select {
@@ -64,6 +70,8 @@ class InventoryRepository(
     }
 
     suspend fun fetchProductRecipeLinks(): List<ProductRecipeLinkDto> {
+        ensureAuthenticatedSession()
+
         return supabaseClient
             .from(VARIANT_INGREDIENTS_TABLE)
             .select {
@@ -302,14 +310,7 @@ class InventoryRepository(
     }
 
     private suspend fun ensureAuthenticatedSession() {
-        val auth = supabaseClient.pluginManager.getPlugin(Auth)
-        auth.awaitInitialization()
-
-        if (auth.currentUserOrNull() != null) {
-            return
-        }
-
-        auth.signInAnonymously()
+        SupabaseSessionHelper.ensureValidSession(supabaseClient)
     }
 
     private fun currentTimestamp(): String {

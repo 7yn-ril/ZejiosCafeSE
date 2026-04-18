@@ -14,6 +14,7 @@ import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.ImageView
@@ -158,6 +159,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private var isSidebarExpanded: Boolean = true
     private var currentSection: Section = Section.POS
     private var isCheckoutExpanded: Boolean = false
+    private var sidebarExpandedBeforeCheckout: Boolean? = null
+    private var isCategoryExpanded: Boolean = false
     private var checkoutExpandedGuidePercent: Float = 0.70f
     private var checkoutAnimator: ValueAnimator? = null
     private var sidebarAnimator: ValueAnimator? = null
@@ -256,7 +259,11 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         updatePosCategoryChipMode(compact = false)
         updatePosCategoryStripPadding(expanded = false)
 
-        productAdapter = ProductAdapter(onCardClick = ::handleProductCardClick)
+        productAdapter = ProductAdapter(
+            onCardClick = ::handleProductCardClick,
+            onIncrease = { product -> viewModel.increaseProduct(product) },
+            onDecrease = { product -> handleProductDecrease(product) }
+        )
         binding.rvProducts.apply {
             adapter = productAdapter
             layoutManager = GridLayoutManager(
@@ -272,7 +279,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
         orderItemAdapter = OrderItemAdapter(
             onIncreaseClick = viewModel::increaseOrderItem,
-            onDecreaseClick = viewModel::decreaseOrderItem
+            onDecreaseClick = ::handleOrderItemDecrease
         )
         binding.rvOrderItems.apply {
             adapter = orderItemAdapter
@@ -398,6 +405,98 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             renderSection(Section.POS)
         }
         setCheckoutExpanded(expanded = true, animate = true)
+    }
+
+    private fun handleProductDecrease(product: Product) {
+        val currentQty = viewModel.orderQuantities.value?.get(product.id) ?: 0
+        if (currentQty <= 1) {
+            showRemoveItemConfirmation(product.name) {
+                viewModel.removeProduct(product.id)
+            }
+        } else {
+            viewModel.decreaseProduct(product)
+        }
+    }
+
+    private fun handleOrderItemDecrease(item: com.example.zejioscafese.pos.data.model.OrderItem) {
+        if (item.quantity <= 1) {
+            showRemoveItemConfirmation(item.product.name) {
+                viewModel.removeProduct(item.product.id)
+            }
+        } else {
+            viewModel.decreaseOrderItem(item)
+        }
+    }
+
+    private fun showRemoveItemConfirmation(productName: String, onConfirm: () -> Unit) {
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.remove_item_title))
+            .setMessage(getString(R.string.remove_item_message, productName))
+            .setPositiveButton(getString(R.string.remove_item_confirm)) { _, _ -> onConfirm() }
+            .setNegativeButton(getString(R.string.remove_item_cancel), null)
+            .show()
+    }
+
+    private fun toggleCategoryExpansion() {
+        isCategoryExpanded = !isCategoryExpanded
+        val rv = binding.rvCategories
+        if (isCategoryExpanded) {
+            val spanCount = 3
+            rv.layoutManager = GridLayoutManager(this, spanCount)
+            rv.updateLayoutParams<ViewGroup.LayoutParams> {
+                height = ViewGroup.LayoutParams.WRAP_CONTENT
+            }
+            binding.btnBrowseMenu.rotation = 180f
+        } else {
+            rv.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+            rv.updateLayoutParams<ViewGroup.LayoutParams> {
+                height = resources.getDimensionPixelSize(R.dimen.category_tab_height)
+            }
+            binding.btnBrowseMenu.rotation = 0f
+        }
+    }
+
+    private fun showEditTableDialog() {
+        val input = android.widget.EditText(this).apply {
+            setText(viewModel.tableNumber.value.orEmpty())
+            setSelectAllOnFocus(true)
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
+        }
+        val paddingH = (20 * resources.displayMetrics.density).toInt()
+        val paddingV = (12 * resources.displayMetrics.density).toInt()
+        val container = android.widget.FrameLayout(this).apply {
+            setPadding(paddingH, paddingV, paddingH, paddingV)
+            addView(input)
+        }
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.edit_table))
+            .setView(container)
+            .setPositiveButton(R.string.inventory_dialog_save) { _, _ ->
+                val value = input.text.toString().trim().ifBlank { "01" }
+                viewModel.setTableNumber(value)
+            }
+            .setNegativeButton(R.string.inventory_dialog_cancel, null)
+            .show()
+    }
+
+    private fun applyOrderTypeSelection(type: PosViewModel.OrderType) {
+        val buttons = listOf(
+            binding.btnOrderTypeDineIn to PosViewModel.OrderType.DINE_IN,
+            binding.btnOrderTypeTakeAway to PosViewModel.OrderType.TAKE_AWAY,
+            binding.btnOrderTypeDelivery to PosViewModel.OrderType.DELIVERY
+        )
+        buttons.forEach { (view, value) ->
+            val isSelected = value == type
+            view.setBackgroundResource(
+                if (isSelected) R.drawable.bg_segment_selected else R.drawable.bg_segment_unselected
+            )
+            view.setTextColor(
+                ContextCompat.getColor(
+                    this,
+                    if (isSelected) R.color.white else R.color.pos_text_primary
+                )
+            )
+        }
     }
 
     private fun addOrReplaceOrder(order: CafeOrder) {
@@ -559,61 +658,56 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             ?: order.customerName.ifBlank { getString(R.string.receipt_walk_in_customer) }
         val change = (receipt.cashReceived - receipt.total).coerceAtLeast(0.0)
 
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(24.dp(), 20.dp(), 24.dp(), 12.dp())
+        val receiptBinding = com.example.zejioscafese.databinding.DialogReceiptBinding.inflate(layoutInflater)
+        receiptBinding.tvReceiptOrderId.text = order.id
+        receiptBinding.tvReceiptTime.text = order.timeLabel
+        receiptBinding.tvReceiptCustomer.text = customerName
+        receiptBinding.tvReceiptOrderType.text = when (viewModel.selectedOrderType.value ?: PosViewModel.OrderType.DINE_IN) {
+            PosViewModel.OrderType.DINE_IN -> getString(R.string.dine_in)
+            PosViewModel.OrderType.TAKE_AWAY -> getString(R.string.take_away)
+            PosViewModel.OrderType.DELIVERY -> getString(R.string.delivery)
         }
+        val isDineIn = (viewModel.selectedOrderType.value ?: PosViewModel.OrderType.DINE_IN) == PosViewModel.OrderType.DINE_IN
+        receiptBinding.tableRow.visibility = if (isDineIn) View.VISIBLE else View.GONE
+        receiptBinding.tvReceiptTable.text = viewModel.tableNumber.value.orEmpty()
+        receiptBinding.tvReceiptPayment.text = when (viewModel.selectedPaymentMethod.value ?: PosViewModel.PaymentMethod.CASH) {
+            PosViewModel.PaymentMethod.CASH -> getString(R.string.cash)
+            PosViewModel.PaymentMethod.GCASH -> getString(R.string.gcash)
+            PosViewModel.PaymentMethod.MAYA -> getString(R.string.maya)
+        }
+        receiptBinding.tvReceiptSubtotal.text = formatCurrency(receipt.subtotal)
+        receiptBinding.tvReceiptTotal.text = formatCurrency(receipt.total)
+        receiptBinding.tvReceiptCashReceived.text = formatCurrency(receipt.cashReceived)
+        receiptBinding.tvReceiptChange.text = formatCurrency(change)
 
-        content.addView(
-            createDialogText(
-                text = getString(R.string.receipt_subtitle),
-                textSizeSp = 14f,
-                textColorRes = R.color.pos_text_secondary
-            )
-        )
-
-        content.addView(createSectionLabel(getString(R.string.receipt_order_label)))
-        content.addView(createDialogText(order.id, textSizeSp = 18f, typeface = Typeface.DEFAULT_BOLD))
-        content.addView(createSectionLabel(getString(R.string.receipt_customer_label)))
-        content.addView(createDialogText(customerName, textSizeSp = 16f))
-        content.addView(createSectionLabel(getString(R.string.receipt_time_label)))
-        content.addView(createDialogText(order.timeLabel, textSizeSp = 16f))
-        content.addView(createSectionLabel(getString(R.string.receipt_payment_method_label)))
-        content.addView(createDialogText(getString(R.string.cash), textSizeSp = 16f))
-        content.addView(createSectionLabel(getString(R.string.items_label)))
+        receiptBinding.receiptItemsContainer.removeAllViews()
         receipt.lines.forEach { line ->
-            content.addView(
-                createDialogText(
-                    text = formatReceiptLine(line),
-                    textSizeSp = 14f,
-                    typeface = Typeface.MONOSPACE
-                )
-            )
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = 6.dp() }
+            }
+            val nameView = TextView(this).apply {
+                text = "${line.quantity} x ${line.label}"
+                setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
+                textSize = 13f
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            }
+            val priceView = TextView(this).apply {
+                text = formatCurrency(line.lineTotal)
+                setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
+                textSize = 13f
+                setTypeface(Typeface.DEFAULT_BOLD)
+            }
+            row.addView(nameView)
+            row.addView(priceView)
+            receiptBinding.receiptItemsContainer.addView(row)
         }
-        content.addView(createSectionLabel(getString(R.string.subtotal)))
-        content.addView(createDialogText(formatCurrency(receipt.subtotal), textSizeSp = 16f))
-        content.addView(createSectionLabel(getString(R.string.total)))
-        content.addView(
-            createDialogText(
-                text = formatCurrency(receipt.total),
-                textSizeSp = 20f,
-                typeface = Typeface.DEFAULT_BOLD
-            )
-        )
-        content.addView(createSectionLabel(getString(R.string.receipt_cash_received_label)))
-        content.addView(createDialogText(formatCurrency(receipt.cashReceived), textSizeSp = 16f))
-        content.addView(createSectionLabel(getString(R.string.receipt_change_label)))
-        content.addView(
-            createDialogText(
-                text = formatCurrency(change),
-                textSizeSp = 18f,
-                typeface = Typeface.DEFAULT_BOLD
-            )
-        )
 
         AlertDialog.Builder(this)
-            .setTitle(getString(R.string.receipt_title))
-            .setView(ScrollView(this).apply { addView(content) })
+            .setView(receiptBinding.root)
             .setPositiveButton(R.string.receipt_done, null)
             .show()
     }
@@ -1217,7 +1311,18 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
         binding.btnFilterSort.setOnClickListener { showSortMenu(it) }
 
-        binding.btnBrowseMenu.setOnClickListener { showMenuBrowseDialog() }
+        binding.btnBrowseMenu.setOnClickListener { toggleCategoryExpansion() }
+
+        binding.btnOrderTypeDineIn.setOnClickListener {
+            viewModel.setOrderType(PosViewModel.OrderType.DINE_IN)
+        }
+        binding.btnOrderTypeTakeAway.setOnClickListener {
+            viewModel.setOrderType(PosViewModel.OrderType.TAKE_AWAY)
+        }
+        binding.btnOrderTypeDelivery.setOnClickListener {
+            viewModel.setOrderType(PosViewModel.OrderType.DELIVERY)
+        }
+        binding.btnEditTable.setOnClickListener { showEditTableDialog() }
 
         binding.btnClear.setOnClickListener { viewModel.clearOrder() }
         binding.btnCheckout.setOnClickListener {
@@ -1249,6 +1354,12 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
         binding.btnCash.setOnClickListener {
             viewModel.setPaymentMethod(PosViewModel.PaymentMethod.CASH)
+        }
+        binding.btnGcash.setOnClickListener {
+            viewModel.setPaymentMethod(PosViewModel.PaymentMethod.GCASH)
+        }
+        binding.btnCard.setOnClickListener {
+            viewModel.setPaymentMethod(PosViewModel.PaymentMethod.MAYA)
         }
 
         binding.avatar.setOnClickListener { renderSection(Section.PROFILE) }
@@ -1770,6 +1881,14 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             applyPaymentSelection(paymentMethod)
         }
 
+        viewModel.selectedOrderType.observe(this) { orderType ->
+            applyOrderTypeSelection(orderType)
+        }
+
+        viewModel.tableNumber.observe(this) { table ->
+            binding.tvTableLabel.text = getString(R.string.table_number_label, table)
+        }
+
         viewModel.menuLoadError.observe(this) { errorMessage ->
             if (!errorMessage.isNullOrBlank()) {
                 Snackbar.make(
@@ -1960,6 +2079,20 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             return
         }
         isCheckoutExpanded = expanded
+        if (expanded) {
+            if (sidebarExpandedBeforeCheckout == null) {
+                sidebarExpandedBeforeCheckout = isSidebarExpanded
+            }
+            if (isSidebarExpanded) {
+                setSidebarExpanded(expanded = false, animate = animate)
+            }
+        } else {
+            val previous = sidebarExpandedBeforeCheckout
+            sidebarExpandedBeforeCheckout = null
+            if (previous == true && !isSidebarExpanded) {
+                setSidebarExpanded(expanded = true, animate = animate)
+            }
+        }
         if (currentSection == Section.POS) {
             applyCheckoutPanelState(expanded = expanded, animate = animate)
         }
@@ -1992,6 +2125,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         checkoutAnimator?.cancel()
         updatePosCategoryChipMode(compact = false)
         updatePosCategoryStripPadding(expanded)
+        updateProductGridSpanCount()
 
         if (!animate || abs(startPercent - targetPercent) < 0.001f) {
             binding.contentGuide.updateLayoutParams<ConstraintLayout.LayoutParams> {
@@ -2248,7 +2382,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val buttons = mapOf(
             binding.btnCash to PosViewModel.PaymentMethod.CASH,
             binding.btnGcash to PosViewModel.PaymentMethod.GCASH,
-            binding.btnCard to PosViewModel.PaymentMethod.CARD
+            binding.btnCard to PosViewModel.PaymentMethod.MAYA
         )
 
         buttons.forEach { (button, value) ->
@@ -2271,9 +2405,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     }
 
     private fun configureCashOnlyCheckout() {
-        binding.btnGcash.visibility = View.GONE
-        binding.btnCard.visibility = View.GONE
-        (binding.tvTax.parent as? View)?.visibility = View.GONE
+        binding.btnGcash.visibility = View.VISIBLE
+        binding.btnCard.visibility = View.VISIBLE
         updateCheckoutButtonState()
     }
 
@@ -2320,10 +2453,10 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val targetSpanCount = when {
             !isTablet -> 2
             configuration.orientation == Configuration.ORIENTATION_LANDSCAPE -> {
-                if (isSidebarExpanded) 3 else 4
+                if (isCheckoutExpanded) 4 else 5
             }
             else -> {
-                if (isSidebarExpanded) 2 else 3
+                if (isCheckoutExpanded) 3 else 4
             }
         }
 

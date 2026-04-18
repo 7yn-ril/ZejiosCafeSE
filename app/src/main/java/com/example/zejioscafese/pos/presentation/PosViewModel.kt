@@ -37,7 +37,13 @@ class PosViewModel(
     enum class PaymentMethod {
         CASH,
         GCASH,
-        CARD
+        MAYA
+    }
+
+    enum class OrderType {
+        DINE_IN,
+        TAKE_AWAY,
+        DELIVERY
     }
 
     enum class SortOption {
@@ -91,6 +97,12 @@ class PosViewModel(
 
     private val _selectedPaymentMethod = MutableLiveData(PaymentMethod.CASH)
     val selectedPaymentMethod: LiveData<PaymentMethod> = _selectedPaymentMethod
+
+    private val _selectedOrderType = MutableLiveData(OrderType.DINE_IN)
+    val selectedOrderType: LiveData<OrderType> = _selectedOrderType
+
+    private val _tableNumber = MutableLiveData("01")
+    val tableNumber: LiveData<String> = _tableNumber
 
     private val _isMenuLoading = MutableLiveData(false)
     val isMenuLoading: LiveData<Boolean> = _isMenuLoading
@@ -176,6 +188,14 @@ class PosViewModel(
         _selectedPaymentMethod.value = method
     }
 
+    fun setOrderType(type: OrderType) {
+        _selectedOrderType.value = type
+    }
+
+    fun setTableNumber(table: String) {
+        _tableNumber.value = table
+    }
+
     fun checkout(customerName: String? = null) {
         val itemsToCheckout = _orderItems.value.orEmpty()
         if (itemsToCheckout.isEmpty() || _isCheckoutInProgress.value == true) {
@@ -195,7 +215,7 @@ class PosViewModel(
                         subtotal = _subtotal.value ?: 0.0,
                         tax = _tax.value ?: 0.0,
                         total = _total.value ?: 0.0,
-                        paymentMethod = PaymentMethod.CASH.name.lowercase(Locale.US),
+                        paymentMethod = (_selectedPaymentMethod.value ?: PaymentMethod.CASH).name.lowercase(Locale.US),
                         status = "completed",
                         items = buildCheckoutLines(itemsToCheckout)
                     ),

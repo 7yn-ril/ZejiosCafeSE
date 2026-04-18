@@ -55,7 +55,12 @@ class CategoryAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(category: String, isSelected: Boolean, compactMode: Boolean) {
-            binding.btnCategory.setIconResource(categoryIcon(category))
+            val iconRes = categoryIcon(category)
+            if (iconRes == 0) {
+                binding.btnCategory.icon = null
+            } else {
+                binding.btnCategory.setIconResource(iconRes)
+            }
             binding.btnCategory.isSelected = isSelected
             binding.btnCategory.text = if (compactMode) "" else category
             binding.btnCategory.contentDescription = category
@@ -121,7 +126,7 @@ class CategoryAdapter(
         @DrawableRes
         private fun categoryIcon(category: String): Int {
             return when (category) {
-                "All" -> R.drawable.ic_grid_24
+                "All" -> 0
                 "Drinks" -> R.drawable.ic_coffee_24
                 "Meals" -> R.drawable.ic_meal_24
                 "Desserts" -> R.drawable.ic_dessert_24

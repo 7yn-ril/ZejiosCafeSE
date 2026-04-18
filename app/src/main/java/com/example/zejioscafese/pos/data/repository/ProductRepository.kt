@@ -1,6 +1,7 @@
 package com.example.zejioscafese.pos.data.repository
 
 import com.example.zejioscafese.core.supabase.SupabaseProvider
+import com.example.zejioscafese.core.supabase.SupabaseSessionHelper
 import com.example.zejioscafese.pos.data.local.ProductImageResolver
 import com.example.zejioscafese.pos.data.model.Product
 import com.example.zejioscafese.pos.data.remote.dto.ProductVariantStockDto
@@ -16,6 +17,8 @@ class ProductRepository(
         get() = clientProvider()
 
     suspend fun fetchProducts(): List<Product> {
+        SupabaseSessionHelper.ensureValidSession(supabaseClient)
+
         return supabaseClient
             .from("product_variant_stock_view")
             .select {
