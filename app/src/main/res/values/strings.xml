@@ -183,11 +183,13 @@
     <string name="order_type">Order Type</string>
     <string name="dine_in">Dine In</string>
     <string name="take_away">Take Away</string>
+    <string name="take_out">Take Out</string>
     <string name="delivery">Delivery</string>
     <string name="table_number_label">Table %1$s</string>
     <string name="table_default">01</string>
     <string name="edit_table">Edit table</string>
     <string name="add_to_dish">Add to Dish</string>
+    <string name="add_to_cart">Add to Cart</string>
     <string name="remove_item_title">Remove item?</string>
     <string name="remove_item_message">Remove %1$s from this order?</string>
     <string name="remove_item_confirm">Remove</string>

@@ -616,6 +616,7 @@
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="0dp"
                 android:layout_height="@dimen/search_height"
+                android:layout_marginEnd="@dimen/content_inline_gap"
                 android:hint="@string/search_hint"
                 app:boxBackgroundColor="@color/pos_surface_header"
                 app:boxCornerRadiusBottomEnd="18dp"
@@ -641,8 +642,7 @@
                 android:id="@+id/btnFilterSort"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="wrap_content"
-                android:layout_height="0dp"
-                android:layout_marginStart="@dimen/content_inline_gap"
+                android:layout_height="@dimen/search_height"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
                 android:text="@string/filter_sort"
@@ -653,7 +653,7 @@
                 android:ellipsize="end"
                 android:textColor="@color/pos_text_primary"
                 app:backgroundTint="@color/pos_surface_header"
-                app:cornerRadius="14dp"
+                app:cornerRadius="18dp"
                 app:icon="@drawable/ic_filter_24"
                 app:iconGravity="textStart"
                 app:iconSize="16dp"
@@ -669,7 +669,7 @@
                 android:id="@+id/rvCategories"
                 android:layout_width="0dp"
                 android:layout_height="@dimen/category_tab_height"
-                android:layout_marginTop="@dimen/section_spacing"
+                android:layout_marginTop="@dimen/content_inline_gap"
                 android:clipToPadding="false"
                 android:paddingEnd="4dp"
                 app:layout_constraintEnd_toStartOf="@+id/btnBrowseMenu"
@@ -824,47 +824,12 @@
                         app:tint="@color/pos_text_secondary" />
                 </FrameLayout>
 
-                <!-- Table chip + edit -->
-                <LinearLayout
-                    android:id="@+id/tableHeaderRow"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:background="@drawable/bg_table_chip"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="12dp"
-                    android:paddingTop="6dp"
-                    android:paddingEnd="6dp"
-                    android:paddingBottom="6dp">
-
-                    <TextView
-                        android:id="@+id/tvTableLabel"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textColor="@color/pos_text_primary"
-                        android:textSize="13sp"
-                        android:textStyle="bold"
-                        tools:text="Table 01" />
-
-                    <ImageButton
-                        android:id="@+id/btnEditTable"
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:layout_marginStart="6dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="@string/edit_table"
-                        android:padding="4dp"
-                        android:src="@drawable/ic_edit_18"
-                        app:tint="@color/pos_primary" />
-                </LinearLayout>
-
                 <!-- Order type segment control (Dine In / Take Away / Delivery) -->
                 <LinearLayout
                     android:id="@+id/orderTypeSegment"
                     android:layout_width="match_parent"
                     android:layout_height="44dp"
-                    android:layout_marginTop="12dp"
+                    android:layout_marginTop="10dp"
                     android:background="@drawable/bg_segment_container"
                     android:orientation="horizontal"
                     android:padding="4dp">
@@ -888,7 +853,7 @@
                         android:layout_weight="1"
                         android:background="@drawable/bg_segment_unselected"
                         android:gravity="center"
-                        android:text="@string/take_away"
+                        android:text="@string/take_out"
                         android:textColor="@color/pos_text_primary"
                         android:textSize="12sp"
                         android:textStyle="bold" />

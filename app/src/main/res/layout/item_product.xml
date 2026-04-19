@@ -101,7 +101,7 @@
                 android:layout_marginTop="10dp"
                 android:background="@drawable/bg_add_to_dish"
                 android:gravity="center"
-                android:text="@string/add_to_dish"
+                android:text="@string/add_to_cart"
                 android:textColor="@color/white"
                 android:textSize="12sp"
                 android:textStyle="bold"
@@ -139,6 +139,8 @@
                     app:cornerRadius="10dp"
                     app:elevation="0dp"
                     app:icon="@drawable/ic_remove_18"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
                     app:iconSize="14dp"
                     app:iconTint="@color/pos_primary" />
 
@@ -167,6 +169,8 @@
                     app:cornerRadius="10dp"
                     app:elevation="0dp"
                     app:icon="@drawable/ic_add_18"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
                     app:iconSize="14dp"
                     app:iconTint="@color/white" />
             </LinearLayout>

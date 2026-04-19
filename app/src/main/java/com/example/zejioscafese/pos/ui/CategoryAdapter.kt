@@ -36,6 +36,13 @@ class CategoryAdapter(
             if (newIndex >= 0) notifyItemChanged(newIndex)
         }
 
+    var expandedMode: Boolean = false
+        set(value) {
+            if (field == value) return
+            field = value
+            notifyDataSetChanged()
+        }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CategoryViewHolder {
         val binding = ItemCategoryTabBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return CategoryViewHolder(binding, onCategoryClick)
@@ -45,7 +52,8 @@ class CategoryAdapter(
         holder.bind(
             category = getItem(position),
             isSelected = getItem(position) == selectedCategory,
-            compactMode = compactMode
+            compactMode = compactMode,
+            expandedMode = expandedMode
         )
     }
 
@@ -54,7 +62,7 @@ class CategoryAdapter(
         private val onCategoryClick: (String) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(category: String, isSelected: Boolean, compactMode: Boolean) {
+        fun bind(category: String, isSelected: Boolean, compactMode: Boolean, expandedMode: Boolean) {
             val iconRes = categoryIcon(category)
             if (iconRes == 0) {
                 binding.btnCategory.icon = null
@@ -64,15 +72,17 @@ class CategoryAdapter(
             binding.btnCategory.isSelected = isSelected
             binding.btnCategory.text = if (compactMode) "" else category
             binding.btnCategory.contentDescription = category
-            updateButtonLayout(compactMode)
+            updateButtonLayout(compactMode, expandedMode)
             binding.btnCategory.setOnClickListener { onCategoryClick(category) }
         }
 
-        private fun updateButtonLayout(compactMode: Boolean) {
+        private fun updateButtonLayout(compactMode: Boolean, expandedMode: Boolean) {
             val targetPaddingStart = dpToPx(if (compactMode) 10 else 14)
             val targetPaddingEnd = dpToPx(if (compactMode) 10 else 16)
             val targetIconPadding = dpToPx(if (compactMode) 0 else 8)
-            val targetMarginEnd = dpToPx(if (compactMode) 6 else 10)
+            val targetMarginEnd = dpToPx(if (expandedMode) 0 else if (compactMode) 6 else 10)
+            val targetMarginBottom = dpToPx(if (expandedMode) 8 else 0)
+            val targetWidth = if (expandedMode) ViewGroup.LayoutParams.MATCH_PARENT else ViewGroup.LayoutParams.WRAP_CONTENT
 
             val button = binding.btnCategory
             val params = button.layoutParams as MarginLayoutParams
@@ -81,12 +91,16 @@ class CategoryAdapter(
             val startPaddingEnd = button.paddingEnd
             val startIconPadding = button.iconPadding
             val startMarginEnd = params.marginEnd
+            val startMarginBottom = params.bottomMargin
+            val startWidth = params.width
 
             if (
                 startPaddingStart == targetPaddingStart &&
                 startPaddingEnd == targetPaddingEnd &&
                 startIconPadding == targetIconPadding &&
-                startMarginEnd == targetMarginEnd
+                startMarginEnd == targetMarginEnd &&
+                startMarginBottom == targetMarginBottom &&
+                startWidth == targetWidth
             ) {
                 return
             }
@@ -99,6 +113,7 @@ class CategoryAdapter(
                     val currentPaddingEnd = lerp(startPaddingEnd, targetPaddingEnd, fraction)
                     val currentIconPadding = lerp(startIconPadding, targetIconPadding, fraction)
                     val currentMarginEnd = lerp(startMarginEnd, targetMarginEnd, fraction)
+                    val currentMarginBottom = lerp(startMarginBottom, targetMarginBottom, fraction)
 
                     button.setPaddingRelative(
                         currentPaddingStart,
@@ -110,6 +125,8 @@ class CategoryAdapter(
 
                     val updatedParams = button.layoutParams as MarginLayoutParams
                     updatedParams.marginEnd = currentMarginEnd
+                    updatedParams.bottomMargin = currentMarginBottom
+                    updatedParams.width = targetWidth
                     button.layoutParams = updatedParams
                 }
             }.start()

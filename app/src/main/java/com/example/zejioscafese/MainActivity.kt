@@ -253,6 +253,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
     private fun setupRecyclerViews() {
         categoryAdapter = CategoryAdapter(onCategoryClick = viewModel::selectCategory)
+        categoryAdapter.expandedMode = false
         binding.rvCategories.apply {
             adapter = categoryAdapter
             layoutManager = LinearLayoutManager(this@MainActivity, LinearLayoutManager.HORIZONTAL, false)
@@ -440,8 +441,10 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private fun toggleCategoryExpansion() {
         isCategoryExpanded = !isCategoryExpanded
         val rv = binding.rvCategories
+        categoryAdapter.expandedMode = isCategoryExpanded
         if (isCategoryExpanded) {
-            val spanCount = 3
+            val isTablet = resources.configuration.smallestScreenWidthDp >= 600
+            val spanCount = if (isTablet) 4 else 3
             rv.layoutManager = GridLayoutManager(this, spanCount)
             rv.updateLayoutParams<ViewGroup.LayoutParams> {
                 height = ViewGroup.LayoutParams.WRAP_CONTENT
@@ -454,29 +457,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             }
             binding.btnBrowseMenu.rotation = 0f
         }
-    }
-
-    private fun showEditTableDialog() {
-        val input = android.widget.EditText(this).apply {
-            setText(viewModel.tableNumber.value.orEmpty())
-            setSelectAllOnFocus(true)
-            inputType = android.text.InputType.TYPE_CLASS_TEXT
-        }
-        val paddingH = (20 * resources.displayMetrics.density).toInt()
-        val paddingV = (12 * resources.displayMetrics.density).toInt()
-        val container = android.widget.FrameLayout(this).apply {
-            setPadding(paddingH, paddingV, paddingH, paddingV)
-            addView(input)
-        }
-        AlertDialog.Builder(this)
-            .setTitle(getString(R.string.edit_table))
-            .setView(container)
-            .setPositiveButton(R.string.inventory_dialog_save) { _, _ ->
-                val value = input.text.toString().trim().ifBlank { "01" }
-                viewModel.setTableNumber(value)
-            }
-            .setNegativeButton(R.string.inventory_dialog_cancel, null)
-            .show()
     }
 
     private fun applyOrderTypeSelection(type: PosViewModel.OrderType) {
@@ -1320,8 +1300,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         binding.btnOrderTypeDelivery.setOnClickListener {
             viewModel.setOrderType(PosViewModel.OrderType.DELIVERY)
         }
-        binding.btnEditTable.setOnClickListener { showEditTableDialog() }
-
         binding.btnClear.setOnClickListener { viewModel.clearOrder() }
         binding.btnCheckout.setOnClickListener {
             if (viewModel.orderItems.value.isNullOrEmpty()) {
@@ -1881,10 +1859,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
         viewModel.selectedOrderType.observe(this) { orderType ->
             applyOrderTypeSelection(orderType)
-        }
-
-        viewModel.tableNumber.observe(this) { table ->
-            binding.tvTableLabel.text = getString(R.string.table_number_label, table)
         }
 
         viewModel.menuLoadError.observe(this) { errorMessage ->
