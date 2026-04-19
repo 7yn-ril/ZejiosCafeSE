@@ -25,7 +25,6 @@ import androidx.activity.viewModels
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
-import androidx.appcompat.widget.TooltipCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePaddingRelative
@@ -70,7 +69,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity(), NavigationHost {
 
@@ -343,7 +344,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         }
 
         orders.clear()
-        loadOrdersFromSupabase()
 
         binding.ordersContent.etOrderSearch.doAfterTextChanged { text ->
             orderSearchQuery = text?.toString().orEmpty()
@@ -1295,13 +1295,11 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         sidebarItems.forEach { item ->
             val label = getString(item.section.labelRes)
             item.row.contentDescription = label
-            TooltipCompat.setTooltipText(item.row, label)
             item.row.setOnClickListener { renderSection(item.section) }
         }
 
         val profileLabel = getString(R.string.profile)
         binding.profileCard.contentDescription = profileLabel
-        TooltipCompat.setTooltipText(binding.profileCard, profileLabel)
     }
 
     private fun setupInteractions() {
@@ -2360,15 +2358,19 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             if (expanded) R.string.collapse_sidebar else R.string.expand_sidebar
         )
         binding.btnToggleSidebar.contentDescription = description
-        TooltipCompat.setTooltipText(binding.btnToggleSidebar, description)
     }
 
     private fun loadSidebarLogo() {
-        runCatching {
-            assets.open(SIDEBAR_LOGO_ASSET_PATH).use(BitmapFactory::decodeStream)
-        }.getOrNull()?.let { bitmap ->
-            binding.ivSidebarLogo.scaleType = ImageView.ScaleType.CENTER_INSIDE
-            binding.ivSidebarLogo.setImageBitmap(bitmap)
+        lifecycleScope.launch {
+            val bitmap = withContext(Dispatchers.IO) {
+                runCatching {
+                    assets.open(SIDEBAR_LOGO_ASSET_PATH).use(BitmapFactory::decodeStream)
+                }.getOrNull()
+            }
+            bitmap?.let {
+                binding.ivSidebarLogo.scaleType = ImageView.ScaleType.CENTER_INSIDE
+                binding.ivSidebarLogo.setImageBitmap(it)
+            }
         }
     }
 

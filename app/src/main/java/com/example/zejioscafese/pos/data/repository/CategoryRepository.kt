@@ -5,6 +5,8 @@ import com.example.zejioscafese.core.supabase.SupabaseSessionHelper
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -16,23 +18,25 @@ class CategoryRepository(
         get() = clientProvider()
 
     suspend fun fetchCategories(): List<String> {
-        SupabaseSessionHelper.ensureValidSession(supabaseClient)
+        return withContext(Dispatchers.IO) {
+            SupabaseSessionHelper.withJwtRetry(supabaseClient) {
+                val categories = supabaseClient
+                    .from("categories")
+                    .select {
+                        order(column = "category_display_order", order = Order.ASCENDING)
+                        order(column = "category_name", order = Order.ASCENDING)
+                    }
+                    .decodeList<CategoryDto>()
+                    .asSequence()
+                    .filter { it.isActive }
+                    .map(CategoryDto::name)
+                    .filter { it.isNotBlank() }
+                    .distinct()
+                    .toList()
 
-        val categories = supabaseClient
-            .from("categories")
-            .select {
-                order(column = "category_display_order", order = Order.ASCENDING)
-                order(column = "category_name", order = Order.ASCENDING)
+                listOf(ALL_CATEGORY) + categories
             }
-            .decodeList<CategoryDto>()
-            .asSequence()
-            .filter { it.isActive }
-            .map(CategoryDto::name)
-            .filter { it.isNotBlank() }
-            .distinct()
-            .toList()
-
-        return listOf(ALL_CATEGORY) + categories
+        }
     }
 
     @Serializable

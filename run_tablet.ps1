@@ -43,7 +43,7 @@ Write-Host ""
 
 # Start ADB
 Write-Host "[1/4] Starting adb server..." -ForegroundColor Cyan
-& $adb start-server 2>&1 | Out-Null
+& $env:ComSpec /c "`"$adb`" start-server >nul 2>&1"
 Start-Sleep -Seconds 2
 
 # Build
@@ -93,12 +93,26 @@ if ($DeviceSerial) {
         Write-Host "No device found. Launching '$AvdName' emulator..." -ForegroundColor Cyan
         $emArgs = @("-avd", $AvdName, "-no-boot-anim")
         if ($ColdBoot) { $emArgs += "-no-snapshot-load" }
-        Start-Process -FilePath $emulator -ArgumentList $emArgs -WindowStyle Normal | Out-Null
+        $emLog = Join-Path $env:TEMP "zejios_emulator.log"
+        Remove-Item $emLog -ErrorAction SilentlyContinue
+        $emProc = Start-Process -FilePath $emulator -ArgumentList $emArgs `
+            -WindowStyle Normal -PassThru `
+            -RedirectStandardOutput $emLog -RedirectStandardError "$emLog.err"
+        Write-Host "  emulator pid=$($emProc.Id), log=$emLog" -ForegroundColor DarkGray
         Start-Sleep -Seconds 5
 
-        # Wait for it to appear in adb
-        $deadline = (Get-Date).AddSeconds(120)
+        # Wait for it to appear in adb (or die)
+        $timeoutSec = 240
+        $deadline = (Get-Date).AddSeconds($timeoutSec)
         while ((Get-Date) -lt $deadline) {
+            if ($emProc.HasExited) {
+                $stdout = if (Test-Path $emLog) { Get-Content $emLog -Raw } else { "" }
+                $stderr = if (Test-Path "$emLog.err") { Get-Content "$emLog.err" -Raw } else { "" }
+                Write-Host "Emulator exited early (code $($emProc.ExitCode))." -ForegroundColor Red
+                if ($stdout) { Write-Host "--- stdout ---`n$stdout" -ForegroundColor DarkYellow }
+                if ($stderr) { Write-Host "--- stderr ---`n$stderr" -ForegroundColor DarkYellow }
+                throw "Emulator process died before adb picked it up. See output above."
+            }
             $lines = @(& $adb devices 2>$null)
             foreach ($line in $lines) {
                 $line = $line.Trim()
@@ -116,7 +130,11 @@ if ($DeviceSerial) {
             if ($serial) { break }
             Start-Sleep -Seconds 3
         }
-        if (-not $serial) { throw "Emulator did not appear in adb (timeout 120s)." }
+        if (-not $serial) {
+            $stdout = if (Test-Path $emLog) { Get-Content $emLog -Raw } else { "" }
+            if ($stdout) { Write-Host "--- emulator log ---`n$stdout" -ForegroundColor DarkYellow }
+            throw "Emulator did not appear in adb (timeout ${timeoutSec}s). Check the emulator window for a boot error."
+        }
     } elseif ($devices.Count -eq 1) {
         $serial = $devices[0]
         Write-Host "Using device: $serial" -ForegroundColor Cyan

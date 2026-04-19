@@ -27,10 +27,6 @@ class DashboardViewModel(
     private var autoRefreshJob: Job? = null
     private var refreshJob: Job? = null
 
-    init {
-        refreshDashboard(showLoading = true)
-    }
-
     fun refreshDashboard(showLoading: Boolean = false) {
         if (refreshJob?.isActive == true) {
             return

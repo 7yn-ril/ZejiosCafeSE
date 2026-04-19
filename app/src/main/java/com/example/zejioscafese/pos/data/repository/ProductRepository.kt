@@ -8,6 +8,8 @@ import com.example.zejioscafese.pos.data.remote.dto.ProductVariantStockDto
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class ProductRepository(
     private val clientProvider: () -> SupabaseClient = { SupabaseProvider.client }
@@ -17,25 +19,27 @@ class ProductRepository(
         get() = clientProvider()
 
     suspend fun fetchProducts(): List<Product> {
-        SupabaseSessionHelper.ensureValidSession(supabaseClient)
-
-        return supabaseClient
-            .from("product_variant_stock_view")
-            .select {
-                order(column = "category_name", order = Order.ASCENDING)
-                order(column = "product_name", order = Order.ASCENDING)
-                order(column = "variant_name", order = Order.ASCENDING)
+        return withContext(Dispatchers.IO) {
+            SupabaseSessionHelper.withJwtRetry(supabaseClient) {
+                supabaseClient
+                    .from("product_variant_stock_view")
+                    .select {
+                        order(column = "category_name", order = Order.ASCENDING)
+                        order(column = "product_name", order = Order.ASCENDING)
+                        order(column = "variant_name", order = Order.ASCENDING)
+                    }
+                    .decodeList<ProductVariantStockDto>()
+                    .asSequence()
+                    .filter { it.productIsActive && it.variantIsActive }
+                    .map(ProductVariantStockDto::toProduct)
+                    .map { product ->
+                        ProductImageResolver.resolve(product.sourceProductName ?: product.name)
+                            ?.let { assetImageUrl ->
+                                product.copy(imageUrl = assetImageUrl)
+                            } ?: product
+                    }
+                    .toList()
             }
-            .decodeList<ProductVariantStockDto>()
-            .asSequence()
-            .filter { it.productIsActive && it.variantIsActive }
-            .map(ProductVariantStockDto::toProduct)
-            .map { product ->
-                ProductImageResolver.resolve(product.sourceProductName ?: product.name)
-                    ?.let { assetImageUrl ->
-                        product.copy(imageUrl = assetImageUrl)
-                    } ?: product
-            }
-            .toList()
+        }
     }
 }

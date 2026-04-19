@@ -26,59 +26,59 @@ class InventoryRepository(
         get() = clientProvider()
 
     suspend fun fetchIngredients(): List<Ingredient> {
-        ensureAuthenticatedSession()
-
-        return supabaseClient
-            .from(INGREDIENTS_TABLE)
-            .select {
-                order(column = "ingredient_name", order = Order.ASCENDING)
-            }
-            .decodeList<IngredientDto>()
-            .map(IngredientDto::toIngredient)
+        return SupabaseSessionHelper.withJwtRetry(supabaseClient) {
+            supabaseClient
+                .from(INGREDIENTS_TABLE)
+                .select {
+                    order(column = "ingredient_name", order = Order.ASCENDING)
+                }
+                .decodeList<IngredientDto>()
+                .map(IngredientDto::toIngredient)
+        }
     }
 
     suspend fun fetchProducibleProducts(): List<ProducibleProduct> {
-        ensureAuthenticatedSession()
-
-        return supabaseClient
-            .from(PRODUCIBLE_PRODUCTS_VIEW)
-            .select {
-                order(column = "category_name", order = Order.ASCENDING)
-                order(column = "product_name", order = Order.ASCENDING)
-                order(column = "variant_name", order = Order.ASCENDING)
-            }
-            .decodeList<ProducibleProductDto>()
-            .asSequence()
-            .filter { it.productIsActive && it.variantIsActive }
-            .map(ProducibleProductDto::toProducibleProduct)
-            .toList()
+        return SupabaseSessionHelper.withJwtRetry(supabaseClient) {
+            supabaseClient
+                .from(PRODUCIBLE_PRODUCTS_VIEW)
+                .select {
+                    order(column = "category_name", order = Order.ASCENDING)
+                    order(column = "product_name", order = Order.ASCENDING)
+                    order(column = "variant_name", order = Order.ASCENDING)
+                }
+                .decodeList<ProducibleProductDto>()
+                .asSequence()
+                .filter { it.productIsActive && it.variantIsActive }
+                .map(ProducibleProductDto::toProducibleProduct)
+                .toList()
+        }
     }
 
     suspend fun fetchProductCategories(): List<ProductCategoryOption> {
-        ensureAuthenticatedSession()
-
-        return supabaseClient
-            .from(CATEGORIES_TABLE)
-            .select {
-                order(column = "category_display_order", order = Order.ASCENDING)
-            }
-            .decodeList<ProductCategoryDto>()
-            .asSequence()
-            .filter { it.categoryIsActive }
-            .map(ProductCategoryDto::toCategoryOption)
-            .toList()
+        return SupabaseSessionHelper.withJwtRetry(supabaseClient) {
+            supabaseClient
+                .from(CATEGORIES_TABLE)
+                .select {
+                    order(column = "category_display_order", order = Order.ASCENDING)
+                }
+                .decodeList<ProductCategoryDto>()
+                .asSequence()
+                .filter { it.categoryIsActive }
+                .map(ProductCategoryDto::toCategoryOption)
+                .toList()
+        }
     }
 
     suspend fun fetchProductRecipeLinks(): List<ProductRecipeLinkDto> {
-        ensureAuthenticatedSession()
-
-        return supabaseClient
-            .from(VARIANT_INGREDIENTS_TABLE)
-            .select {
-                order(column = "product_variant_id", order = Order.ASCENDING)
-                order(column = "variant_ingredient_id", order = Order.ASCENDING)
-            }
-            .decodeList<ProductRecipeLinkDto>()
+        return SupabaseSessionHelper.withJwtRetry(supabaseClient) {
+            supabaseClient
+                .from(VARIANT_INGREDIENTS_TABLE)
+                .select {
+                    order(column = "product_variant_id", order = Order.ASCENDING)
+                    order(column = "variant_ingredient_id", order = Order.ASCENDING)
+                }
+                .decodeList<ProductRecipeLinkDto>()
+        }
     }
 
     suspend fun addIngredient(ingredient: Ingredient) {

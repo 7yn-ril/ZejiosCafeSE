@@ -40,9 +40,14 @@ class ReportsRepository(
     suspend fun fetchReportsSnapshot(
         dateWindow: ReportDateWindow,
         zoneId: ZoneId = ZoneId.systemDefault()
-    ): ReportsSnapshot {
-        ensureAuthenticatedSession()
+    ): ReportsSnapshot = SupabaseSessionHelper.withJwtRetry(supabaseClient) {
+        buildReportsSnapshot(dateWindow, zoneId)
+    }
 
+    private suspend fun buildReportsSnapshot(
+        dateWindow: ReportDateWindow,
+        zoneId: ZoneId
+    ): ReportsSnapshot {
         val orderRows = fetchOrders()
         val orderItemRows = fetchOrderItems()
         val catalogRows = fetchCatalogRows()
@@ -142,10 +147,6 @@ class ReportsRepository(
                 order(column = "variant_name", order = Order.ASCENDING)
             }
             .decodeList<ProductVariantStockDto>()
-    }
-
-    private suspend fun ensureAuthenticatedSession() {
-        SupabaseSessionHelper.ensureValidSession(supabaseClient)
     }
 
     private fun buildSalesTimeline(

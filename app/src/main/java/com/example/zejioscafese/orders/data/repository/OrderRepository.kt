@@ -13,6 +13,8 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -58,14 +60,17 @@ class OrderRepository(
         get() = clientProvider()
 
     suspend fun fetchNextOrderNumber(): String {
-        return try {
-            ensureAuthenticatedUserId()
-            supabaseClient.postgrest
-                .rpc(PEEK_NEXT_ORDER_RPC)
-                .decodeSingle<NextOrderNumberRpcDto>()
-                .nextOrderNumber
-        } catch (_: Exception) {
-            formatOrderNumber(DEFAULT_ORDER_COUNTER)
+        return withContext(Dispatchers.IO) {
+            try {
+                SupabaseSessionHelper.withJwtRetry(supabaseClient) {
+                    supabaseClient.postgrest
+                        .rpc(PEEK_NEXT_ORDER_RPC)
+                        .decodeSingle<NextOrderNumberRpcDto>()
+                        .nextOrderNumber
+                }
+            } catch (_: Exception) {
+                formatOrderNumber(DEFAULT_ORDER_COUNTER)
+            }
         }
     }
 
@@ -77,64 +82,66 @@ class OrderRepository(
             "Add at least one item before saving an order."
         }
 
-        ensureAuthenticatedUserId()
+        return withContext(Dispatchers.IO) {
+            ensureAuthenticatedUserId()
 
-        val rpcResult = supabaseClient.postgrest
-            .rpc(
-                PROCESS_CHECKOUT_RPC,
-                buildCheckoutRpcPayload(
-                    payload = payload,
-                    suggestedOrderNumber = suggestedOrderNumber
+            val rpcResult = supabaseClient.postgrest
+                .rpc(
+                    PROCESS_CHECKOUT_RPC,
+                    buildCheckoutRpcPayload(
+                        payload = payload,
+                        suggestedOrderNumber = suggestedOrderNumber
+                    )
                 )
-            )
-            .decodeSingle<ProcessCheckoutRpcResultDto>()
+                .decodeSingle<ProcessCheckoutRpcResultDto>()
 
-        return payload.toCafeOrder(rpcResult)
+            payload.toCafeOrder(rpcResult)
+        }
     }
 
-    suspend fun fetchOrders(): List<CafeOrder> {
-        ensureAuthenticatedUserId()
+    suspend fun fetchOrders(): List<CafeOrder> = withContext(Dispatchers.IO) {
+        SupabaseSessionHelper.withJwtRetry(supabaseClient) {
+            val orderRows = supabaseClient
+                .from(ORDERS_TABLE)
+                .select {
+                    order(column = "created_at", order = Order.DESCENDING)
+                }
+                .decodeList<OrderRowDto>()
 
-        val orderRows = supabaseClient
-            .from(ORDERS_TABLE)
-            .select {
-                order(column = "created_at", order = Order.DESCENDING)
+            if (orderRows.isEmpty()) {
+                return@withJwtRetry emptyList()
             }
-            .decodeList<OrderRowDto>()
 
-        if (orderRows.isEmpty()) {
-            return emptyList()
-        }
+            val itemsByOrderId = supabaseClient
+                .from(ORDER_ITEMS_TABLE)
+                .select {
+                    order(column = "created_at", order = Order.ASCENDING)
+                }
+                .decodeList<OrderItemRowDto>()
+                .groupBy(OrderItemRowDto::orderId)
 
-        val itemsByOrderId = supabaseClient
-            .from(ORDER_ITEMS_TABLE)
-            .select {
-                order(column = "created_at", order = Order.ASCENDING)
+            orderRows.map { row ->
+                val orderedItems = itemsByOrderId[row.orderId]
+                    .orEmpty()
+                    .map { it.toDisplayLabel() }
+                val customerName = row.orderCustomerName
+                    ?.trim()
+                    ?.takeIf(String::isNotBlank)
+                    ?: DEFAULT_CUSTOMER_NAME
+
+                CafeOrder(
+                    id = row.orderNumber,
+                    customerName = customerName,
+                    tableLabel = row.orderTableLabel.orEmpty(),
+                    itemsSummary = orderedItems.joinToString(", ").ifBlank { EMPTY_ORDER_SUMMARY },
+                    itemCount = itemsByOrderId[row.orderId].orEmpty().sumOf(OrderItemRowDto::orderItemQuantity),
+                    timeLabel = row.createdAt.toTimeLabel(),
+                    status = row.orderStatus.toCafeOrderStatus(),
+                    total = row.orderTotal,
+                    initials = customerName.toInitials(),
+                    orderedItems = orderedItems
+                )
             }
-            .decodeList<OrderItemRowDto>()
-            .groupBy(OrderItemRowDto::orderId)
-
-        return orderRows.map { row ->
-            val orderedItems = itemsByOrderId[row.orderId]
-                .orEmpty()
-                .map { it.toDisplayLabel() }
-            val customerName = row.orderCustomerName
-                ?.trim()
-                ?.takeIf(String::isNotBlank)
-                ?: DEFAULT_CUSTOMER_NAME
-
-            CafeOrder(
-                id = row.orderNumber,
-                customerName = customerName,
-                tableLabel = row.orderTableLabel.orEmpty(),
-                itemsSummary = orderedItems.joinToString(", ").ifBlank { EMPTY_ORDER_SUMMARY },
-                itemCount = itemsByOrderId[row.orderId].orEmpty().sumOf(OrderItemRowDto::orderItemQuantity),
-                timeLabel = row.createdAt.toTimeLabel(),
-                status = row.orderStatus.toCafeOrderStatus(),
-                total = row.orderTotal,
-                initials = customerName.toInitials(),
-                orderedItems = orderedItems
-            )
         }
     }
 

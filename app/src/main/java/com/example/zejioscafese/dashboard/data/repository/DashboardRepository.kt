@@ -26,6 +26,8 @@ import java.time.format.TextStyle
 import java.time.temporal.TemporalAdjusters
 import java.time.DayOfWeek
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -38,9 +40,13 @@ class DashboardRepository(
 
     suspend fun fetchDashboardSnapshot(
         now: OffsetDateTime = OffsetDateTime.now()
-    ): DashboardSnapshot {
-        ensureAuthenticatedSession()
+    ): DashboardSnapshot = withContext(Dispatchers.IO) {
+        SupabaseSessionHelper.withJwtRetry(supabaseClient) {
+            buildDashboardSnapshot(now)
+        }
+    }
 
+    private suspend fun buildDashboardSnapshot(now: OffsetDateTime): DashboardSnapshot {
         val zoneId = ZoneId.systemDefault()
         val today = now.atZoneSameInstant(zoneId).toLocalDate()
         val yesterday = today.minusDays(1)
@@ -289,10 +295,6 @@ class DashboardRepository(
                 order(column = "variant_name", order = Order.ASCENDING)
             }
             .decodeList<ProductVariantStockDto>()
-    }
-
-    private suspend fun ensureAuthenticatedSession() {
-        SupabaseSessionHelper.ensureValidSession(supabaseClient)
     }
 
     private suspend fun <T> fetchOptionalData(
