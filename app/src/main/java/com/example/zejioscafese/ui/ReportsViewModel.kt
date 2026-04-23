@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.annotation.StringRes
 import com.example.zejioscafese.R
+import com.example.zejioscafese.core.network.NetworkErrorFormatter
 import com.example.zejioscafese.pos.data.model.CategorySalesRecord
 import com.example.zejioscafese.reports.data.model.ReportTransaction
 import com.example.zejioscafese.reports.data.model.SalesTimelinePoint
@@ -13,6 +14,7 @@ import com.example.zejioscafese.reports.data.repository.ReportsRepository
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
 import java.time.DayOfWeek
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 class ReportsViewModel(
@@ -72,14 +74,23 @@ class ReportsViewModel(
 
     private val _reportError = MutableLiveData<String?>(null)
     val reportError: LiveData<String?> = _reportError
+    private var refreshJob: Job? = null
+    private var lastSuccessfulRefreshAt: Long = 0L
 
     init {
-        refreshReports()
+        refreshReports(force = true)
     }
 
-    fun refreshReports() {
+    fun refreshReports(force: Boolean = false) {
+        if (refreshJob?.isActive == true) {
+            return
+        }
+        if (!force && !shouldRefresh()) {
+            return
+        }
+
         val selected = _selectedRange.value ?: DateRange.DAILY
-        viewModelScope.launch {
+        refreshJob = viewModelScope.launch {
             try {
                 val today = LocalDate.now()
                 val dateWindow = when (selected) {
@@ -119,28 +130,46 @@ class ReportsViewModel(
                 _bestCategory.value = snapshot.bestCategory
                 _transactions.value = snapshot.transactions
                 _reportError.value = null
+                lastSuccessfulRefreshAt = System.currentTimeMillis()
             } catch (exception: Exception) {
-                _reportError.value = exception.message ?: DEFAULT_ERROR_MESSAGE
+                _reportError.value = NetworkErrorFormatter.toUserMessage(
+                    exception = exception,
+                    fallbackMessage = DEFAULT_ERROR_MESSAGE
+                )
+            } finally {
+                refreshJob = null
             }
+        }
+    }
+
+    fun refreshReportsIfStale(maxAgeMs: Long = REPORT_REFRESH_INTERVAL_MS) {
+        if (shouldRefresh(maxAgeMs)) {
+            refreshReports(force = true)
         }
     }
 
     fun setDateRange(range: DateRange) {
         if (_selectedRange.value == range) {
-            refreshReports()
+            refreshReports(force = true)
             return
         }
 
         _selectedRange.value = range
-        refreshReports()
+        refreshReports(force = true)
     }
 
     fun onReportErrorConsumed() {
         _reportError.value = null
     }
 
+    private fun shouldRefresh(maxAgeMs: Long = REPORT_REFRESH_INTERVAL_MS): Boolean {
+        return lastSuccessfulRefreshAt == 0L ||
+            System.currentTimeMillis() - lastSuccessfulRefreshAt >= maxAgeMs
+    }
+
     private companion object {
         const val NO_CATEGORY = "N/A"
         const val DEFAULT_ERROR_MESSAGE = "Failed to load reports right now."
+        const val REPORT_REFRESH_INTERVAL_MS = 60_000L
     }
 }

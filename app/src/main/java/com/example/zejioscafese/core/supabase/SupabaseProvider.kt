@@ -4,6 +4,7 @@ import com.example.zejioscafese.BuildConfig
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.gotrue.Auth
 import io.github.jan.supabase.postgrest.Postgrest
+import kotlin.time.Duration.Companion.seconds
 
 object SupabaseProvider {
 
@@ -22,6 +23,8 @@ object SupabaseProvider {
             supabaseUrl = supabaseUrl,
             supabaseKey = supabaseAnonKey
         ) {
+            requestTimeout = 30.seconds
+
             install(Auth) {
                 alwaysAutoRefresh = true
                 autoLoadFromStorage = true

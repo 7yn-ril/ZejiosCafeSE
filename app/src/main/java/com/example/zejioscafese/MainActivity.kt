@@ -149,6 +149,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private val orderRepository = OrderRepository()
     private var selectedOrderStatus: CafeOrderStatus? = null
     private var orderSearchQuery: String = ""
+    private var isOrdersLoading: Boolean = false
+    private var lastOrdersLoadedAtMs: Long = 0L
     private val staffCards = mutableListOf<StaffCardViews>()
     private var hasCheckoutItems: Boolean = false
     private var isCheckoutSaving: Boolean = false
@@ -174,6 +176,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         private const val CHECKOUT_COLLAPSED_GUIDE_PERCENT = 1f
         private const val SIDEBAR_LOGO_ASSET_PATH = "other_assets/ZejiosCafeLogo.jpg"
         private const val POS_PAGE_SIZE = 12
+        private const val ORDERS_REFRESH_INTERVAL_MS = 30_000L
     }
 
     private val sidebarExpandedOnlyViews by lazy {
@@ -378,12 +381,25 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         applyOrderFilters()
     }
 
-    private fun loadOrdersFromSupabase(showError: Boolean = false) {
+    private fun loadOrdersFromSupabase(showError: Boolean = false, force: Boolean = false) {
+        if (isOrdersLoading) {
+            return
+        }
+
+        val hasFreshOrders = orders.isNotEmpty() &&
+            System.currentTimeMillis() - lastOrdersLoadedAtMs < ORDERS_REFRESH_INTERVAL_MS
+        if (!force && hasFreshOrders) {
+            applyOrderFilters()
+            return
+        }
+
         lifecycleScope.launch {
+            isOrdersLoading = true
             try {
                 val fetchedOrders = orderRepository.fetchOrders()
                 orders.clear()
                 orders.addAll(fetchedOrders)
+                lastOrdersLoadedAtMs = System.currentTimeMillis()
                 applyOrderFilters()
             } catch (exception: Exception) {
                 if (showError) {
@@ -396,6 +412,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                         Snackbar.LENGTH_LONG
                     ).show()
                 }
+            } finally {
+                isOrdersLoading = false
             }
         }
     }
@@ -1883,9 +1901,9 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 val receipt = pendingCheckoutReceipt
                 pendingCheckoutReceipt = null
                 addOrReplaceOrder(savedOrder)
-                loadOrdersFromSupabase(showError = false)
+                loadOrdersFromSupabase(showError = false, force = true)
                 viewModel.refreshMenu()
-                dashboardViewModel.refreshDashboard()
+                dashboardViewModel.refreshDashboard(force = true)
                 if (receipt != null) {
                     showReceiptDialog(savedOrder, receipt)
                 } else {

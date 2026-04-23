@@ -26,6 +26,8 @@ import java.time.format.TextStyle
 import java.time.temporal.TemporalAdjusters
 import java.time.DayOfWeek
 import java.util.Locale
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -58,14 +60,31 @@ class DashboardRepository(
             .minusWeeks(7)
         val lastTwelveMonthsStart = today.withDayOfMonth(1).minusMonths(11)
 
-        val rawData = RawDashboardData(
-            orders = fetchOrders()
-                .mapNotNull { it.toOrderRecord(zoneId) },
-            orderItems = fetchOptionalData("order_items") { fetchOrderItems() },
-            ingredients = fetchOptionalData("ingredients") { fetchIngredients() },
-            recipes = fetchOptionalData("variant_ingredients") { fetchRecipes() },
-            productCatalog = fetchOptionalData("product_variant_stock_view") { fetchProductCatalog() }
-        )
+        val rawData = coroutineScope {
+            val ordersDeferred = async {
+                fetchOrders().mapNotNull { it.toOrderRecord(zoneId) }
+            }
+            val orderItemsDeferred = async {
+                fetchOptionalData("order_items") { fetchOrderItems() }
+            }
+            val ingredientsDeferred = async {
+                fetchOptionalData("ingredients") { fetchIngredients() }
+            }
+            val recipesDeferred = async {
+                fetchOptionalData("variant_ingredients") { fetchRecipes() }
+            }
+            val productCatalogDeferred = async {
+                fetchOptionalData("product_variant_stock_view") { fetchProductCatalog() }
+            }
+
+            RawDashboardData(
+                orders = ordersDeferred.await(),
+                orderItems = orderItemsDeferred.await(),
+                ingredients = ingredientsDeferred.await(),
+                recipes = recipesDeferred.await(),
+                productCatalog = productCatalogDeferred.await()
+            )
+        }
 
         val completedOrders = rawData.orders.filter { it.isCompleted }
         val activeOrders = rawData.orders.filter { it.isActive }

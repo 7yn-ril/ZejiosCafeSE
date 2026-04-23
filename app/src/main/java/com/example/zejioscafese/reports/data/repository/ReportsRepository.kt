@@ -19,6 +19,8 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -48,9 +50,17 @@ class ReportsRepository(
         dateWindow: ReportDateWindow,
         zoneId: ZoneId
     ): ReportsSnapshot {
-        val orderRows = fetchOrders()
-        val orderItemRows = fetchOrderItems()
-        val catalogRows = fetchCatalogRows()
+        val (orderRows, orderItemRows, catalogRows) = coroutineScope {
+            val orderRowsDeferred = async { fetchOrders() }
+            val orderItemsDeferred = async { fetchOrderItems() }
+            val catalogRowsDeferred = async { fetchCatalogRows() }
+
+            Triple(
+                orderRowsDeferred.await(),
+                orderItemsDeferred.await(),
+                catalogRowsDeferred.await()
+            )
+        }
 
         val categoryByProductId = catalogRows
             .associateBy(ProductVariantStockDto::productId, ProductVariantStockDto::categoryName)

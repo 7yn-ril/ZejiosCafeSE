@@ -10,8 +10,8 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
 import com.example.zejioscafese.R
 import com.example.zejioscafese.databinding.FragmentReportsBinding
 import com.example.zejioscafese.pos.data.model.CategorySalesRecord
@@ -24,7 +24,7 @@ class ReportsFragment : Fragment() {
 
     private var _binding: FragmentReportsBinding? = null
     private val binding get() = _binding!!
-    private val viewModel: ReportsViewModel by viewModels()
+    private val viewModel: ReportsViewModel by activityViewModels()
 
     private val categoryColors by lazy {
         mapOf(
@@ -68,7 +68,7 @@ class ReportsFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        viewModel.refreshReports()
+        viewModel.refreshReportsIfStale()
     }
 
     private fun setupDateRangeButtons() {

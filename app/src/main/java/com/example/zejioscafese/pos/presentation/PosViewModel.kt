@@ -5,6 +5,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.zejioscafese.core.network.NetworkErrorFormatter
 import com.example.zejioscafese.orders.data.repository.CheckoutOrderLine
 import com.example.zejioscafese.orders.data.repository.CheckoutOrderPayload
 import com.example.zejioscafese.orders.data.repository.OrderRepository
@@ -227,7 +228,10 @@ class PosViewModel(
                 _checkoutEvent.value = savedOrder
             } catch (exception: Exception) {
                 Log.e(TAG, "Failed to save checkout order to Supabase", exception)
-                _checkoutError.value = exception.message ?: "Failed to save order."
+                _checkoutError.value = NetworkErrorFormatter.toUserMessage(
+                    exception = exception,
+                    fallbackMessage = "Failed to save order."
+                )
             } finally {
                 _isCheckoutInProgress.value = false
             }
@@ -281,7 +285,10 @@ class PosViewModel(
                 _categories.value = previousCategories.ifEmpty { listOf(CategoryRepository.ALL_CATEGORY) }
                 refreshProductList(resetPage = false)
                 syncOrderState()
-                _menuLoadError.value = exception.message ?: "Failed to load menu data."
+                _menuLoadError.value = NetworkErrorFormatter.toUserMessage(
+                    exception = exception,
+                    fallbackMessage = "Failed to load menu data."
+                )
             } finally {
                 _isMenuLoading.value = false
             }

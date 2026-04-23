@@ -7,6 +7,8 @@
     AVD to launch when no device connected (default: "Pixel_Tablet").
 .PARAMETER DeviceSerial
     Directly target a specific device by serial (e.g. "emulator-5554").
+.PARAMETER DnsServers
+    DNS servers to use when launching an emulator (default: "8.8.8.8,1.1.1.1").
 .PARAMETER SkipBuild
     Skip Gradle build and use existing APK.
 .PARAMETER ColdBoot
@@ -19,6 +21,7 @@
 param(
     [string]$AvdName         = "Pixel_Tablet",
     [string]$DeviceSerial    = "",
+    [string]$DnsServers      = "8.8.8.8,1.1.1.1",
     [switch]$SkipBuild,
     [switch]$ColdBoot
 )
@@ -92,6 +95,10 @@ if ($DeviceSerial) {
         if (-not (Test-Path $emulator)) { throw "emulator.exe not found at '$emulator'." }
         Write-Host "No device found. Launching '$AvdName' emulator..." -ForegroundColor Cyan
         $emArgs = @("-avd", $AvdName, "-no-boot-anim")
+        if ($DnsServers) {
+            $emArgs += @("-dns-server", $DnsServers)
+            Write-Host "  emulator DNS servers: $DnsServers" -ForegroundColor DarkGray
+        }
         if ($ColdBoot) { $emArgs += "-no-snapshot-load" }
         $emLog = Join-Path $env:TEMP "zejios_emulator.log"
         Remove-Item $emLog -ErrorAction SilentlyContinue

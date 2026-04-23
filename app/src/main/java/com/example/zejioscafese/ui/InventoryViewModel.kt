@@ -7,6 +7,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.zejioscafese.core.network.NetworkErrorFormatter
 import com.example.zejioscafese.inventory.data.model.ProducibleProduct
 import com.example.zejioscafese.inventory.data.repository.InventoryRepository
 import com.example.zejioscafese.pos.data.model.Ingredient
@@ -15,6 +16,7 @@ import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 class InventoryViewModel(
@@ -81,23 +83,43 @@ class InventoryViewModel(
     private var searchQuery = ""
     private var selectedCategory = ALL_CATEGORY
     private var sortMode = SortMode.NAME
+    private var refreshJob: Job? = null
+    private var lastSuccessfulRefreshAt: Long = 0L
 
     enum class SortMode { NAME, STOCK_LEVEL, VALUE }
     enum class ScreenMode { INGREDIENTS, PRODUCTION }
 
     init {
-        refreshInventory()
+        refreshInventory(force = true)
     }
 
-    fun refreshInventory() {
-        viewModelScope.launch {
+    fun refreshInventory(force: Boolean = false) {
+        if (refreshJob?.isActive == true) {
+            return
+        }
+        if (!force && !shouldRefresh()) {
+            return
+        }
+
+        refreshJob = viewModelScope.launch {
             try {
                 syncInventoryFromRemote()
                 _inventoryError.value = null
             } catch (exception: Exception) {
-                _inventoryError.value = exception.message ?: "Failed to load inventory."
+                _inventoryError.value = NetworkErrorFormatter.toUserMessage(
+                    exception = exception,
+                    fallbackMessage = "Failed to load inventory."
+                )
                 applyFilters(resetActivePage = false)
+            } finally {
+                refreshJob = null
             }
+        }
+    }
+
+    fun refreshInventoryIfStale(maxAgeMs: Long = INVENTORY_REFRESH_INTERVAL_MS) {
+        if (shouldRefresh(maxAgeMs)) {
+            refreshInventory(force = true)
         }
     }
 
@@ -150,7 +172,10 @@ class InventoryViewModel(
                 inventoryRepository.addIngredient(ingredient)
                 syncInventoryFromRemote()
             } catch (exception: Exception) {
-                _inventoryError.value = exception.message ?: "Failed to add ingredient."
+                _inventoryError.value = NetworkErrorFormatter.toUserMessage(
+                    exception = exception,
+                    fallbackMessage = "Failed to add ingredient."
+                )
                 syncInventorySafely()
             }
         }
@@ -168,7 +193,10 @@ class InventoryViewModel(
                 inventoryRepository.updateIngredient(updated)
                 syncInventoryFromRemote()
             } catch (exception: Exception) {
-                _inventoryError.value = exception.message ?: "Failed to update ingredient."
+                _inventoryError.value = NetworkErrorFormatter.toUserMessage(
+                    exception = exception,
+                    fallbackMessage = "Failed to update ingredient."
+                )
                 syncInventorySafely()
             }
         }
@@ -194,7 +222,10 @@ class InventoryViewModel(
                 )
                 syncInventoryFromRemote()
             } catch (exception: Exception) {
-                _inventoryError.value = exception.message ?: "Failed to restock ingredient."
+                _inventoryError.value = NetworkErrorFormatter.toUserMessage(
+                    exception = exception,
+                    fallbackMessage = "Failed to restock ingredient."
+                )
                 syncInventorySafely()
             }
         }
@@ -207,7 +238,10 @@ class InventoryViewModel(
                 syncInventoryFromRemote()
                 _inventoryError.value = null
             } catch (exception: Exception) {
-                _inventoryError.value = exception.message ?: "Failed to add product."
+                _inventoryError.value = NetworkErrorFormatter.toUserMessage(
+                    exception = exception,
+                    fallbackMessage = "Failed to add product."
+                )
                 syncInventorySafely()
             }
         }
@@ -220,7 +254,10 @@ class InventoryViewModel(
                 syncInventoryFromRemote()
                 _inventoryError.value = null
             } catch (exception: Exception) {
-                _inventoryError.value = exception.message ?: "Failed to update product."
+                _inventoryError.value = NetworkErrorFormatter.toUserMessage(
+                    exception = exception,
+                    fallbackMessage = "Failed to update product."
+                )
                 syncInventorySafely()
             }
         }
@@ -237,7 +274,10 @@ class InventoryViewModel(
                 syncInventoryFromRemote()
                 _inventoryError.value = null
             } catch (exception: Exception) {
-                _inventoryError.value = exception.message ?: "Failed to remove product."
+                _inventoryError.value = NetworkErrorFormatter.toUserMessage(
+                    exception = exception,
+                    fallbackMessage = "Failed to remove product."
+                )
                 syncInventorySafely()
             }
         }
@@ -329,6 +369,7 @@ class InventoryViewModel(
         }
 
         applyFilters(resetActivePage = false)
+        lastSuccessfulRefreshAt = System.currentTimeMillis()
     }
 
     private suspend fun syncInventorySafely() {
@@ -458,10 +499,16 @@ class InventoryViewModel(
         return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
     }
 
+    private fun shouldRefresh(maxAgeMs: Long = INVENTORY_REFRESH_INTERVAL_MS): Boolean {
+        return lastSuccessfulRefreshAt == 0L ||
+            System.currentTimeMillis() - lastSuccessfulRefreshAt >= maxAgeMs
+    }
+
     private companion object {
         const val ALL_CATEGORY = "All"
         const val INGREDIENT_ID_PREFIX = "ING-"
         const val INVENTORY_PAGE_SIZE = 8
+        const val INVENTORY_REFRESH_INTERVAL_MS = 60_000L
     }
 
     private data class InventorySnapshot(

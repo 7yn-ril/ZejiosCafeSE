@@ -18,8 +18,8 @@ import android.widget.Spinner
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.core.widget.doAfterTextChanged
+import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.zejioscafese.R
 import com.example.zejioscafese.databinding.FragmentInventoryBinding
@@ -37,7 +37,7 @@ class InventoryFragment : Fragment() {
 
     private var _binding: FragmentInventoryBinding? = null
     private val binding get() = _binding!!
-    private val viewModel: InventoryViewModel by viewModels()
+    private val viewModel: InventoryViewModel by activityViewModels()
 
     private lateinit var ingredientAdapter: IngredientAdapter
     private lateinit var producibleProductAdapter: ProducibleProductAdapter
@@ -69,7 +69,7 @@ class InventoryFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        viewModel.refreshInventory()
+        viewModel.refreshInventoryIfStale()
     }
 
     private fun setupRecyclerView() {
