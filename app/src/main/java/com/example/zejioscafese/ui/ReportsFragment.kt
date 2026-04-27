@@ -1,5 +1,7 @@
 package com.example.zejioscafese.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.Gravity
@@ -17,6 +19,7 @@ import com.example.zejioscafese.databinding.FragmentReportsBinding
 import com.example.zejioscafese.pos.data.model.CategorySalesRecord
 import com.example.zejioscafese.reports.data.model.ReportTransaction
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import java.util.Locale
 
@@ -87,8 +90,62 @@ class ReportsFragment : Fragment() {
 
     private fun setupExportButton() {
         binding.btnExport.setOnClickListener {
-            Snackbar.make(binding.root, "Export coming soon", Snackbar.LENGTH_SHORT).show()
+            showExportDialog()
         }
+    }
+
+    private fun showExportDialog() {
+        val selectedRange = viewModel.selectedRange.value ?: ReportsViewModel.DateRange.DAILY
+        val revenueText = String.format(
+            Locale.getDefault(),
+            "PHP %,.2f",
+            viewModel.totalRevenue.value ?: 0.0
+        )
+        val averageText = String.format(
+            Locale.getDefault(),
+            "PHP %,.2f",
+            viewModel.avgOrderValue.value ?: 0.0
+        )
+        val exportSummary = buildString {
+            appendLine(getString(R.string.reports_export_range_summary, getString(selectedRange.labelRes)))
+            appendLine(getString(R.string.reports_export_revenue_summary, revenueText))
+            appendLine(getString(R.string.reports_export_orders_summary, viewModel.totalOrders.value ?: 0))
+            appendLine(getString(R.string.reports_export_average_summary, averageText))
+            appendLine(
+                getString(
+                    R.string.reports_export_best_category_summary,
+                    viewModel.bestCategory.value ?: getString(R.string.reports_best_seller_empty)
+                )
+            )
+            append(
+                getString(
+                    R.string.reports_export_transactions_summary,
+                    viewModel.transactions.value?.size ?: 0
+                )
+            )
+        }
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(getString(R.string.reports_export_dialog_title))
+            .setMessage(exportSummary)
+            .setPositiveButton(getString(R.string.reports_export_copy)) { _, _ ->
+                copyExportSummary(exportSummary)
+            }
+            .setNeutralButton(getString(R.string.reports_export_refresh)) { _, _ ->
+                viewModel.refreshReports(force = true)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun copyExportSummary(summary: String) {
+        val clipboardManager = requireContext().getSystemService(ClipboardManager::class.java)
+        clipboardManager?.setPrimaryClip(ClipData.newPlainText("reports-summary", summary))
+        Snackbar.make(
+            binding.root,
+            getString(R.string.reports_export_copied),
+            Snackbar.LENGTH_SHORT
+        ).show()
     }
 
     private fun observeViewModel() {

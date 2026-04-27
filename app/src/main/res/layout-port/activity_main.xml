@@ -604,7 +604,7 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_marginTop="@dimen/section_spacing"
-            android:background="@drawable/bg_dashboard_shell"
+            android:background="@drawable/bg_page_content_shell"
             android:padding="@dimen/section_spacing"
             app:layout_constraintBottom_toTopOf="@id/contentGuide"
             app:layout_constraintEnd_toEndOf="parent"

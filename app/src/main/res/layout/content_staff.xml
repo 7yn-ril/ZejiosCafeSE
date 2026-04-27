@@ -3,15 +3,17 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/pos_background"
+    android:background="@android:color/transparent"
     android:clipToPadding="false"
     android:fillViewport="true"
-    android:padding="16dp">
+    android:padding="0dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:background="@drawable/bg_page_content_shell"
+        android:orientation="vertical"
+        android:padding="22dp">
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -85,6 +87,20 @@
                         android:contentDescription="@string/notifications"
                         android:src="@drawable/ic_notification_24"
                         app:tint="@color/pos_text_secondary" />
+
+                    <TextView
+                        android:id="@+id/tvStaffNotificationBadge"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:layout_gravity="end|top"
+                        android:layout_marginTop="2dp"
+                        android:layout_marginEnd="2dp"
+                        android:background="@drawable/bg_notification_badge"
+                        android:gravity="center"
+                        android:text="@string/notification_count"
+                        android:textColor="@color/white"
+                        android:textSize="9sp"
+                        android:textStyle="bold" />
                 </FrameLayout>
 
             </LinearLayout>
@@ -129,6 +145,7 @@
                     </com.google.android.material.card.MaterialCardView>
 
                     <TextView
+                        android:id="@+id/tvStaffMetricTotal"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="14dp"
@@ -180,6 +197,7 @@
                     </com.google.android.material.card.MaterialCardView>
 
                     <TextView
+                        android:id="@+id/tvStaffMetricActive"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="14dp"
@@ -231,6 +249,7 @@
                     </com.google.android.material.card.MaterialCardView>
 
                     <TextView
+                        android:id="@+id/tvStaffMetricBreak"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="14dp"
@@ -282,6 +301,7 @@
                     </com.google.android.material.card.MaterialCardView>
 
                     <TextView
+                        android:id="@+id/tvStaffMetricOff"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="14dp"
@@ -333,12 +353,14 @@
                     app:startIconTint="@color/pos_text_secondary">
 
                     <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etStaffSearch"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:singleLine="true" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnStaffRoleFilter"
                     style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="wrap_content"
                     android:layout_height="46dp"
@@ -359,6 +381,7 @@
                     app:strokeWidth="1dp" />
 
                 <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnStaffStatusFilter"
                     style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="wrap_content"
                     android:layout_height="46dp"
@@ -395,6 +418,7 @@
                 android:orientation="horizontal">
 
                 <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardStaffOne"
                     android:layout_width="360dp"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="@dimen/content_inline_gap"
@@ -532,6 +556,7 @@
                                 app:iconTint="@color/white" />
 
                             <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnStaffActionsOne"
                                 style="@style/Widget.Material3.Button.OutlinedButton"
                                 android:layout_width="44dp"
                                 android:layout_height="42dp"
@@ -550,6 +575,7 @@
                 </com.google.android.material.card.MaterialCardView>
 
                 <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardStaffTwo"
                     android:layout_width="360dp"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="@dimen/content_inline_gap"
@@ -687,6 +713,7 @@
                                 app:iconTint="@color/white" />
 
                             <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnStaffActionsTwo"
                                 style="@style/Widget.Material3.Button.OutlinedButton"
                                 android:layout_width="44dp"
                                 android:layout_height="42dp"
@@ -705,6 +732,7 @@
                 </com.google.android.material.card.MaterialCardView>
 
                 <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardStaffThree"
                     android:layout_width="360dp"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="@dimen/content_inline_gap"
@@ -842,6 +870,7 @@
                                 app:iconTint="@color/white" />
 
                             <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnStaffActionsThree"
                                 style="@style/Widget.Material3.Button.OutlinedButton"
                                 android:layout_width="44dp"
                                 android:layout_height="42dp"

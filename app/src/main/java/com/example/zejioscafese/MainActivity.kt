@@ -60,6 +60,7 @@ import com.example.zejioscafese.ui.NavigationHost
 import com.example.zejioscafese.ui.ReportsFragment
 import com.example.zejioscafese.ui.Screen
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
@@ -104,11 +105,14 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     )
 
     private data class StaffCardViews(
+        val rootView: View,
         val nameView: TextView,
         val idView: TextView,
         val roleView: TextView,
         val shiftView: TextView,
-        val statusView: TextView
+        val statusView: TextView,
+        val editButton: MaterialButton,
+        val actionsButton: MaterialButton
     )
 
     private data class UserProfileState(
@@ -156,6 +160,9 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
     private enum class OrderSort { DEFAULT, TOTAL_DESC, TOTAL_ASC, ITEMS_DESC }
     private val staffCards = mutableListOf<StaffCardViews>()
+    private var selectedStaffRole: String? = null
+    private var selectedStaffStatus: String? = null
+    private var staffSearchQuery: String = ""
     private var hasCheckoutItems: Boolean = false
     private var isCheckoutSaving: Boolean = false
     private var pendingCheckoutReceipt: PendingCheckoutReceipt? = null
@@ -338,6 +345,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         bindDashboardSnapshot(dashboardSnapshot)
         setupDashboardChart()
         setupDashboardToggle()
+        setupDashboardActions()
     }
 
     private fun setupOrders() {
@@ -409,10 +417,9 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     }
 
     /**
-     * Per-row action menu wired to the new trailing button on every order
-     * row. Each entry triggers UI feedback (confirmation dialog or snackbar)
-     * so the button always feels alive even before the matching write-path
-     * exists in the repository.
+     * Per-row action menu wired to the trailing button on every order row.
+     * Actions stay frontend-only so the UI feels complete without changing
+     * backend write paths.
      */
     private fun showOrderRowActionsMenu(order: CafeOrder, anchor: View) {
         val popup = PopupMenu(this, anchor)
@@ -424,27 +431,76 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 1 -> showOrderItemsDialog(order)
-                2 -> notifyOrderActionPlaceholder(R.string.order_action_mark_preparing, order)
-                3 -> notifyOrderActionPlaceholder(R.string.order_action_mark_completed, order)
-                4 -> notifyOrderActionPlaceholder(R.string.order_action_print_receipt, order)
-                5 -> notifyOrderActionPlaceholder(R.string.order_action_cancel, order)
+                2 -> updateOrderStatus(order, CafeOrderStatus.PREPARING)
+                3 -> updateOrderStatus(order, CafeOrderStatus.COMPLETED)
+                4 -> showOrderReceiptPreview(order)
+                5 -> showRemoveOrderDialog(order)
             }
             true
         }
         popup.show()
     }
 
-    /**
-     * Placeholder feedback for actions that don't yet have a backend write.
-     * Shows a Snackbar so the user has a clear, themed signal that the click
-     * was registered.
-     */
-    private fun notifyOrderActionPlaceholder(@StringRes actionRes: Int, order: CafeOrder) {
+    private fun updateOrderStatus(order: CafeOrder, newStatus: CafeOrderStatus) {
+        val index = orders.indexOfFirst { it.id == order.id }
+        if (index == -1) {
+            return
+        }
+
+        orders[index] = orders[index].copy(status = newStatus)
+        applyOrderFilters()
         Snackbar.make(
             binding.root,
-            getString(R.string.order_action_placeholder, getString(actionRes), order.id),
+            getString(
+                R.string.order_status_updated_message,
+                order.id,
+                formatOrderStatus(newStatus)
+            ),
             Snackbar.LENGTH_SHORT
         ).show()
+    }
+
+    private fun showRemoveOrderDialog(order: CafeOrder) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.order_cancel_dialog_title))
+            .setMessage(getString(R.string.order_cancel_dialog_message, order.id, order.customerName))
+            .setPositiveButton(getString(R.string.order_cancel_dialog_confirm)) { _, _ ->
+                orders.removeAll { it.id == order.id }
+                applyOrderFilters()
+                Snackbar.make(
+                    binding.root,
+                    getString(R.string.order_removed_message, order.id),
+                    Snackbar.LENGTH_SHORT
+                ).show()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun showOrderReceiptPreview(order: CafeOrder) {
+        val receiptMessage = buildString {
+            appendLine(getString(R.string.receipt_order_label) + ": " + order.id)
+            appendLine(getString(R.string.customer_label) + ": " + order.customerName)
+            appendLine(getString(R.string.table_format, order.tableLabel))
+            appendLine(getString(R.string.items_label) + ": " + order.itemCount)
+            appendLine(getString(R.string.status_label) + ": " + formatOrderStatus(order.status))
+            appendLine(getString(R.string.total_label) + ": " + formatCurrency(order.total))
+            append(getString(R.string.time_label) + ": " + order.timeLabel)
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.order_receipt_preview_title))
+            .setMessage(receiptMessage)
+            .setPositiveButton(getString(R.string.receipt_done), null)
+            .show()
+    }
+
+    private fun formatOrderStatus(status: CafeOrderStatus): String {
+        return when (status) {
+            CafeOrderStatus.PENDING -> getString(R.string.pending)
+            CafeOrderStatus.PREPARING -> getString(R.string.preparing)
+            CafeOrderStatus.COMPLETED -> getString(R.string.completed)
+        }
     }
 
     private fun showOrdersFilterMenu(anchor: View) {
@@ -920,6 +976,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
         updateOrderStatusCounts()
         updateOrderStatusChipStyles()
+        refreshNotificationBadges()
     }
 
     private fun updateOrderStatusCounts() {
@@ -935,43 +992,63 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private fun updateOrderStatusChipStyles() {
         setOrderChipState(
             chip = binding.ordersContent.chipAllOrders,
+            iconView = binding.ordersContent.ivAllOrdersIcon,
+            labelView = binding.ordersContent.tvAllOrdersLabel,
             countView = binding.ordersContent.tvAllOrdersCount,
             selected = selectedOrderStatus == null,
-            inactiveTextColorRes = R.color.pos_text_secondary
+            accentTextColorRes = R.color.pos_primary
         )
 
         setOrderChipState(
             chip = binding.ordersContent.chipPendingOrders,
+            iconView = binding.ordersContent.ivPendingOrdersIcon,
+            labelView = binding.ordersContent.tvPendingOrdersLabel,
             countView = binding.ordersContent.tvPendingOrdersCount,
             selected = selectedOrderStatus == CafeOrderStatus.PENDING,
-            inactiveTextColorRes = R.color.pos_warning
+            accentTextColorRes = R.color.pos_warning
         )
 
         setOrderChipState(
             chip = binding.ordersContent.chipPreparingOrders,
+            iconView = binding.ordersContent.ivPreparingOrdersIcon,
+            labelView = binding.ordersContent.tvPreparingOrdersLabel,
             countView = binding.ordersContent.tvPreparingOrdersCount,
             selected = selectedOrderStatus == CafeOrderStatus.PREPARING,
-            inactiveTextColorRes = R.color.pos_info
+            accentTextColorRes = R.color.pos_primary_soft
         )
 
         setOrderChipState(
             chip = binding.ordersContent.chipCompletedOrders,
+            iconView = binding.ordersContent.ivCompletedOrdersIcon,
+            labelView = binding.ordersContent.tvCompletedOrdersLabel,
             countView = binding.ordersContent.tvCompletedOrdersCount,
             selected = selectedOrderStatus == CafeOrderStatus.COMPLETED,
-            inactiveTextColorRes = R.color.pos_secondary
+            accentTextColorRes = R.color.pos_secondary
         )
     }
 
     private fun setOrderChipState(
         chip: LinearLayout,
+        iconView: ImageView,
+        labelView: TextView,
         countView: TextView,
         selected: Boolean,
-        inactiveTextColorRes: Int
+        accentTextColorRes: Int
     ) {
-        chip.setBackgroundResource(if (selected) R.drawable.bg_hint_chip else 0)
-        countView.setBackgroundResource(if (selected) R.drawable.bg_sidebar_item_selected else R.drawable.bg_hint_chip)
+        chip.setBackgroundResource(
+            if (selected) R.drawable.bg_chip_selected else R.drawable.bg_chip_unselected
+        )
+        iconView.imageTintList = ColorStateList.valueOf(
+            ContextCompat.getColor(this, if (selected) R.color.white else accentTextColorRes)
+        )
+        labelView.setTextColor(
+            ContextCompat.getColor(this, if (selected) R.color.white else R.color.pos_text_primary)
+        )
+        countView.setBackgroundResource(
+            if (selected) R.drawable.bg_order_status_count_selected else R.drawable.bg_page_button
+        )
         countView.setTextColor(
-            ContextCompat.getColor(this, if (selected) R.color.white else inactiveTextColorRes)
+            ContextCompat.getColor(this, if (selected) R.color.pos_primary else accentTextColorRes)
         )
     }
 
@@ -1196,6 +1273,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         bindDashboardMetrics(snapshot)
         bindDashboardFocus(snapshot.alerts)
         updateDashboardChart(selectedDashboardPeriod, animate = false)
+        refreshNotificationBadges()
     }
 
     private fun bindDashboardFocus(alerts: List<com.example.zejioscafese.dashboard.model.DashboardAlert>) {
@@ -1423,6 +1501,19 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         binding.profileCard.contentDescription = profileLabel
     }
 
+    private fun setupDashboardActions() {
+        listOf(
+            binding.dashboardContent.btnQuickNewOrder to Section.POS,
+            binding.dashboardContent.btnQuickInventory to Section.INVENTORY,
+            binding.dashboardContent.btnQuickStaff to Section.STAFF,
+            binding.dashboardContent.btnQuickReports to Section.REPORTS
+        ).forEach { (button, section) ->
+            button.setOnClickListener {
+                renderSection(section)
+            }
+        }
+    }
+
     private fun setupInteractions() {
         binding.etSearch.doAfterTextChanged { text ->
             viewModel.updateSearchQuery(text?.toString().orEmpty())
@@ -1479,6 +1570,9 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             viewModel.setPaymentMethod(PosViewModel.PaymentMethod.MAYA)
         }
 
+        binding.notificationFrame.setOnClickListener {
+            showNotificationCenterDialog()
+        }
         binding.avatar.setOnClickListener { renderSection(Section.PROFILE) }
         binding.topProfileCluster.setOnClickListener { renderSection(Section.PROFILE) }
     }
@@ -1490,40 +1584,59 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
         val initialStaffCards = listOf(
             StaffCardViews(
+                rootView = binding.staffContent.cardStaffOne,
                 nameView = binding.staffContent.tvStaffNameOne,
                 idView = binding.staffContent.tvStaffIdOne,
                 roleView = binding.staffContent.tvStaffRoleOne,
                 shiftView = binding.staffContent.tvStaffShiftOne,
-                statusView = binding.staffContent.tvStaffStatusOne
+                statusView = binding.staffContent.tvStaffStatusOne,
+                editButton = binding.staffContent.btnEditStaffOne,
+                actionsButton = binding.staffContent.btnStaffActionsOne
             ),
             StaffCardViews(
+                rootView = binding.staffContent.cardStaffTwo,
                 nameView = binding.staffContent.tvStaffNameTwo,
                 idView = binding.staffContent.tvStaffIdTwo,
                 roleView = binding.staffContent.tvStaffRoleTwo,
                 shiftView = binding.staffContent.tvStaffShiftTwo,
-                statusView = binding.staffContent.tvStaffStatusTwo
+                statusView = binding.staffContent.tvStaffStatusTwo,
+                editButton = binding.staffContent.btnEditStaffTwo,
+                actionsButton = binding.staffContent.btnStaffActionsTwo
             ),
             StaffCardViews(
+                rootView = binding.staffContent.cardStaffThree,
                 nameView = binding.staffContent.tvStaffNameThree,
                 idView = binding.staffContent.tvStaffIdThree,
                 roleView = binding.staffContent.tvStaffRoleThree,
                 shiftView = binding.staffContent.tvStaffShiftThree,
-                statusView = binding.staffContent.tvStaffStatusThree
+                statusView = binding.staffContent.tvStaffStatusThree,
+                editButton = binding.staffContent.btnEditStaffThree,
+                actionsButton = binding.staffContent.btnStaffActionsThree
             )
         )
 
         staffCards.clear()
         staffCards.addAll(initialStaffCards)
+        staffCards.forEach(::bindStaffCardInteractions)
 
-        listOf(
-            binding.staffContent.btnEditStaffOne,
-            binding.staffContent.btnEditStaffTwo,
-            binding.staffContent.btnEditStaffThree
-        ).zip(initialStaffCards).forEach { (button, card) ->
-            button.setOnClickListener {
-                showStaffDialog(card)
-            }
+        binding.staffContent.etStaffSearch.doAfterTextChanged { text ->
+            staffSearchQuery = text?.toString().orEmpty()
+            applyStaffFilters()
         }
+
+        binding.staffContent.btnStaffRoleFilter.setOnClickListener { anchor ->
+            showStaffRoleFilterMenu(anchor)
+        }
+
+        binding.staffContent.btnStaffStatusFilter.setOnClickListener { anchor ->
+            showStaffStatusFilterMenu(anchor)
+        }
+
+        binding.staffContent.staffNotificationFrame.setOnClickListener {
+            showStaffNotificationDialog()
+        }
+
+        refreshStaffUi()
     }
 
     private fun setupProfileInteractions() {
@@ -1733,7 +1846,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             card?.statusView?.text?.toString().orEmpty()
         )
 
-        AlertDialog.Builder(this)
+        val dialog = MaterialAlertDialogBuilder(this)
             .setTitle(
                 getString(
                     if (isEditMode) R.string.staff_dialog_edit_title else R.string.staff_dialog_add_title
@@ -1744,10 +1857,16 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 getString(
                     if (isEditMode) R.string.staff_dialog_save_action else R.string.staff_dialog_add_action
                 )
-            ) { _, _ ->
+            , null)
+            .setNegativeButton(android.R.string.cancel, null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val name = etName.text.toString().trim()
                 if (name.isBlank()) {
-                    return@setPositiveButton
+                    etName.error = getString(R.string.staff_name_required)
+                    return@setOnClickListener
                 }
 
                 if (isEditMode) {
@@ -1764,7 +1883,10 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
                     staffCard.roleView.text = etRole.text.toString().trim().ifBlank { staffCard.roleView.text.toString() }
                     staffCard.shiftView.text = etShift.text.toString().trim().ifBlank { staffCard.shiftView.text.toString() }
-                    staffCard.statusView.text = etStatus.text.toString().trim().ifBlank { staffCard.statusView.text.toString() }
+                    staffCard.statusView.text = normalizeStaffStatus(
+                        etStatus.text.toString().trim().ifBlank { staffCard.statusView.text.toString() }
+                    )
+                    updateStaffCardVisuals(staffCard)
 
                     Snackbar.make(
                         binding.root,
@@ -1777,7 +1899,9 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                     )
                     val role = etRole.text.toString().trim().ifBlank { getString(R.string.staff_role_barista) }
                     val shift = etShift.text.toString().trim().ifBlank { getString(R.string.staff_shift_three) }
-                    val status = etStatus.text.toString().trim().ifBlank { getString(R.string.staff_status_active) }
+                    val status = normalizeStaffStatus(
+                        etStatus.text.toString().trim().ifBlank { getString(R.string.staff_status_active) }
+                    )
 
                     addStaffCard(
                         name = name,
@@ -1794,8 +1918,12 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                     ).show()
                 }
             }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+
+            refreshStaffUi()
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 
     private fun addStaffCard(
@@ -1817,25 +1945,26 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val shiftView = cardRoot.findViewById<TextView>(R.id.tvStaffShift)
         val statusView = cardRoot.findViewById<TextView>(R.id.tvStaffStatus)
         val editButton = cardRoot.findViewById<MaterialButton>(R.id.btnEditStaff)
+        val actionsButton = cardRoot.findViewById<MaterialButton>(R.id.btnStaffActions)
 
         nameView.text = name
         idView.text = getString(R.string.staff_id_format, employeeId)
         roleView.text = role
         shiftView.text = shift
-        statusView.text = status
+        statusView.text = normalizeStaffStatus(status)
 
         val newCard = StaffCardViews(
+            rootView = cardRoot,
             nameView = nameView,
             idView = idView,
             roleView = roleView,
             shiftView = shiftView,
-            statusView = statusView
+            statusView = statusView,
+            editButton = editButton,
+            actionsButton = actionsButton
         )
 
-        editButton.setOnClickListener {
-            showStaffDialog(newCard)
-        }
-
+        bindStaffCardInteractions(newCard)
         binding.staffContent.staffCardsContainer.addView(cardRoot)
         staffCards.add(newCard)
     }
@@ -1868,6 +1997,313 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             ?: 2401
 
         return "#EMP-$nextNumber"
+    }
+
+    private fun bindStaffCardInteractions(card: StaffCardViews) {
+        card.editButton.setOnClickListener {
+            showStaffDialog(card)
+        }
+        card.actionsButton.setOnClickListener { anchor ->
+            showStaffActionsMenu(card, anchor)
+        }
+        updateStaffCardVisuals(card)
+    }
+
+    private fun showStaffRoleFilterMenu(anchor: View) {
+        val roles = staffCards
+            .map { it.roleView.text.toString().trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .sorted()
+
+        PopupMenu(this, anchor).apply {
+            menu.add(0, 0, 0, getString(R.string.all_roles))
+            roles.forEachIndexed { index, role ->
+                menu.add(0, index + 1, index + 1, role)
+            }
+            setOnMenuItemClickListener { item ->
+                selectedStaffRole = if (item.itemId == 0) null else item.title.toString()
+                applyStaffFilters()
+                true
+            }
+        }.show()
+    }
+
+    private fun showStaffStatusFilterMenu(anchor: View) {
+        val statuses = listOf(
+            getString(R.string.staff_status_active),
+            getString(R.string.on_break),
+            getString(R.string.off_duty)
+        )
+
+        PopupMenu(this, anchor).apply {
+            menu.add(0, 0, 0, getString(R.string.all_status))
+            statuses.forEachIndexed { index, status ->
+                menu.add(0, index + 1, index + 1, status)
+            }
+            setOnMenuItemClickListener { item ->
+                selectedStaffStatus = if (item.itemId == 0) null else item.title.toString()
+                applyStaffFilters()
+                true
+            }
+        }.show()
+    }
+
+    private fun showStaffActionsMenu(card: StaffCardViews, anchor: View) {
+        PopupMenu(this, anchor).apply {
+            menu.add(0, 1, 0, getString(R.string.staff_action_view_summary))
+            menu.add(0, 2, 1, getString(R.string.staff_action_mark_active))
+            menu.add(0, 3, 2, getString(R.string.staff_action_mark_on_break))
+            menu.add(0, 4, 3, getString(R.string.staff_action_mark_off_duty))
+            menu.add(0, 5, 4, getString(R.string.staff_action_remove))
+            setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    1 -> showStaffSummaryDialog(card)
+                    2 -> updateStaffStatus(card, getString(R.string.staff_status_active))
+                    3 -> updateStaffStatus(card, getString(R.string.on_break))
+                    4 -> updateStaffStatus(card, getString(R.string.off_duty))
+                    5 -> showRemoveStaffDialog(card)
+                }
+                true
+            }
+        }.show()
+    }
+
+    private fun showStaffSummaryDialog(card: StaffCardViews) {
+        val summary = buildString {
+            appendLine(getString(R.string.staff_field_employee_id) + ": " + card.idView.text)
+            appendLine(getString(R.string.staff_field_role) + ": " + card.roleView.text)
+            appendLine(getString(R.string.staff_field_shift) + ": " + card.shiftView.text)
+            append(getString(R.string.staff_field_status) + ": " + normalizeStaffStatus(card.statusView.text.toString()))
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(card.nameView.text)
+            .setMessage(summary)
+            .setPositiveButton(getString(R.string.edit)) { _, _ ->
+                showStaffDialog(card)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun showRemoveStaffDialog(card: StaffCardViews) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.staff_remove_dialog_title))
+            .setMessage(getString(R.string.staff_remove_dialog_message, card.nameView.text))
+            .setPositiveButton(getString(R.string.staff_remove_dialog_confirm)) { _, _ ->
+                (card.rootView.parent as? ViewGroup)?.removeView(card.rootView)
+                staffCards.remove(card)
+                refreshStaffUi()
+                Snackbar.make(
+                    binding.root,
+                    getString(R.string.staff_removed_message, card.nameView.text),
+                    Snackbar.LENGTH_SHORT
+                ).show()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun updateStaffStatus(card: StaffCardViews, status: String) {
+        card.statusView.text = normalizeStaffStatus(status)
+        updateStaffCardVisuals(card)
+        refreshStaffUi()
+        Snackbar.make(
+            binding.root,
+            getString(R.string.staff_status_updated_message, card.nameView.text, card.statusView.text),
+            Snackbar.LENGTH_SHORT
+        ).show()
+    }
+
+    private fun refreshStaffUi() {
+        updateStaffMetrics()
+        applyStaffFilters()
+        refreshNotificationBadges()
+    }
+
+    private fun applyStaffFilters() {
+        val normalizedQuery = staffSearchQuery.trim().lowercase(Locale.getDefault())
+        val visibleCount = staffCards.count { card ->
+            val matches = matchesStaffFilters(card, normalizedQuery)
+            card.rootView.visibility = if (matches) View.VISIBLE else View.GONE
+            matches
+        }
+
+        binding.staffContent.tvStaffPageSubtitle.text =
+            if (normalizedQuery.isBlank() && selectedStaffRole.isNullOrBlank() && selectedStaffStatus.isNullOrBlank()) {
+                getString(R.string.staff_management_subtitle)
+            } else {
+                getString(R.string.staff_results_summary, visibleCount, staffCards.size)
+            }
+
+        binding.staffContent.btnStaffRoleFilter.text = selectedStaffRole ?: getString(R.string.all_roles)
+        binding.staffContent.btnStaffStatusFilter.text = selectedStaffStatus ?: getString(R.string.all_status)
+    }
+
+    private fun matchesStaffFilters(card: StaffCardViews, normalizedQuery: String): Boolean {
+        val normalizedStatus = normalizeStaffStatus(card.statusView.text.toString())
+        val matchesRole = selectedStaffRole.isNullOrBlank() ||
+            card.roleView.text.toString().equals(selectedStaffRole, ignoreCase = true)
+        val matchesStatus = selectedStaffStatus.isNullOrBlank() ||
+            normalizedStatus.equals(selectedStaffStatus, ignoreCase = true)
+        val searchableText = listOf(
+            card.nameView.text,
+            card.idView.text,
+            card.roleView.text,
+            card.shiftView.text,
+            normalizedStatus
+        ).joinToString(" ").lowercase(Locale.getDefault())
+        val matchesQuery = normalizedQuery.isBlank() || searchableText.contains(normalizedQuery)
+
+        return matchesRole && matchesStatus && matchesQuery
+    }
+
+    private fun showStaffNotificationDialog() {
+        val activeCount = countStaffWithStatus(getString(R.string.staff_status_active))
+        val onBreakCount = countStaffWithStatus(getString(R.string.on_break))
+        val offDutyCount = countStaffWithStatus(getString(R.string.off_duty))
+        val message = getString(
+            R.string.staff_notification_summary,
+            activeCount,
+            onBreakCount,
+            offDutyCount
+        )
+        val options = arrayOf(
+            getString(R.string.staff_notification_view_all),
+            getString(R.string.staff_notification_view_breaks),
+            getString(R.string.staff_notification_view_off_duty),
+            getString(R.string.add_staff)
+        )
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.staff_notification_title))
+            .setMessage(message)
+            .setItems(options) { dialog, which ->
+                dialog.dismiss()
+                when (which) {
+                    0 -> focusStaffStatus(null)
+                    1 -> focusStaffStatus(getString(R.string.on_break))
+                    2 -> focusStaffStatus(getString(R.string.off_duty))
+                    3 -> showStaffDialog(card = null)
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun focusStaffStatus(status: String?) {
+        selectedStaffRole = null
+        selectedStaffStatus = status
+        staffSearchQuery = ""
+        if (binding.staffContent.etStaffSearch.text.isNullOrEmpty()) {
+            applyStaffFilters()
+        } else {
+            binding.staffContent.etStaffSearch.setText("")
+        }
+    }
+
+    private fun updateStaffMetrics() {
+        binding.staffContent.tvStaffMetricTotal.text = staffCards.size.toString()
+        binding.staffContent.tvStaffMetricActive.text =
+            countStaffWithStatus(getString(R.string.staff_status_active)).toString()
+        binding.staffContent.tvStaffMetricBreak.text =
+            countStaffWithStatus(getString(R.string.on_break)).toString()
+        binding.staffContent.tvStaffMetricOff.text =
+            countStaffWithStatus(getString(R.string.off_duty)).toString()
+    }
+
+    private fun updateStaffCardVisuals(card: StaffCardViews) {
+        val normalizedStatus = normalizeStaffStatus(card.statusView.text.toString())
+        val backgroundColor = when (normalizedStatus) {
+            getString(R.string.on_break) -> R.color.pos_warning
+            getString(R.string.off_duty) -> R.color.pos_badge
+            else -> R.color.pos_secondary
+        }
+
+        card.statusView.text = normalizedStatus
+        card.statusView.backgroundTintList = ColorStateList.valueOf(
+            ContextCompat.getColor(this, backgroundColor)
+        )
+        card.statusView.setTextColor(ContextCompat.getColor(this, R.color.white))
+    }
+
+    private fun countStaffWithStatus(status: String): Int {
+        return staffCards.count {
+            normalizeStaffStatus(it.statusView.text.toString()).equals(status, ignoreCase = true)
+        }
+    }
+
+    private fun normalizeStaffStatus(value: String): String {
+        val normalized = value.trim().lowercase(Locale.getDefault())
+        return when {
+            normalized.contains("break") -> getString(R.string.on_break)
+            normalized.contains("off") -> getString(R.string.off_duty)
+            else -> getString(R.string.staff_status_active)
+        }
+    }
+
+    private fun showNotificationCenterDialog() {
+        val alertCount = dashboardSnapshot.alerts.size
+        val activeOrders = orders.count { it.status != CafeOrderStatus.COMPLETED }
+        val staffUpdates = staffCards.count {
+            normalizeStaffStatus(it.statusView.text.toString()) != getString(R.string.staff_status_active)
+        }
+        val message = if (alertCount + activeOrders + staffUpdates == 0) {
+            getString(R.string.notification_center_empty)
+        } else {
+            getString(
+                R.string.notification_center_summary,
+                alertCount,
+                activeOrders,
+                staffUpdates
+            )
+        }
+        val options = arrayOf(
+            getString(R.string.notification_action_dashboard),
+            getString(R.string.notification_action_orders),
+            getString(R.string.notification_action_inventory),
+            getString(R.string.notification_action_staff)
+        )
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.notification_center_title))
+            .setMessage(message)
+            .setItems(options) { dialog, which ->
+                dialog.dismiss()
+                when (which) {
+                    0 -> renderSection(Section.DASHBOARD)
+                    1 -> renderSection(Section.ORDERS)
+                    2 -> renderSection(Section.INVENTORY)
+                    3 -> {
+                        renderSection(Section.STAFF)
+                        showStaffNotificationDialog()
+                    }
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun refreshNotificationBadges() {
+        val topCount = dashboardSnapshot.alerts.size +
+            orders.count { it.status != CafeOrderStatus.COMPLETED } +
+            staffCards.count {
+                normalizeStaffStatus(it.statusView.text.toString()) != getString(R.string.staff_status_active)
+            }
+        val staffCount = countStaffWithStatus(getString(R.string.on_break)) +
+            countStaffWithStatus(getString(R.string.off_duty))
+
+        setBadgeCount(binding.tvNotificationBadge, topCount)
+        setBadgeCount(binding.staffContent.tvStaffNotificationBadge, staffCount)
+    }
+
+    private fun setBadgeCount(badgeView: TextView, count: Int) {
+        badgeView.visibility = if (count > 0) View.VISIBLE else View.GONE
+        badgeView.text = when {
+            count > 9 -> "9+"
+            else -> count.toString()
+        }
     }
 
     private fun createStaffLabeledField(

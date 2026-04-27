@@ -17,97 +17,96 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_dashboard_shell"
+        android:background="@drawable/bg_page_content_shell"
         android:orientation="vertical"
         android:padding="20dp">
 
         <!-- Action bar: search on top, secondary actions below -->
-        <com.google.android.material.card.MaterialCardView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardBackgroundColor="@color/pos_surface_header"
-            app:cardCornerRadius="22dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/pos_border"
-            app:strokeWidth="1dp">
+            android:orientation="vertical">
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/ordersSearchInputLayout"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/search_height"
+                android:hint="@string/orders_search_hint"
+                app:boxBackgroundColor="@color/white"
+                app:boxCornerRadiusBottomEnd="18dp"
+                app:boxCornerRadiusBottomStart="18dp"
+                app:boxCornerRadiusTopEnd="18dp"
+                app:boxCornerRadiusTopStart="18dp"
+                app:boxStrokeColor="@color/pos_border"
+                app:boxStrokeWidth="1dp"
+                app:boxStrokeWidthFocused="1dp"
+                app:startIconDrawable="@drawable/ic_search_24"
+                app:startIconTint="@color/pos_text_secondary">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etOrderSearch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:singleLine="true"
+                    android:textColor="@color/pos_text_primary"
+                    android:textSize="14sp" />
+            </com.google.android.material.textfield.TextInputLayout>
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:layout_marginTop="12dp"
+                android:orientation="horizontal">
 
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/ordersSearchInputLayout"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                    android:layout_width="match_parent"
-                    android:layout_height="@dimen/search_height"
-                    android:hint="@string/orders_search_hint"
-                    app:boxBackgroundColor="@color/pos_surface"
-                    app:boxCornerRadiusBottomEnd="18dp"
-                    app:boxCornerRadiusBottomStart="18dp"
-                    app:boxCornerRadiusTopEnd="18dp"
-                    app:boxCornerRadiusTopStart="18dp"
-                    app:boxStrokeColor="@color/pos_border"
-                    app:startIconDrawable="@drawable/ic_search_24"
-                    app:startIconTint="@color/pos_text_secondary">
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnOrdersFilter"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:maxLines="1"
+                    android:text="@string/filter_sort"
+                    android:textAllCaps="false"
+                    android:textColor="@color/pos_text_primary"
+                    android:textSize="12sp"
+                    app:backgroundTint="@color/pos_surface_header"
+                    app:cornerRadius="18dp"
+                    app:icon="@drawable/ic_filter_24"
+                    app:iconGravity="textStart"
+                    app:iconPadding="4dp"
+                    app:iconSize="16dp"
+                    app:iconTint="@color/pos_primary"
+                    app:strokeColor="@color/pos_border"
+                    app:strokeWidth="1dp" />
 
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etOrderSearch"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:singleLine="true" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnOrdersFilter"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="46dp"
-                        android:layout_weight="1"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:text="@string/filter_sort"
-                        android:textAllCaps="false"
-                        android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                        android:textColor="@color/pos_text_primary"
-                        app:backgroundTint="@color/pos_surface"
-                        app:cornerRadius="16dp"
-                        app:icon="@drawable/ic_filter_24"
-                        app:iconPadding="6dp"
-                        app:iconSize="18dp"
-                        app:iconTint="@color/pos_primary"
-                        app:strokeColor="@color/pos_border"
-                        app:strokeWidth="1dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnNewOrder"
-                        style="@style/Widget.Material3.Button"
-                        android:layout_width="0dp"
-                        android:layout_height="46dp"
-                        android:layout_marginStart="@dimen/content_inline_gap"
-                        android:layout_weight="1"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:text="@string/new_order"
-                        android:textAllCaps="false"
-                        android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                        android:textColor="@color/white"
-                        app:backgroundTint="@color/pos_secondary"
-                        app:cornerRadius="16dp"
-                        app:icon="@drawable/ic_add_18"
-                        app:iconPadding="6dp"
-                        app:iconSize="18dp"
-                        app:iconTint="@color/white" />
-                </LinearLayout>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnNewOrder"
+                    style="@style/Widget.Material3.Button"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="@dimen/content_inline_gap"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:maxLines="1"
+                    android:text="@string/new_order"
+                    android:textAllCaps="false"
+                    android:textColor="@color/white"
+                    android:textSize="12sp"
+                    app:backgroundTint="@color/pos_secondary"
+                    app:cornerRadius="18dp"
+                    app:icon="@drawable/ic_add_18"
+                    app:iconGravity="textStart"
+                    app:iconPadding="4dp"
+                    app:iconSize="16dp"
+                    app:iconTint="@color/white" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
 
         <!-- Status pills: scroll horizontally on portrait -->
         <HorizontalScrollView
@@ -123,32 +122,42 @@
 
                 <LinearLayout
                     android:id="@+id/chipAllOrders"
-                    android:layout_width="wrap_content"
+                    android:layout_width="160dp"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/bg_hint_chip"
+                    android:background="@drawable/bg_chip_selected"
                     android:clickable="true"
                     android:focusable="true"
                     android:gravity="center_vertical"
-                    android:minHeight="48dp"
+                    android:minHeight="56dp"
                     android:orientation="horizontal"
                     android:paddingStart="16dp"
                     android:paddingTop="10dp"
                     android:paddingEnd="14dp"
                     android:paddingBottom="10dp">
 
+                    <ImageView
+                        android:id="@+id/ivAllOrdersIcon"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_orders_24"
+                        app:tint="@color/white" />
+
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:id="@+id/tvAllOrdersLabel"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
                         android:text="@string/all_orders"
                         android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                        android:textColor="@color/pos_text_primary" />
+                        android:textColor="@color/white"
+                        android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/tvAllOrdersCount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:background="@drawable/bg_sidebar_item_selected"
+                        android:background="@drawable/bg_order_status_count_selected"
                         android:gravity="center"
                         android:minWidth="28dp"
                         android:paddingStart="8dp"
@@ -157,37 +166,48 @@
                         android:paddingBottom="3dp"
                         android:text="@string/all_orders_count"
                         android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
-                        android:textColor="@color/white" />
+                        android:textColor="@color/pos_primary" />
                 </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/chipPendingOrders"
-                    android:layout_width="wrap_content"
+                    android:layout_width="160dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="10dp"
+                    android:background="@drawable/bg_chip_unselected"
                     android:clickable="true"
                     android:focusable="true"
                     android:gravity="center_vertical"
-                    android:minHeight="48dp"
+                    android:minHeight="56dp"
                     android:orientation="horizontal"
                     android:paddingStart="16dp"
                     android:paddingTop="10dp"
                     android:paddingEnd="14dp"
                     android:paddingBottom="10dp">
 
+                    <ImageView
+                        android:id="@+id/ivPendingOrdersIcon"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_clock_24"
+                        app:tint="@color/pos_warning" />
+
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:id="@+id/tvPendingOrdersLabel"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
                         android:text="@string/pending"
                         android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                        android:textColor="@color/pos_text_primary" />
+                        android:textColor="@color/pos_text_primary"
+                        android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/tvPendingOrdersCount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:background="@drawable/bg_hint_chip"
+                        android:background="@drawable/bg_page_button"
                         android:gravity="center"
                         android:minWidth="28dp"
                         android:paddingStart="8dp"
@@ -196,37 +216,49 @@
                         android:paddingBottom="3dp"
                         android:text="@string/pending_orders_count"
                         android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
-                        android:textColor="@color/pos_warning" />
+                        android:textColor="@color/pos_warning"
+                        android:textStyle="bold" />
                 </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/chipPreparingOrders"
-                    android:layout_width="wrap_content"
+                    android:layout_width="160dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="10dp"
+                    android:background="@drawable/bg_chip_unselected"
                     android:clickable="true"
                     android:focusable="true"
                     android:gravity="center_vertical"
-                    android:minHeight="48dp"
+                    android:minHeight="56dp"
                     android:orientation="horizontal"
                     android:paddingStart="16dp"
                     android:paddingTop="10dp"
                     android:paddingEnd="14dp"
                     android:paddingBottom="10dp">
 
+                    <ImageView
+                        android:id="@+id/ivPreparingOrdersIcon"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_coffee_24"
+                        app:tint="@color/pos_primary_soft" />
+
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:id="@+id/tvPreparingOrdersLabel"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
                         android:text="@string/preparing"
                         android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                        android:textColor="@color/pos_text_primary" />
+                        android:textColor="@color/pos_text_primary"
+                        android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/tvPreparingOrdersCount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:background="@drawable/bg_hint_chip"
+                        android:background="@drawable/bg_page_button"
                         android:gravity="center"
                         android:minWidth="28dp"
                         android:paddingStart="8dp"
@@ -235,37 +267,49 @@
                         android:paddingBottom="3dp"
                         android:text="@string/preparing_orders_count"
                         android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
-                        android:textColor="@color/pos_info" />
+                        android:textColor="@color/pos_primary_soft"
+                        android:textStyle="bold" />
                 </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/chipCompletedOrders"
-                    android:layout_width="wrap_content"
+                    android:layout_width="160dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="10dp"
+                    android:background="@drawable/bg_chip_unselected"
                     android:clickable="true"
                     android:focusable="true"
                     android:gravity="center_vertical"
-                    android:minHeight="48dp"
+                    android:minHeight="56dp"
                     android:orientation="horizontal"
                     android:paddingStart="16dp"
                     android:paddingTop="10dp"
                     android:paddingEnd="14dp"
                     android:paddingBottom="10dp">
 
+                    <ImageView
+                        android:id="@+id/ivCompletedOrdersIcon"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_star_24"
+                        app:tint="@color/pos_secondary" />
+
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:id="@+id/tvCompletedOrdersLabel"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
                         android:text="@string/completed"
                         android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                        android:textColor="@color/pos_text_primary" />
+                        android:textColor="@color/pos_text_primary"
+                        android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/tvCompletedOrdersCount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:background="@drawable/bg_hint_chip"
+                        android:background="@drawable/bg_page_button"
                         android:gravity="center"
                         android:minWidth="28dp"
                         android:paddingStart="8dp"
@@ -274,7 +318,8 @@
                         android:paddingBottom="3dp"
                         android:text="@string/completed_orders_count"
                         android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
-                        android:textColor="@color/pos_secondary" />
+                        android:textColor="@color/pos_secondary"
+                        android:textStyle="bold" />
                 </LinearLayout>
             </LinearLayout>
         </HorizontalScrollView>

@@ -19,14 +19,14 @@
     android:id="@+id/inventoryScroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/pos_background"
+    android:background="@android:color/transparent"
     android:clipToPadding="false"
     android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_dashboard_shell"
+        android:background="@drawable/bg_page_content_shell"
         android:clipToPadding="false"
         android:orientation="vertical"
         android:padding="22dp">
@@ -43,7 +43,7 @@
             android:id="@+id/inventoryModeToggle"
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:background="@drawable/bg_segment_container"
+            android:background="@drawable/bg_inventory_mode_toggle"
             android:baselineAligned="false"
             android:orientation="horizontal"
             android:padding="6dp">
@@ -53,7 +53,7 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:background="@drawable/bg_segment_selected"
+                android:background="@drawable/bg_inventory_mode_tab_ingredients_selected"
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center"
@@ -84,6 +84,7 @@
                 android:layout_height="match_parent"
                 android:layout_marginStart="6dp"
                 android:layout_weight="1"
+                android:background="@drawable/bg_inventory_mode_tab_idle"
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center"
@@ -95,7 +96,7 @@
                     android:layout_width="18dp"
                     android:layout_height="18dp"
                     android:src="@drawable/ic_grid_24"
-                    app:tint="@color/pos_text_secondary" />
+                    app:tint="@color/pos_secondary" />
 
                 <TextView
                     android:id="@+id/tvTabCanProduce"
@@ -104,7 +105,7 @@
                     android:layout_marginStart="8dp"
                     android:text="@string/inventory_tab_can_produce"
                     android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                    android:textColor="@color/pos_text_secondary"
+                    android:textColor="@color/pos_secondary"
                     android:textStyle="bold" />
             </LinearLayout>
         </LinearLayout>

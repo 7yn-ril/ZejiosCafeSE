@@ -146,29 +146,38 @@ class InventoryFragment : Fragment() {
     }
 
     /**
-     * Toggles the segmented mode pill: the active tab gets the filled
-     * primary background with white icon/text; the inactive tab is flat
-     * with secondary text.
+     * Toggles the segmented mode pill: the active tab gets a filled
+     * accent background with white icon/text, while the inactive tab
+     * stays bright and obviously clickable.
      */
     private fun applyModeToggleVisuals(mode: InventoryViewModel.ScreenMode) {
         val isIngredients = mode == InventoryViewModel.ScreenMode.INGREDIENTS
         val ctx = requireContext()
         val white = ContextCompat.getColor(ctx, R.color.white)
-        val muted = ContextCompat.getColor(ctx, R.color.pos_text_secondary)
+        val ingredientsAccent = ContextCompat.getColor(ctx, R.color.pos_primary)
+        val productionAccent = ContextCompat.getColor(ctx, R.color.pos_secondary)
 
         binding.tabIngredients.setBackgroundResource(
-            if (isIngredients) R.drawable.bg_segment_selected else 0
+            if (isIngredients) {
+                R.drawable.bg_inventory_mode_tab_ingredients_selected
+            } else {
+                R.drawable.bg_inventory_mode_tab_idle
+            }
         )
-        binding.tvTabIngredients.setTextColor(if (isIngredients) white else muted)
+        binding.tvTabIngredients.setTextColor(if (isIngredients) white else ingredientsAccent)
         binding.icTabIngredients.imageTintList =
-            ColorStateList.valueOf(if (isIngredients) white else muted)
+            ColorStateList.valueOf(if (isIngredients) white else ingredientsAccent)
 
         binding.tabCanProduce.setBackgroundResource(
-            if (!isIngredients) R.drawable.bg_segment_selected else 0
+            if (!isIngredients) {
+                R.drawable.bg_inventory_mode_tab_production_selected
+            } else {
+                R.drawable.bg_inventory_mode_tab_idle
+            }
         )
-        binding.tvTabCanProduce.setTextColor(if (!isIngredients) white else muted)
+        binding.tvTabCanProduce.setTextColor(if (!isIngredients) white else productionAccent)
         binding.icTabCanProduce.imageTintList =
-            ColorStateList.valueOf(if (!isIngredients) white else muted)
+            ColorStateList.valueOf(if (!isIngredients) white else productionAccent)
     }
 
     private fun setupFilterChips() {
