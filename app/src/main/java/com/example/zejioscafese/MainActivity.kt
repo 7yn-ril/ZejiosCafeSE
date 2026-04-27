@@ -151,6 +151,10 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private var orderSearchQuery: String = ""
     private var isOrdersLoading: Boolean = false
     private var lastOrdersLoadedAtMs: Long = 0L
+    private var ordersPage: Int = 0
+    private var orderSort: OrderSort = OrderSort.DEFAULT
+
+    private enum class OrderSort { DEFAULT, TOTAL_DESC, TOTAL_ASC, ITEMS_DESC }
     private val staffCards = mutableListOf<StaffCardViews>()
     private var hasCheckoutItems: Boolean = false
     private var isCheckoutSaving: Boolean = false
@@ -176,6 +180,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         private const val CHECKOUT_COLLAPSED_GUIDE_PERCENT = 1f
         private const val SIDEBAR_LOGO_ASSET_PATH = "other_assets/ZejiosCafeLogo.jpg"
         private const val POS_PAGE_SIZE = 12
+        private const val ORDERS_PAGE_SIZE = 10
         private const val ORDERS_REFRESH_INTERVAL_MS = 30_000L
     }
 
@@ -337,7 +342,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
     private fun setupOrders() {
         orderManagementAdapter = OrderManagementAdapter(
-            onOrderItemsClick = ::showOrderItemsDialog
+            onOrderItemsClick = ::showOrderItemsDialog,
+            onOrderActionClick = ::showOrderRowActionsMenu
         )
 
         binding.ordersContent.rvOrders.apply {
@@ -351,26 +357,31 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
         binding.ordersContent.etOrderSearch.doAfterTextChanged { text ->
             orderSearchQuery = text?.toString().orEmpty()
+            ordersPage = 0
             applyOrderFilters()
         }
 
         binding.ordersContent.chipAllOrders.setOnClickListener {
             selectedOrderStatus = null
+            ordersPage = 0
             applyOrderFilters()
         }
 
         binding.ordersContent.chipPendingOrders.setOnClickListener {
             selectedOrderStatus = CafeOrderStatus.PENDING
+            ordersPage = 0
             applyOrderFilters()
         }
 
         binding.ordersContent.chipPreparingOrders.setOnClickListener {
             selectedOrderStatus = CafeOrderStatus.PREPARING
+            ordersPage = 0
             applyOrderFilters()
         }
 
         binding.ordersContent.chipCompletedOrders.setOnClickListener {
             selectedOrderStatus = CafeOrderStatus.COMPLETED
+            ordersPage = 0
             applyOrderFilters()
         }
 
@@ -378,7 +389,89 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             showNewOrderDialog()
         }
 
+        binding.ordersContent.btnOrdersFilter.setOnClickListener { anchor ->
+            showOrdersFilterMenu(anchor)
+        }
+
+        binding.ordersContent.btnOrdersPrevPage.setOnClickListener {
+            if (ordersPage > 0) {
+                ordersPage -= 1
+                applyOrderFilters()
+            }
+        }
+
+        binding.ordersContent.btnOrdersNextPage.setOnClickListener {
+            ordersPage += 1
+            applyOrderFilters()
+        }
+
         applyOrderFilters()
+    }
+
+    /**
+     * Per-row action menu wired to the new trailing button on every order
+     * row. Each entry triggers UI feedback (confirmation dialog or snackbar)
+     * so the button always feels alive even before the matching write-path
+     * exists in the repository.
+     */
+    private fun showOrderRowActionsMenu(order: CafeOrder, anchor: View) {
+        val popup = PopupMenu(this, anchor)
+        popup.menu.add(0, 1, 0, getString(R.string.order_action_view_details))
+        popup.menu.add(0, 2, 1, getString(R.string.order_action_mark_preparing))
+        popup.menu.add(0, 3, 2, getString(R.string.order_action_mark_completed))
+        popup.menu.add(0, 4, 3, getString(R.string.order_action_print_receipt))
+        popup.menu.add(0, 5, 4, getString(R.string.order_action_cancel))
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                1 -> showOrderItemsDialog(order)
+                2 -> notifyOrderActionPlaceholder(R.string.order_action_mark_preparing, order)
+                3 -> notifyOrderActionPlaceholder(R.string.order_action_mark_completed, order)
+                4 -> notifyOrderActionPlaceholder(R.string.order_action_print_receipt, order)
+                5 -> notifyOrderActionPlaceholder(R.string.order_action_cancel, order)
+            }
+            true
+        }
+        popup.show()
+    }
+
+    /**
+     * Placeholder feedback for actions that don't yet have a backend write.
+     * Shows a Snackbar so the user has a clear, themed signal that the click
+     * was registered.
+     */
+    private fun notifyOrderActionPlaceholder(@StringRes actionRes: Int, order: CafeOrder) {
+        Snackbar.make(
+            binding.root,
+            getString(R.string.order_action_placeholder, getString(actionRes), order.id),
+            Snackbar.LENGTH_SHORT
+        ).show()
+    }
+
+    private fun showOrdersFilterMenu(anchor: View) {
+        val popup = PopupMenu(this, anchor)
+        popup.menu.add(0, 1, 0, getString(R.string.orders_sort_default))
+        popup.menu.add(0, 2, 1, getString(R.string.orders_sort_total_desc))
+        popup.menu.add(0, 3, 2, getString(R.string.orders_sort_total_asc))
+        popup.menu.add(0, 4, 3, getString(R.string.orders_sort_items_desc))
+        popup.menu.add(0, 5, 4, getString(R.string.orders_sort_reset))
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                1 -> orderSort = OrderSort.DEFAULT
+                2 -> orderSort = OrderSort.TOTAL_DESC
+                3 -> orderSort = OrderSort.TOTAL_ASC
+                4 -> orderSort = OrderSort.ITEMS_DESC
+                5 -> {
+                    orderSort = OrderSort.DEFAULT
+                    selectedOrderStatus = null
+                    orderSearchQuery = ""
+                    binding.ordersContent.etOrderSearch.setText("")
+                }
+            }
+            ordersPage = 0
+            applyOrderFilters()
+            true
+        }
+        popup.show()
     }
 
     private fun loadOrdersFromSupabase(showError: Boolean = false, force: Boolean = false) {
@@ -785,15 +878,45 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             matchesStatus && matchesQuery
         }
 
-        orderManagementAdapter.submitList(filteredOrders.toList())
+        val sortedOrders = when (orderSort) {
+            OrderSort.DEFAULT -> filteredOrders
+            OrderSort.TOTAL_DESC -> filteredOrders.sortedByDescending { it.total }
+            OrderSort.TOTAL_ASC -> filteredOrders.sortedBy { it.total }
+            OrderSort.ITEMS_DESC -> filteredOrders.sortedByDescending { it.itemCount }
+        }
 
-        val start = if (filteredOrders.isEmpty()) 0 else 1
+        val totalPages = if (sortedOrders.isEmpty()) 1
+            else (sortedOrders.size + ORDERS_PAGE_SIZE - 1) / ORDERS_PAGE_SIZE
+        if (ordersPage >= totalPages) ordersPage = totalPages - 1
+        if (ordersPage < 0) ordersPage = 0
+
+        val fromIndex = ordersPage * ORDERS_PAGE_SIZE
+        val toIndex = minOf(fromIndex + ORDERS_PAGE_SIZE, sortedOrders.size)
+        val pageItems = if (sortedOrders.isEmpty()) emptyList()
+            else sortedOrders.subList(fromIndex, toIndex)
+
+        orderManagementAdapter.submitList(pageItems.toList())
+
+        val start = if (sortedOrders.isEmpty()) 0 else fromIndex + 1
         binding.ordersContent.tvOrdersShowing.text = getString(
             R.string.showing_orders_range,
             start,
-            filteredOrders.size,
+            toIndex,
             orders.size
         )
+
+        binding.ordersContent.tvOrdersPageInfo.text = getString(
+            R.string.pagination_page_status,
+            ordersPage + 1,
+            totalPages
+        )
+
+        binding.ordersContent.btnOrdersPrevPage.isEnabled = ordersPage > 0
+        binding.ordersContent.btnOrdersNextPage.isEnabled = ordersPage + 1 < totalPages
+        binding.ordersContent.btnOrdersPrevPage.alpha =
+            if (binding.ordersContent.btnOrdersPrevPage.isEnabled) 1.0f else 0.45f
+        binding.ordersContent.btnOrdersNextPage.alpha =
+            if (binding.ordersContent.btnOrdersNextPage.isEnabled) 1.0f else 0.45f
 
         updateOrderStatusCounts()
         updateOrderStatusChipStyles()
@@ -2006,7 +2129,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val showProfile = section == Section.PROFILE
         val showPlaceholder = !showPos && !showDashboard && !showOrders && !showStaff && !showProfile && !showFragmentScreen
 
-        binding.topBar.visibility = if (showFragmentScreen || showStaff) View.GONE else View.VISIBLE
+        val hideTopBar = showStaff || section == Section.REPORTS
+        binding.topBar.visibility = if (hideTopBar) View.GONE else View.VISIBLE
         binding.leftPanel.visibility = if (showPos) View.VISIBLE else View.GONE
         binding.rightPanel.visibility = if (showPos && isCheckoutExpanded) View.VISIBLE else View.GONE
         binding.dashboardContent.root.visibility = if (showDashboard) View.VISIBLE else View.GONE

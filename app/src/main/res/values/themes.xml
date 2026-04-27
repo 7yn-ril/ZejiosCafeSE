@@ -17,6 +17,10 @@
         <item name="bottomNavIconTint">@color/pos_primary_soft</item>
         <item name="bottomNavTextColor">@color/pos_primary_dark</item>
         <item name="bottomNavSelectedItemColor">#FFFFFF</item>
+
+        <!-- All AlertDialog.Builder calls inherit our themed dialog. -->
+        <item name="android:alertDialogTheme">@style/ThemeOverlay.ZejiosCafe.Dialog</item>
+        <item name="alertDialogTheme">@style/ThemeOverlay.ZejiosCafe.Dialog</item>
     </style>
 
     <!-- Dark theme: inherits light and overrides bottom nav + surface colors -->

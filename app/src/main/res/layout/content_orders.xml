@@ -1,25 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Orders content (landscape / tablet).
+    The page title and subtitle are rendered by the shared MainActivity topBar
+    (Dashboard / POS / Orders / Inventory share that header). Nothing in this
+    file should duplicate that title.
+-->
 <androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/pos_background"
+    android:background="@android:color/transparent"
     android:clipToPadding="false"
-    android:fillViewport="true"
-    android:paddingStart="@dimen/content_screen_padding"
-    android:paddingTop="@dimen/content_screen_padding"
-    android:paddingEnd="@dimen/content_screen_padding"
-    android:paddingBottom="@dimen/content_screen_padding">
+    android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:background="@drawable/bg_dashboard_shell"
+        android:orientation="vertical"
+        android:padding="22dp">
 
+        <!-- ─────────────────────────────────────────────────────────────
+             Section A — Action bar (POS-style)
+             Search input is a standalone field; Filter and New Order are
+             sibling buttons sitting beside it, not wrapped inside the
+             same container. All three are 56dp tall so they line up
+             flush along their top and bottom edges.
+             ───────────────────────────────────────────────────────────── -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:baselineAligned="false"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -27,42 +39,50 @@
                 android:id="@+id/ordersSearchInputLayout"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="0dp"
-                android:layout_height="@dimen/search_height"
+                android:layout_height="56dp"
                 android:layout_weight="1"
                 android:hint="@string/orders_search_hint"
-                app:boxBackgroundColor="@color/pos_surface"
+                app:boxBackgroundColor="@color/pos_surface_header"
                 app:boxCornerRadiusBottomEnd="18dp"
                 app:boxCornerRadiusBottomStart="18dp"
                 app:boxCornerRadiusTopEnd="18dp"
                 app:boxCornerRadiusTopStart="18dp"
                 app:boxStrokeColor="@color/pos_border"
+                app:hintEnabled="false"
                 app:startIconDrawable="@drawable/ic_search_24"
                 app:startIconTint="@color/pos_text_secondary">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etOrderSearch"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:singleLine="true" />
+                    android:layout_height="match_parent"
+                    android:background="@android:color/transparent"
+                    android:hint="@string/orders_search_hint"
+                    android:paddingTop="0dp"
+                    android:paddingBottom="0dp"
+                    android:singleLine="true"
+                    android:textColor="@color/pos_text_primary"
+                    android:textColorHint="@color/pos_text_secondary"
+                    android:textSize="14sp" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnOrdersFilter"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="wrap_content"
-                android:layout_height="48dp"
-                android:layout_marginStart="@dimen/content_inline_gap"
+                android:layout_height="56dp"
+                android:layout_marginStart="12dp"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
                 android:text="@string/filter_sort"
                 android:textAllCaps="false"
                 android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
                 android:textColor="@color/pos_text_primary"
-                app:backgroundTint="@color/pos_surface"
-                app:cornerRadius="16dp"
+                app:backgroundTint="@color/pos_surface_header"
+                app:cornerRadius="18dp"
                 app:icon="@drawable/ic_filter_24"
-                app:iconSize="18dp"
                 app:iconPadding="6dp"
+                app:iconSize="18dp"
                 app:iconTint="@color/pos_primary"
                 app:strokeColor="@color/pos_border"
                 app:strokeWidth="1dp" />
@@ -71,195 +91,247 @@
                 android:id="@+id/btnNewOrder"
                 style="@style/Widget.Material3.Button"
                 android:layout_width="wrap_content"
-                android:layout_height="48dp"
-                android:layout_marginStart="@dimen/content_inline_gap"
+                android:layout_height="56dp"
+                android:layout_marginStart="12dp"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
                 android:text="@string/new_order"
                 android:textAllCaps="false"
                 android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
+                android:textColor="@color/white"
                 app:backgroundTint="@color/pos_secondary"
-                app:cornerRadius="16dp"
+                app:cornerRadius="18dp"
                 app:icon="@drawable/ic_add_18"
-                app:iconSize="18dp"
                 app:iconPadding="6dp"
+                app:iconSize="18dp"
                 app:iconTint="@color/white" />
         </LinearLayout>
 
-        <HorizontalScrollView
-            android:layout_width="wrap_content"
+        <!-- ─────────────────────────────────────────────────────────────
+             Section B — Status pill row
+             Each pill is a clickable filter that doubles as a small KPI
+             (label + count). The selection state styling is applied in
+             MainActivity, which still toggles `bg_hint_chip` on/off.
+             ───────────────────────────────────────────────────────────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/content_section_gap"
-            android:scrollbars="none">
+            android:baselineAligned="false"
+            android:orientation="horizontal">
 
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:id="@+id/chipAllOrders"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:layout_weight="1"
+                android:background="@drawable/bg_hint_chip"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="64dp"
+                android:orientation="horizontal"
+                android:paddingStart="18dp"
+                android:paddingTop="14dp"
+                android:paddingEnd="14dp"
+                android:paddingBottom="14dp">
 
-                <LinearLayout
-                    android:id="@+id/chipAllOrders"
-                    android:layout_width="wrap_content"
+                <TextView
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/bg_hint_chip"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="14dp"
-                    android:paddingTop="10dp"
-                    android:paddingEnd="14dp"
-                    android:paddingBottom="10dp">
+                    android:layout_weight="1"
+                    android:text="@string/all_orders"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
+                    android:textColor="@color/pos_text_primary"
+                    android:textStyle="bold" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/all_orders"
-                        android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                        android:textColor="@color/pos_text_primary" />
-
-                    <TextView
-                        android:id="@+id/tvAllOrdersCount"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:background="@drawable/bg_sidebar_item_selected"
-                        android:paddingStart="8dp"
-                        android:paddingTop="3dp"
-                        android:paddingEnd="8dp"
-                        android:paddingBottom="3dp"
-                        android:text="@string/all_orders_count"
-                        android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
-                        android:textColor="@color/white" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/chipPendingOrders"
+                <TextView
+                    android:id="@+id/tvAllOrdersCount"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="10dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="14dp"
-                    android:paddingTop="10dp"
-                    android:paddingEnd="14dp"
-                    android:paddingBottom="10dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/pending"
-                        android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                        android:textColor="@color/pos_text_primary" />
-
-                    <TextView
-                        android:id="@+id/tvPendingOrdersCount"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:background="@drawable/bg_hint_chip"
-                        android:paddingStart="8dp"
-                        android:paddingTop="3dp"
-                        android:paddingEnd="8dp"
-                        android:paddingBottom="3dp"
-                        android:text="@string/pending_orders_count"
-                        android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
-                        android:textColor="@color/pos_warning" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/chipPreparingOrders"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="14dp"
-                    android:paddingTop="10dp"
-                    android:paddingEnd="14dp"
-                    android:paddingBottom="10dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/preparing"
-                        android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                        android:textColor="@color/pos_text_primary" />
-
-                    <TextView
-                        android:id="@+id/tvPreparingOrdersCount"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:background="@drawable/bg_hint_chip"
-                        android:paddingStart="8dp"
-                        android:paddingTop="3dp"
-                        android:paddingEnd="8dp"
-                        android:paddingBottom="3dp"
-                        android:text="@string/preparing_orders_count"
-                        android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
-                        android:textColor="@color/pos_info" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/chipCompletedOrders"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="14dp"
-                    android:paddingTop="10dp"
-                    android:paddingEnd="14dp"
-                    android:paddingBottom="10dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/completed"
-                        android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                        android:textColor="@color/pos_text_primary" />
-
-                    <TextView
-                        android:id="@+id/tvCompletedOrdersCount"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:background="@drawable/bg_hint_chip"
-                        android:paddingStart="8dp"
-                        android:paddingTop="3dp"
-                        android:paddingEnd="8dp"
-                        android:paddingBottom="3dp"
-                        android:text="@string/completed_orders_count"
-                        android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
-                        android:textColor="@color/pos_secondary" />
-                </LinearLayout>
+                    android:background="@drawable/bg_sidebar_item_selected"
+                    android:gravity="center"
+                    android:minWidth="32dp"
+                    android:paddingStart="10dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="10dp"
+                    android:paddingBottom="4dp"
+                    android:text="@string/all_orders_count"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
+                    android:textColor="@color/white" />
             </LinearLayout>
-        </HorizontalScrollView>
 
+            <Space
+                android:layout_width="@dimen/content_inline_gap"
+                android:layout_height="1dp" />
+
+            <LinearLayout
+                android:id="@+id/chipPendingOrders"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="64dp"
+                android:orientation="horizontal"
+                android:paddingStart="18dp"
+                android:paddingTop="14dp"
+                android:paddingEnd="14dp"
+                android:paddingBottom="14dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/pending"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
+                    android:textColor="@color/pos_text_primary"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvPendingOrdersCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:background="@drawable/bg_hint_chip"
+                    android:gravity="center"
+                    android:minWidth="32dp"
+                    android:paddingStart="10dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="10dp"
+                    android:paddingBottom="4dp"
+                    android:text="@string/pending_orders_count"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
+                    android:textColor="@color/pos_warning" />
+            </LinearLayout>
+
+            <Space
+                android:layout_width="@dimen/content_inline_gap"
+                android:layout_height="1dp" />
+
+            <LinearLayout
+                android:id="@+id/chipPreparingOrders"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="64dp"
+                android:orientation="horizontal"
+                android:paddingStart="18dp"
+                android:paddingTop="14dp"
+                android:paddingEnd="14dp"
+                android:paddingBottom="14dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/preparing"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
+                    android:textColor="@color/pos_text_primary"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvPreparingOrdersCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:background="@drawable/bg_hint_chip"
+                    android:gravity="center"
+                    android:minWidth="32dp"
+                    android:paddingStart="10dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="10dp"
+                    android:paddingBottom="4dp"
+                    android:text="@string/preparing_orders_count"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
+                    android:textColor="@color/pos_info" />
+            </LinearLayout>
+
+            <Space
+                android:layout_width="@dimen/content_inline_gap"
+                android:layout_height="1dp" />
+
+            <LinearLayout
+                android:id="@+id/chipCompletedOrders"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="64dp"
+                android:orientation="horizontal"
+                android:paddingStart="18dp"
+                android:paddingTop="14dp"
+                android:paddingEnd="14dp"
+                android:paddingBottom="14dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/completed"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
+                    android:textColor="@color/pos_text_primary"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvCompletedOrdersCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:background="@drawable/bg_hint_chip"
+                    android:gravity="center"
+                    android:minWidth="32dp"
+                    android:paddingStart="10dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="10dp"
+                    android:paddingBottom="4dp"
+                    android:text="@string/completed_orders_count"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
+                    android:textColor="@color/pos_secondary" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ─────────────────────────────────────────────────────────────
+             Section C — Orders table
+             Sticky-looking column header band, then the row list, then a
+             pagination footer. Total / Action columns are spaced out so
+             the price doesn't collide with the trailing icon button.
+             ───────────────────────────────────────────────────────────── -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/content_section_gap"
-            app:cardBackgroundColor="@color/pos_surface"
-            app:cardCornerRadius="@dimen/card_corner_radius"
-            app:cardElevation="2dp"
-            app:strokeColor="@color/pos_border"
-            app:strokeWidth="1dp">
+            app:cardBackgroundColor="@color/pos_surface_header"
+            app:cardCornerRadius="28dp"
+            app:cardElevation="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                android:paddingStart="20dp"
+                android:paddingTop="20dp"
+                android:paddingEnd="20dp"
+                android:paddingBottom="18dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="@color/pos_surface_soft"
+                    android:background="@drawable/bg_hint_chip"
+                    android:backgroundTint="@color/dashboard_section_soft"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:paddingStart="@dimen/content_card_padding"
-                    android:paddingTop="@dimen/content_section_gap"
+                    android:paddingTop="14dp"
                     android:paddingEnd="@dimen/content_card_padding"
-                    android:paddingBottom="@dimen/content_section_gap">
+                    android:paddingBottom="14dp">
 
                     <TextView
                         android:layout_width="0dp"
@@ -304,16 +376,16 @@
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_weight="0.8"
+                        android:layout_weight="0.95"
                         android:gravity="end"
+                        android:paddingEnd="14dp"
                         android:text="@string/total_label"
                         android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
                         android:textColor="@color/pos_text_secondary" />
 
                     <TextView
-                        android:layout_width="0dp"
+                        android:layout_width="44dp"
                         android:layout_height="wrap_content"
-                        android:layout_weight="0.35"
                         android:gravity="center"
                         android:text="@string/action_label"
                         android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
@@ -324,18 +396,23 @@
                     android:id="@+id/rvOrders"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
                     android:nestedScrollingEnabled="false"
+                    android:overScrollMode="never"
                     tools:listitem="@layout/item_management_order" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="2dp"
+                    android:background="@color/pos_border" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
                     android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="@dimen/content_card_padding"
-                    android:paddingTop="@dimen/content_section_gap"
-                    android:paddingEnd="@dimen/content_card_padding"
-                    android:paddingBottom="@dimen/content_section_gap">
+                    android:orientation="horizontal">
 
                     <TextView
                         android:id="@+id/tvOrdersShowing"
@@ -344,56 +421,52 @@
                         android:layout_weight="1"
                         android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
                         android:textColor="@color/pos_text_secondary"
-                        tools:text="Showing 1 to 6 of 24 orders" />
+                        tools:text="Showing 1 to 10 of 24 orders" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnOrdersPrevPage"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="40dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text="@string/pagination_previous"
+                        android:textAllCaps="false"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
+                        android:textColor="@color/pos_text_primary"
+                        app:backgroundTint="@color/pos_surface"
+                        app:cornerRadius="14dp"
+                        app:strokeColor="@color/pos_border"
+                        app:strokeWidth="1dp" />
 
                     <TextView
-                        android:layout_width="34dp"
-                        android:layout_height="34dp"
+                        android:id="@+id/tvOrdersPageInfo"
+                        android:layout_width="wrap_content"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="10dp"
                         android:background="@drawable/bg_page_button"
                         android:gravity="center"
-                        android:text="&lt;"
-                        android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                        android:textColor="@color/pos_text_secondary" />
+                        android:minWidth="120dp"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
+                        android:textColor="@color/pos_text_primary"
+                        tools:text="Page 1 of 3" />
 
-                    <TextView
-                        android:layout_width="34dp"
-                        android:layout_height="34dp"
-                        android:layout_marginStart="8dp"
-                        android:background="@drawable/bg_sidebar_item_selected"
-                        android:gravity="center"
-                        android:text="1"
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnOrdersNextPage"
+                        style="@style/Widget.Material3.Button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="10dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text="@string/pagination_next"
+                        android:textAllCaps="false"
                         android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                        android:textColor="@color/white" />
-
-                    <TextView
-                        android:layout_width="34dp"
-                        android:layout_height="34dp"
-                        android:layout_marginStart="8dp"
-                        android:background="@drawable/bg_page_button"
-                        android:gravity="center"
-                        android:text="2"
-                        android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                        android:textColor="@color/pos_text_secondary" />
-
-                    <TextView
-                        android:layout_width="34dp"
-                        android:layout_height="34dp"
-                        android:layout_marginStart="8dp"
-                        android:background="@drawable/bg_page_button"
-                        android:gravity="center"
-                        android:text="3"
-                        android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                        android:textColor="@color/pos_text_secondary" />
-
-                    <TextView
-                        android:layout_width="34dp"
-                        android:layout_height="34dp"
-                        android:layout_marginStart="8dp"
-                        android:background="@drawable/bg_page_button"
-                        android:gravity="center"
-                        android:text="&gt;"
-                        android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                        android:textColor="@color/pos_text_secondary" />
+                        android:textColor="@color/white"
+                        app:backgroundTint="@color/pos_primary"
+                        app:cornerRadius="14dp" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>

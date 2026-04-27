@@ -1,91 +1,115 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Orders content (portrait).
+    Mirrors the landscape design language but stacks the action bar
+    vertically and lets the status pills scroll horizontally because the
+    available width is too narrow for an even four-up row.
+-->
 <androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/pos_background"
+    android:background="@android:color/transparent"
     android:clipToPadding="false"
-    android:fillViewport="true"
-    android:paddingStart="@dimen/content_screen_padding"
-    android:paddingTop="@dimen/content_screen_padding"
-    android:paddingEnd="@dimen/content_screen_padding"
-    android:paddingBottom="@dimen/content_screen_padding">
+    android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:background="@drawable/bg_dashboard_shell"
+        android:orientation="vertical"
+        android:padding="20dp">
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/ordersSearchInputLayout"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-            android:layout_width="match_parent"
-            android:layout_height="@dimen/search_height"
-            android:hint="@string/orders_search_hint"
-            app:boxBackgroundColor="@color/pos_surface"
-            app:boxCornerRadiusBottomEnd="18dp"
-            app:boxCornerRadiusBottomStart="18dp"
-            app:boxCornerRadiusTopEnd="18dp"
-            app:boxCornerRadiusTopStart="18dp"
-            app:boxStrokeColor="@color/pos_border"
-            app:startIconDrawable="@drawable/ic_search_24"
-            app:startIconTint="@color/pos_text_secondary">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etOrderSearch"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:singleLine="true" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <LinearLayout
+        <!-- Action bar: search on top, secondary actions below -->
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/content_section_gap"
-            android:orientation="horizontal">
+            app:cardBackgroundColor="@color/pos_surface_header"
+            app:cardCornerRadius="22dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/pos_border"
+            app:strokeWidth="1dp">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnOrdersFilter"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="46dp"
-                android:layout_weight="1"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:text="@string/filter_sort"
-                android:textAllCaps="false"
-                android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                android:textColor="@color/pos_text_primary"
-                app:backgroundTint="@color/pos_surface"
-                app:cornerRadius="16dp"
-                app:icon="@drawable/ic_filter_24"
-                app:iconSize="18dp"
-                app:iconPadding="6dp"
-                app:iconTint="@color/pos_primary"
-                app:strokeColor="@color/pos_border"
-                app:strokeWidth="1dp" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnNewOrder"
-                style="@style/Widget.Material3.Button"
-                android:layout_width="0dp"
-                android:layout_height="46dp"
-                android:layout_marginStart="@dimen/content_inline_gap"
-                android:layout_weight="1"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:text="@string/new_order"
-                android:textAllCaps="false"
-                android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                app:backgroundTint="@color/pos_secondary"
-                app:cornerRadius="16dp"
-                app:icon="@drawable/ic_add_18"
-                app:iconSize="18dp"
-                app:iconPadding="6dp"
-                app:iconTint="@color/white" />
-        </LinearLayout>
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/ordersSearchInputLayout"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/search_height"
+                    android:hint="@string/orders_search_hint"
+                    app:boxBackgroundColor="@color/pos_surface"
+                    app:boxCornerRadiusBottomEnd="18dp"
+                    app:boxCornerRadiusBottomStart="18dp"
+                    app:boxCornerRadiusTopEnd="18dp"
+                    app:boxCornerRadiusTopStart="18dp"
+                    app:boxStrokeColor="@color/pos_border"
+                    app:startIconDrawable="@drawable/ic_search_24"
+                    app:startIconTint="@color/pos_text_secondary">
 
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etOrderSearch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:singleLine="true" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnOrdersFilter"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="46dp"
+                        android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text="@string/filter_sort"
+                        android:textAllCaps="false"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
+                        android:textColor="@color/pos_text_primary"
+                        app:backgroundTint="@color/pos_surface"
+                        app:cornerRadius="16dp"
+                        app:icon="@drawable/ic_filter_24"
+                        app:iconPadding="6dp"
+                        app:iconSize="18dp"
+                        app:iconTint="@color/pos_primary"
+                        app:strokeColor="@color/pos_border"
+                        app:strokeWidth="1dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnNewOrder"
+                        style="@style/Widget.Material3.Button"
+                        android:layout_width="0dp"
+                        android:layout_height="46dp"
+                        android:layout_marginStart="@dimen/content_inline_gap"
+                        android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text="@string/new_order"
+                        android:textAllCaps="false"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
+                        android:textColor="@color/white"
+                        app:backgroundTint="@color/pos_secondary"
+                        app:cornerRadius="16dp"
+                        app:icon="@drawable/ic_add_18"
+                        app:iconPadding="6dp"
+                        app:iconSize="18dp"
+                        app:iconTint="@color/white" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Status pills: scroll horizontally on portrait -->
         <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -102,9 +126,12 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:background="@drawable/bg_hint_chip"
+                    android:clickable="true"
+                    android:focusable="true"
                     android:gravity="center_vertical"
+                    android:minHeight="48dp"
                     android:orientation="horizontal"
-                    android:paddingStart="14dp"
+                    android:paddingStart="16dp"
                     android:paddingTop="10dp"
                     android:paddingEnd="14dp"
                     android:paddingBottom="10dp">
@@ -122,6 +149,8 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
                         android:background="@drawable/bg_sidebar_item_selected"
+                        android:gravity="center"
+                        android:minWidth="28dp"
                         android:paddingStart="8dp"
                         android:paddingTop="3dp"
                         android:paddingEnd="8dp"
@@ -136,9 +165,12 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="10dp"
+                    android:clickable="true"
+                    android:focusable="true"
                     android:gravity="center_vertical"
+                    android:minHeight="48dp"
                     android:orientation="horizontal"
-                    android:paddingStart="14dp"
+                    android:paddingStart="16dp"
                     android:paddingTop="10dp"
                     android:paddingEnd="14dp"
                     android:paddingBottom="10dp">
@@ -156,6 +188,8 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
                         android:background="@drawable/bg_hint_chip"
+                        android:gravity="center"
+                        android:minWidth="28dp"
                         android:paddingStart="8dp"
                         android:paddingTop="3dp"
                         android:paddingEnd="8dp"
@@ -170,9 +204,12 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="10dp"
+                    android:clickable="true"
+                    android:focusable="true"
                     android:gravity="center_vertical"
+                    android:minHeight="48dp"
                     android:orientation="horizontal"
-                    android:paddingStart="14dp"
+                    android:paddingStart="16dp"
                     android:paddingTop="10dp"
                     android:paddingEnd="14dp"
                     android:paddingBottom="10dp">
@@ -190,6 +227,8 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
                         android:background="@drawable/bg_hint_chip"
+                        android:gravity="center"
+                        android:minWidth="28dp"
                         android:paddingStart="8dp"
                         android:paddingTop="3dp"
                         android:paddingEnd="8dp"
@@ -204,9 +243,12 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="10dp"
+                    android:clickable="true"
+                    android:focusable="true"
                     android:gravity="center_vertical"
+                    android:minHeight="48dp"
                     android:orientation="horizontal"
-                    android:paddingStart="14dp"
+                    android:paddingStart="16dp"
                     android:paddingTop="10dp"
                     android:paddingEnd="14dp"
                     android:paddingBottom="10dp">
@@ -224,6 +266,8 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
                         android:background="@drawable/bg_hint_chip"
+                        android:gravity="center"
+                        android:minWidth="28dp"
                         android:paddingStart="8dp"
                         android:paddingTop="3dp"
                         android:paddingEnd="8dp"
@@ -235,68 +279,107 @@
             </LinearLayout>
         </HorizontalScrollView>
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rvOrders"
+        <!-- Orders list card -->
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/content_section_gap"
-            android:nestedScrollingEnabled="false"
-            tools:listitem="@layout/item_management_order" />
+            app:cardBackgroundColor="@color/pos_surface_header"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/pos_border"
+            app:strokeWidth="1dp">
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/content_section_gap"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/tvOrdersShowing"
-                android:layout_width="0dp"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
-                android:textColor="@color/pos_text_secondary"
-                tools:text="Showing 1 to 6 of 24 orders" />
+                android:orientation="vertical"
+                android:padding="18dp">
 
-            <TextView
-                android:layout_width="34dp"
-                android:layout_height="34dp"
-                android:background="@drawable/bg_page_button"
-                android:gravity="center"
-                android:text="&lt;"
-                android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                android:textColor="@color/pos_text_secondary" />
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvOrders"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false"
+                    android:overScrollMode="never"
+                    tools:listitem="@layout/item_management_order" />
 
-            <TextView
-                android:layout_width="34dp"
-                android:layout_height="34dp"
-                android:layout_marginStart="8dp"
-                android:background="@drawable/bg_sidebar_item_selected"
-                android:gravity="center"
-                android:text="1"
-                android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                android:textColor="@color/white" />
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/pos_border" />
 
-            <TextView
-                android:layout_width="34dp"
-                android:layout_height="34dp"
-                android:layout_marginStart="8dp"
-                android:background="@drawable/bg_page_button"
-                android:gravity="center"
-                android:text="2"
-                android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                android:textColor="@color/pos_text_secondary" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:orientation="vertical">
 
-            <TextView
-                android:layout_width="34dp"
-                android:layout_height="34dp"
-                android:layout_marginStart="8dp"
-                android:background="@drawable/bg_page_button"
-                android:gravity="center"
-                android:text="&gt;"
-                android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                android:textColor="@color/pos_text_secondary" />
-        </LinearLayout>
+                    <TextView
+                        android:id="@+id/tvOrdersShowing"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
+                        android:textColor="@color/pos_text_secondary"
+                        tools:text="Showing 1 to 10 of 24 orders" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnOrdersPrevPage"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="40dp"
+                            android:layout_weight="1"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:text="@string/pagination_previous"
+                            android:textAllCaps="false"
+                            android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
+                            android:textColor="@color/pos_text_primary"
+                            app:backgroundTint="@color/pos_surface"
+                            app:cornerRadius="14dp"
+                            app:strokeColor="@color/pos_border"
+                            app:strokeWidth="1dp" />
+
+                        <TextView
+                            android:id="@+id/tvOrdersPageInfo"
+                            android:layout_width="wrap_content"
+                            android:layout_height="40dp"
+                            android:layout_marginStart="10dp"
+                            android:background="@drawable/bg_page_button"
+                            android:gravity="center"
+                            android:minWidth="120dp"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="14dp"
+                            android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
+                            android:textColor="@color/pos_text_primary"
+                            tools:text="Page 1 of 3" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnOrdersNextPage"
+                            style="@style/Widget.Material3.Button"
+                            android:layout_width="0dp"
+                            android:layout_height="40dp"
+                            android:layout_marginStart="10dp"
+                            android:layout_weight="1"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:text="@string/pagination_next"
+                            android:textAllCaps="false"
+                            android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
+                            android:textColor="@color/white"
+                            app:backgroundTint="@color/pos_primary"
+                            app:cornerRadius="14dp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

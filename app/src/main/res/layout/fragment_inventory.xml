@@ -1,43 +1,339 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!--
+    Inventory page.
+    The page title ("Inventory") is rendered by the shared MainActivity
+    topBar; nothing in this file should duplicate it. The mode toggle
+    (Ingredients / Can Produce) is now an inline segmented control at the
+    top of the page content — there is no floating bottom-nav card.
+
+    Layout flow, top → bottom:
+       1. Mode toggle               (Ingredients ⇄ Can Produce)
+       2. KPI metric tiles          (visual summary)
+       3. Filter & sort card        (mode subtitle + chips + sort)
+       4. Action bar                (search + add)
+       5. List card                 (RecyclerView + pagination)
+-->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/inventoryScroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/pos_background">
+    android:background="@color/pos_background"
+    android:clipToPadding="false"
+    android:fillViewport="true">
 
-    <androidx.core.widget.NestedScrollView
-        android:id="@+id/inventoryScroll"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:fillViewport="true"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/bottomInventoryNavigationCard">
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_dashboard_shell"
+        android:clipToPadding="false"
+        android:orientation="vertical"
+        android:padding="22dp">
 
+        <!-- ─────────────────────────────────────────────────────
+             Mode toggle (Ingredients ⇄ Can Produce)
+             A segmented pill that mirrors the POS order-type control,
+             so users get one consistent interaction for two-way mode
+             switches across the product. The two children are full
+             click targets; their selected/unselected backgrounds and
+             icon tints are toggled programmatically by the fragment.
+             ───────────────────────────────────────────────────── -->
+        <LinearLayout
+            android:id="@+id/inventoryModeToggle"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:background="@drawable/bg_segment_container"
+            android:baselineAligned="false"
+            android:orientation="horizontal"
+            android:padding="6dp">
+
+            <LinearLayout
+                android:id="@+id/tabIngredients"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/bg_segment_selected"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:paddingHorizontal="14dp">
+
+                <ImageView
+                    android:id="@+id/icTabIngredients"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_inventory_filled_24"
+                    app:tint="@color/white" />
+
+                <TextView
+                    android:id="@+id/tvTabIngredients"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/inventory_tab_ingredients"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
+                    android:textColor="@color/white"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/tabCanProduce"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:paddingHorizontal="14dp">
+
+                <ImageView
+                    android:id="@+id/icTabCanProduce"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_grid_24"
+                    app:tint="@color/pos_text_secondary" />
+
+                <TextView
+                    android:id="@+id/tvTabCanProduce"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/inventory_tab_can_produce"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
+                    android:textColor="@color/pos_text_secondary"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ─────────────────────────────────────────────────────
+             KPI metric tiles
+             ───────────────────────────────────────────────────── -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingStart="16dp"
-            android:paddingTop="16dp"
-            android:paddingEnd="16dp"
-            android:paddingBottom="24dp"
-            android:clipToPadding="false">
+            android:layout_marginTop="@dimen/content_section_gap"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
 
-            <!-- Header Card -->
             <com.google.android.material.card.MaterialCardView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                app:cardBackgroundColor="@color/pos_surface_header"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="128dp"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:id="@+id/tvMetricLabelPrimary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/inventory_metric_ingredients_title"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
+                        android:textColor="@color/pos_text_secondary" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_inventory_filled_24"
+                            app:tint="@color/pos_primary" />
+
+                        <TextView
+                            android:id="@+id/tvTotalIngredients"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:text="0"
+                            android:textAppearance="@style/TextAppearance.ZejiosCafe.KpiValue"
+                            android:textColor="@color/pos_primary"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tvMetricSubtitlePrimary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:ellipsize="end"
+                        android:maxLines="2"
+                        android:minLines="2"
+                        android:text="@string/inventory_metric_ingredients_subtitle"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
+                        android:textColor="@color/pos_text_secondary" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <Space
+                android:layout_width="@dimen/content_inline_gap"
+                android:layout_height="1dp" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                app:cardBackgroundColor="@color/pos_surface_header"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="128dp"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:id="@+id/tvMetricLabelSecondary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/inventory_metric_low_stock_title"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
+                        android:textColor="@color/pos_text_secondary" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_inventory_filled_24"
+                            app:tint="@color/stock_critical" />
+
+                        <TextView
+                            android:id="@+id/tvLowStockCount"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:text="0"
+                            android:textAppearance="@style/TextAppearance.ZejiosCafe.KpiValue"
+                            android:textColor="@color/stock_critical"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tvMetricSubtitleSecondary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:ellipsize="end"
+                        android:maxLines="2"
+                        android:minLines="2"
+                        android:text="@string/inventory_metric_low_stock_subtitle"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
+                        android:textColor="@color/stock_critical" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <Space
+                android:layout_width="@dimen/content_inline_gap"
+                android:layout_height="1dp" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                app:cardBackgroundColor="@color/pos_surface_header"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="128dp"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:id="@+id/tvMetricLabelTertiary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/inventory_metric_value_title"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
+                        android:textColor="@color/pos_text_secondary" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_reports_24"
+                            app:tint="@color/pos_secondary" />
+
+                        <TextView
+                            android:id="@+id/tvInventoryValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:text="PHP 0.00"
+                            android:textAppearance="@style/TextAppearance.ZejiosCafe.KpiValue"
+                            android:textColor="@color/pos_secondary"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tvMetricSubtitleTertiary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:ellipsize="end"
+                        android:maxLines="2"
+                        android:minLines="2"
+                        android:text="@string/inventory_metric_value_subtitle"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
+                        android:textColor="@color/pos_secondary" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+
+        <!-- ─────────────────────────────────────────────────────
+             Filter & sort card
+             ───────────────────────────────────────────────────── -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/filterCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/content_section_gap"
+            app:cardBackgroundColor="@color/pos_surface_header"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="0dp">
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardBackgroundColor="@color/pos_surface"
-                app:cardCornerRadius="@dimen/card_corner_radius"
-                app:cardElevation="2dp">
+                android:orientation="vertical"
+                android:padding="18dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="20dp">
+                    android:orientation="horizontal">
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -50,8 +346,8 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/inventory_header_ingredients_title"
+                            android:textAppearance="@style/TextAppearance.ZejiosCafe.SectionTitle"
                             android:textColor="@color/pos_text_primary"
-                            android:textSize="22sp"
                             android:textStyle="bold" />
 
                         <TextView
@@ -60,230 +356,26 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
                             android:text="@string/inventory_header_ingredients_subtitle"
-                            android:textColor="@color/pos_text_secondary"
-                            android:textSize="13sp" />
+                            android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
+                            android:textColor="@color/pos_text_secondary" />
                     </LinearLayout>
 
-                    <!-- Search Bar -->
-                    <EditText
-                        android:id="@+id/etInventorySearch"
-                        android:layout_width="240dp"
-                        android:layout_height="40dp"
-                        android:background="@drawable/bg_input_field"
-                        android:drawableStart="@android:drawable/ic_menu_search"
-                        android:drawablePadding="8dp"
-                        android:hint="@string/inventory_search_ingredients_hint"
-                        android:importantForAutofill="no"
-                        android:inputType="text"
-                        android:paddingStart="12dp"
-                        android:paddingEnd="12dp"
-                        android:textColor="@color/pos_text_primary"
-                        android:textColorHint="@color/pos_text_secondary"
-                        android:textSize="13sp" />
-
-                    <!-- Add Ingredient Button -->
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnAddIngredient"
-                        style="@style/Widget.Material3.Button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="40dp"
-                        android:layout_marginStart="12dp"
-                        android:backgroundTint="@color/pos_secondary"
-                        android:text="@string/inventory_add_ingredient"
-                        android:textColor="@color/white"
-                        android:textSize="13sp" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- KPI Summary Cards -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="16dp">
-
-                <!-- Total Ingredients -->
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    app:cardBackgroundColor="@color/pos_surface"
-                    app:cardCornerRadius="@dimen/card_corner_radius"
-                    app:cardElevation="2dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp">
-
-                        <TextView
-                            android:id="@+id/tvMetricLabelPrimary"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/inventory_metric_ingredients_title"
-                            android:textColor="@color/pos_text_secondary"
-                            android:textSize="12sp" />
-
-                        <TextView
-                            android:id="@+id/tvTotalIngredients"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:text="0"
-                            android:textColor="@color/pos_primary"
-                            android:textSize="20sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tvMetricSubtitlePrimary"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:text="@string/inventory_metric_ingredients_subtitle"
-                            android:textColor="@color/pos_text_secondary"
-                            android:textSize="11sp" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <!-- Low Stock -->
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
-                    android:layout_weight="1"
-                    app:cardBackgroundColor="@color/pos_surface"
-                    app:cardCornerRadius="@dimen/card_corner_radius"
-                    app:cardElevation="2dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp">
-
-                        <TextView
-                            android:id="@+id/tvMetricLabelSecondary"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/inventory_metric_low_stock_title"
-                            android:textColor="@color/pos_text_secondary"
-                            android:textSize="12sp" />
-
-                        <TextView
-                            android:id="@+id/tvLowStockCount"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:text="0"
-                            android:textColor="@color/stock_critical"
-                            android:textSize="20sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tvMetricSubtitleSecondary"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:text="@string/inventory_metric_low_stock_subtitle"
-                            android:textColor="@color/stock_critical"
-                            android:textSize="11sp" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <!-- Total Inventory Value -->
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
-                    android:layout_weight="1"
-                    app:cardBackgroundColor="@color/pos_surface"
-                    app:cardCornerRadius="@dimen/card_corner_radius"
-                    app:cardElevation="2dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp">
-
-                        <TextView
-                            android:id="@+id/tvMetricLabelTertiary"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/inventory_metric_value_title"
-                            android:textColor="@color/pos_text_secondary"
-                            android:textSize="12sp" />
-
-                        <TextView
-                            android:id="@+id/tvInventoryValue"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:text="PHP 0.00"
-                            android:textColor="@color/pos_secondary"
-                            android:textSize="20sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tvMetricSubtitleTertiary"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:text="@string/inventory_metric_value_subtitle"
-                            android:textColor="@color/pos_secondary"
-                            android:textSize="11sp" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-            </LinearLayout>
-
-            <!-- Filter Chips + Sort -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/filterCard"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                app:cardBackgroundColor="@color/pos_surface"
-                app:cardCornerRadius="@dimen/card_corner_radius"
-                app:cardElevation="2dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="12dp">
-
-                    <HorizontalScrollView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:scrollbars="none">
-
-                        <LinearLayout
-                            android:id="@+id/chipContainer"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal" />
-                    </HorizontalScrollView>
-
-                    <!-- Sort Spinner -->
                     <LinearLayout
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:background="@drawable/bg_input_field"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="14dp"
+                        android:background="@drawable/bg_page_button"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
-                        android:paddingStart="10dp"
-                        android:paddingEnd="4dp">
+                        android:paddingStart="14dp"
+                        android:paddingEnd="6dp">
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Sort:"
-                            android:textColor="@color/pos_text_secondary"
-                            android:textSize="12sp" />
+                            android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
+                            android:textColor="@color/pos_text_secondary" />
 
                         <Spinner
                             android:id="@+id/spinnerSort"
@@ -292,106 +384,171 @@
                             android:layout_marginStart="4dp" />
                     </LinearLayout>
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
 
-            <!-- Ingredient List -->
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rvIngredients"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:clipToPadding="false"
-                android:nestedScrollingEnabled="false"
-                android:paddingBottom="24dp" />
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rvProducibleProducts"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:clipToPadding="false"
-                android:nestedScrollingEnabled="false"
-                android:paddingBottom="24dp"
-                android:visibility="gone" />
-
-            <LinearLayout
-                android:id="@+id/inventoryPaginationContainer"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:visibility="gone">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnInventoryPreviousPage"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="40dp"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:text="@string/pagination_previous"
-                    android:textAllCaps="false"
-                    app:cornerRadius="14dp" />
-
-                <TextView
-                    android:id="@+id/tvInventoryPageInfo"
-                    android:layout_width="0dp"
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="12dp"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:textColor="@color/pos_text_secondary"
-                    android:textSize="13sp"
-                    tools:text="Page 1 of 2" />
+                    android:layout_marginTop="14dp"
+                    android:scrollbars="none">
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnInventoryNextPage"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="40dp"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:text="@string/pagination_next"
-                    android:textAllCaps="false"
-                    app:cornerRadius="14dp" />
+                    <LinearLayout
+                        android:id="@+id/chipContainer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal" />
+                </HorizontalScrollView>
             </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
-        </LinearLayout>
-    </androidx.core.widget.NestedScrollView>
-
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/bottomInventoryNavigationCard"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="56dp"
-        android:layout_marginEnd="56dp"
-        android:layout_marginBottom="10dp"
-        app:cardBackgroundColor="@color/pos_background"
-        app:cardCornerRadius="24dp"
-        app:cardElevation="0dp"
-        app:strokeWidth="0dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
-
-        <com.google.android.material.bottomnavigation.BottomNavigationView
-            android:id="@+id/bottomInventoryNavigation"
+        <!-- ─────────────────────────────────────────────────────
+             Action bar — search + add
+             ───────────────────────────────────────────────────── -->
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@android:color/transparent"
-            android:minHeight="64dp"
-            android:paddingStart="6dp"
-            android:paddingTop="4dp"
-            android:paddingEnd="6dp"
-            android:paddingBottom="4dp"
-            app:itemBackground="@drawable/bg_bottomnav_item"
-            app:itemHorizontalTranslationEnabled="false"
-            app:itemIconTint="@color/bottomnav_icon_color"
-            app:itemTextColor="@color/bottomnav_text_color"
-            app:itemActiveIndicatorStyle="@style/Widget.ZejiosCafe.BottomNav.NoIndicator"
-            app:labelVisibilityMode="labeled"
-            app:menu="@menu/inventory_bottom_navigation" />
-    </com.google.android.material.card.MaterialCardView>
+            android:layout_marginTop="@dimen/content_section_gap"
+            app:cardBackgroundColor="@color/pos_surface_header"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="0dp">
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingTop="12dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="12dp">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    app:cardBackgroundColor="@color/pos_surface"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="0dp">
+
+                    <EditText
+                        android:id="@+id/etInventorySearch"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@android:color/transparent"
+                        android:drawableStart="@drawable/ic_search_24"
+                        android:drawablePadding="10dp"
+                        android:drawableTint="@color/pos_text_secondary"
+                        android:hint="@string/inventory_search_ingredients_hint"
+                        android:importantForAutofill="no"
+                        android:inputType="text"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:singleLine="true"
+                        android:textColor="@color/pos_text_primary"
+                        android:textColorHint="@color/pos_text_secondary"
+                        android:textSize="13sp" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnAddIngredient"
+                    style="@style/Widget.Material3.Button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="10dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:text="@string/inventory_add_ingredient"
+                    android:textAllCaps="false"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
+                    android:textColor="@color/white"
+                    app:backgroundTint="@color/pos_secondary"
+                    app:cornerRadius="16dp"
+                    app:icon="@drawable/ic_add_18"
+                    app:iconPadding="6dp"
+                    app:iconSize="18dp"
+                    app:iconTint="@color/white" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- ─────────────────────────────────────────────────────
+             List card
+             ───────────────────────────────────────────────────── -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/content_section_gap"
+            app:cardBackgroundColor="@color/pos_surface_header"
+            app:cardCornerRadius="28dp"
+            app:cardElevation="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvIngredients"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clipToPadding="false"
+                    android:nestedScrollingEnabled="false"
+                    android:overScrollMode="never" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvProducibleProducts"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clipToPadding="false"
+                    android:nestedScrollingEnabled="false"
+                    android:overScrollMode="never"
+                    android:visibility="gone" />
+
+                <LinearLayout
+                    android:id="@+id/inventoryPaginationContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:visibility="gone">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnInventoryPreviousPage"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="40dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text="@string/pagination_previous"
+                        android:textAllCaps="false"
+                        app:cornerRadius="14dp"
+                        app:strokeColor="@color/pos_border" />
+
+                    <TextView
+                        android:id="@+id/tvInventoryPageInfo"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="12dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
+                        android:textColor="@color/pos_text_secondary"
+                        tools:text="Page 1 of 2" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnInventoryNextPage"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="40dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text="@string/pagination_next"
+                        android:textAllCaps="false"
+                        app:cornerRadius="14dp"
+                        app:strokeColor="@color/pos_border" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

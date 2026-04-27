@@ -3,7 +3,6 @@ package com.example.zejioscafese.ui
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageButton
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
@@ -48,10 +47,10 @@ class ProducibleProductAdapter(
         private val tvEstimatedValue: TextView = itemView.findViewById(R.id.tvProducibleValue)
         private val tvQuantity: TextView = itemView.findViewById(R.id.tvProducibleQuantity)
         private val tvStatus: TextView = itemView.findViewById(R.id.tvProducibleStatus)
-        private val btnViewIngredients: ImageButton =
+        private val btnViewIngredients: View =
             itemView.findViewById(R.id.btnViewProductIngredients)
-        private val btnEdit: ImageButton = itemView.findViewById(R.id.btnEditProduct)
-        private val btnDelete: ImageButton = itemView.findViewById(R.id.btnDeleteProduct)
+        private val btnEdit: View = itemView.findViewById(R.id.btnEditProduct)
+        private val btnDelete: View = itemView.findViewById(R.id.btnDeleteProduct)
 
         fun bind(product: ProducibleProduct) {
             val context = itemView.context

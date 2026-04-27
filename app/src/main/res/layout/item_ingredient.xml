@@ -1,12 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Ingredient grid tile.
+    Designed for a 3-column GridLayoutManager. The width is whatever the
+    column gives us; the height is intrinsic so all metrics fit cleanly.
+    Layout flow: name + category badge → stat triplet → progress bar → actions.
+-->
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="10dp"
     app:cardBackgroundColor="@color/pos_surface"
-    app:cardCornerRadius="@dimen/card_corner_radius"
-    app:cardElevation="2dp">
+    app:cardCornerRadius="22dp"
+    app:cardElevation="0dp"
+    app:strokeColor="@color/pos_border"
+    app:strokeWidth="1dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -14,133 +22,57 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- Top row: Name + Category badge + Actions -->
-        <LinearLayout
+        <!-- Header: name + category badge -->
+        <TextView
+            android:id="@+id/tvIngredientName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textAppearance="@style/TextAppearance.ZejiosCafe.SectionTitle"
+            android:textColor="@color/pos_text_primary"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            tools:text="Espresso Beans" />
 
-            <TextView
-                android:id="@+id/tvIngredientName"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textColor="@color/pos_text_primary"
-                android:textSize="15sp"
-                android:textStyle="bold" />
+        <TextView
+            android:id="@+id/tvIngredientCategory"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/bg_category_badge"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:paddingStart="10dp"
+            android:paddingTop="3dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="3dp"
+            android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
+            android:textColor="@color/pos_secondary"
+            tools:text="Coffee" />
 
-            <TextView
-                android:id="@+id/tvIngredientCategory"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_category_badge"
-                android:paddingStart="10dp"
-                android:paddingTop="3dp"
-                android:paddingEnd="10dp"
-                android:paddingBottom="3dp"
-                android:textColor="@color/pos_secondary"
-                android:textSize="11sp"
-                android:textStyle="bold" />
+        <!-- Current stock value -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="Current Stock"
+            android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
+            android:textColor="@color/pos_text_secondary" />
 
-            <ImageButton
-                android:id="@+id/btnEditIngredient"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:layout_marginStart="8dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Edit"
-                android:src="@android:drawable/ic_menu_edit"
-                app:tint="@color/pos_text_secondary" />
-
-            <ImageButton
-                android:id="@+id/btnRestockIngredient"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:layout_marginStart="4dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Restock"
-                android:src="@android:drawable/ic_input_add"
-                app:tint="@color/pos_secondary" />
-        </LinearLayout>
-
-        <!-- Middle row: Stock + Cost info -->
-        <LinearLayout
+        <TextView
+            android:id="@+id/tvCurrentStock"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textAppearance="@style/TextAppearance.ZejiosCafe.KpiValue"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            tools:text="12.5 kg" />
 
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Current Stock"
-                    android:textColor="@color/pos_text_secondary"
-                    android:textSize="11sp" />
-
-                <TextView
-                    android:id="@+id/tvCurrentStock"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Cost/Unit"
-                    android:textColor="@color/pos_text_secondary"
-                    android:textSize="11sp" />
-
-                <TextView
-                    android:id="@+id/tvCostPerUnit"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:textColor="@color/pos_text_primary"
-                    android:textSize="13sp" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Total Value"
-                    android:textColor="@color/pos_text_secondary"
-                    android:textSize="11sp" />
-
-                <TextView
-                    android:id="@+id/tvTotalValue"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:textColor="@color/pos_secondary"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <!-- Stock level bar -->
+        <!-- Stock-level progress bar -->
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="6dp"
@@ -158,5 +90,124 @@
                 android:layout_height="match_parent"
                 android:background="@drawable/bg_stock_bar_fill" />
         </FrameLayout>
+
+        <!-- Cost / Total split row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Cost"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
+                    android:textColor="@color/pos_text_secondary" />
+
+                <TextView
+                    android:id="@+id/tvCostPerUnit"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyLarge"
+                    android:textColor="@color/pos_text_primary"
+                    tools:text="PHP 240/kg" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="end"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Value"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
+                    android:textColor="@color/pos_text_secondary" />
+
+                <TextView
+                    android:id="@+id/tvTotalValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
+                    android:textColor="@color/pos_secondary"
+                    android:textStyle="bold"
+                    tools:text="PHP 3,000" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Divider before action row -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="14dp"
+            android:background="@color/pos_border" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnEditIngredient"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:contentDescription="Edit"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="Edit"
+                android:textAllCaps="false"
+                android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
+                android:textColor="@color/pos_text_primary"
+                app:backgroundTint="@color/pos_surface_header"
+                app:cornerRadius="14dp"
+                app:icon="@android:drawable/ic_menu_edit"
+                app:iconPadding="4dp"
+                app:iconSize="14dp"
+                app:iconTint="@color/pos_text_secondary"
+                app:strokeColor="@color/pos_border"
+                app:strokeWidth="1dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRestockIngredient"
+                style="@style/Widget.Material3.Button"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:contentDescription="Restock"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="Restock"
+                android:textAllCaps="false"
+                android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
+                android:textColor="@color/white"
+                app:backgroundTint="@color/pos_secondary"
+                app:cornerRadius="14dp"
+                app:icon="@drawable/ic_add_18"
+                app:iconPadding="4dp"
+                app:iconSize="14dp"
+                app:iconTint="@color/white" />
+        </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

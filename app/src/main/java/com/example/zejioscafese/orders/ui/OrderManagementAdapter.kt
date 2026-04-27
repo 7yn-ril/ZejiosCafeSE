@@ -16,13 +16,14 @@ import com.example.zejioscafese.orders.model.CafeOrder
 import com.example.zejioscafese.orders.model.CafeOrderStatus
 
 class OrderManagementAdapter(
-    private val onOrderItemsClick: (CafeOrder) -> Unit = {}
+    private val onOrderItemsClick: (CafeOrder) -> Unit = {},
+    private val onOrderActionClick: (CafeOrder, View) -> Unit = { _, _ -> }
 ) :
     ListAdapter<CafeOrder, OrderManagementAdapter.OrderViewHolder>(DiffCallback) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): OrderViewHolder {
         val binding = ItemManagementOrderBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return OrderViewHolder(binding, onOrderItemsClick)
+        return OrderViewHolder(binding, onOrderItemsClick, onOrderActionClick)
     }
 
     override fun onBindViewHolder(holder: OrderViewHolder, position: Int) {
@@ -31,7 +32,8 @@ class OrderManagementAdapter(
 
     class OrderViewHolder(
         private val binding: ItemManagementOrderBinding,
-        private val onOrderItemsClick: (CafeOrder) -> Unit
+        private val onOrderItemsClick: (CafeOrder) -> Unit,
+        private val onOrderActionClick: (CafeOrder, View) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(item: CafeOrder) {
@@ -95,6 +97,10 @@ class OrderManagementAdapter(
             binding.tvOrderItemCount.isFocusable = hasMultipleItems
             binding.tvOrderItems.setTextColor(if (hasMultipleItems) actionTextColor else defaultTextColor)
             binding.tvOrderItems.setTypeface(null, if (hasMultipleItems) Typeface.BOLD else Typeface.NORMAL)
+
+            binding.btnOrderActions.setOnClickListener { anchor ->
+                onOrderActionClick(item, anchor)
+            }
         }
     }
 

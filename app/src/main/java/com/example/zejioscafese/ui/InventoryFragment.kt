@@ -20,7 +20,10 @@ import androidx.core.content.ContextCompat
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.Fragment
+import android.graphics.Rect
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.zejioscafese.R
 import com.example.zejioscafese.databinding.FragmentInventoryBinding
 import com.example.zejioscafese.inventory.data.model.ProductCategoryOption
@@ -59,7 +62,6 @@ class InventoryFragment : Fragment() {
         setupRecyclerView()
         setupSearch()
         setupBottomNavigation()
-        applyBottomNavThemeColors()
         setupAddButton()
         setupPaginationControls()
         setupSortSpinner()
@@ -83,14 +85,47 @@ class InventoryFragment : Fragment() {
             onDeleteClick = { showSoftDeleteProductDialog(it) }
         )
 
+        val gridSpacingPx = (12 * resources.displayMetrics.density).toInt()
+        val gridSpan = 3
         binding.rvIngredients.apply {
             adapter = ingredientAdapter
-            layoutManager = LinearLayoutManager(requireContext())
+            layoutManager = GridLayoutManager(requireContext(), gridSpan)
+            if (itemDecorationCount == 0) {
+                addItemDecoration(GridSpacingItemDecoration(gridSpan, gridSpacingPx))
+            }
         }
 
         binding.rvProducibleProducts.apply {
             adapter = producibleProductAdapter
-            layoutManager = LinearLayoutManager(requireContext())
+            layoutManager = GridLayoutManager(requireContext(), gridSpan)
+            if (itemDecorationCount == 0) {
+                addItemDecoration(GridSpacingItemDecoration(gridSpan, gridSpacingPx))
+            }
+        }
+    }
+
+    /**
+     * Even spacing for a fixed-span grid: every cell gets identical horizontal
+     * margin and a uniform bottom margin, so columns line up flush with the
+     * card padding instead of the doubling-margin pattern that comes from
+     * just setting `layout_marginEnd` on each item.
+     */
+    private class GridSpacingItemDecoration(
+        private val spanCount: Int,
+        private val spacing: Int
+    ) : RecyclerView.ItemDecoration() {
+        override fun getItemOffsets(
+            outRect: Rect,
+            view: View,
+            parent: RecyclerView,
+            state: RecyclerView.State
+        ) {
+            val position = parent.getChildAdapterPosition(view)
+            if (position == RecyclerView.NO_POSITION) return
+            val column = position % spanCount
+            outRect.left = column * spacing / spanCount
+            outRect.right = spacing - (column + 1) * spacing / spanCount
+            if (position >= spanCount) outRect.top = spacing
         }
     }
 
@@ -101,23 +136,39 @@ class InventoryFragment : Fragment() {
     }
 
     private fun setupBottomNavigation() {
-        binding.bottomInventoryNavigation.setOnItemSelectedListener { item ->
-            when (item.itemId) {
-                R.id.navInventoryIngredients -> {
-                    viewModel.setScreenMode(InventoryViewModel.ScreenMode.INGREDIENTS)
-                    true
-                }
-
-                R.id.navInventoryCanProduce -> {
-                    viewModel.setScreenMode(InventoryViewModel.ScreenMode.PRODUCTION)
-                    true
-                }
-
-                else -> false
-            }
+        binding.tabIngredients.setOnClickListener {
+            viewModel.setScreenMode(InventoryViewModel.ScreenMode.INGREDIENTS)
         }
+        binding.tabCanProduce.setOnClickListener {
+            viewModel.setScreenMode(InventoryViewModel.ScreenMode.PRODUCTION)
+        }
+        applyModeToggleVisuals(InventoryViewModel.ScreenMode.INGREDIENTS)
+    }
 
-        binding.bottomInventoryNavigation.selectedItemId = R.id.navInventoryIngredients
+    /**
+     * Toggles the segmented mode pill: the active tab gets the filled
+     * primary background with white icon/text; the inactive tab is flat
+     * with secondary text.
+     */
+    private fun applyModeToggleVisuals(mode: InventoryViewModel.ScreenMode) {
+        val isIngredients = mode == InventoryViewModel.ScreenMode.INGREDIENTS
+        val ctx = requireContext()
+        val white = ContextCompat.getColor(ctx, R.color.white)
+        val muted = ContextCompat.getColor(ctx, R.color.pos_text_secondary)
+
+        binding.tabIngredients.setBackgroundResource(
+            if (isIngredients) R.drawable.bg_segment_selected else 0
+        )
+        binding.tvTabIngredients.setTextColor(if (isIngredients) white else muted)
+        binding.icTabIngredients.imageTintList =
+            ColorStateList.valueOf(if (isIngredients) white else muted)
+
+        binding.tabCanProduce.setBackgroundResource(
+            if (!isIngredients) R.drawable.bg_segment_selected else 0
+        )
+        binding.tvTabCanProduce.setTextColor(if (!isIngredients) white else muted)
+        binding.icTabCanProduce.imageTintList =
+            ColorStateList.valueOf(if (!isIngredients) white else muted)
     }
 
     private fun setupFilterChips() {
@@ -319,14 +370,7 @@ class InventoryFragment : Fragment() {
             else R.string.inventory_metric_sales_value_subtitle
         )
 
-        val expectedNavigationItem = if (isIngredientsMode) {
-            R.id.navInventoryIngredients
-        } else {
-            R.id.navInventoryCanProduce
-        }
-        if (binding.bottomInventoryNavigation.selectedItemId != expectedNavigationItem) {
-            binding.bottomInventoryNavigation.selectedItemId = expectedNavigationItem
-        }
+        applyModeToggleVisuals(mode)
     }
 
     private fun renderPagination(state: InventoryViewModel.PaginationState) {
@@ -853,39 +897,6 @@ class InventoryFragment : Fragment() {
 
     private fun formatCurrency(value: Double): String {
         return String.format(Locale.getDefault(), "PHP %,.2f", value)
-    }
-
-    /**
-     * Runtime fallback: resolves bottom nav colors from the current theme and
-     * applies them programmatically. Handles cases where the system night mode
-     * changes without an Activity recreation.
-     */
-    private fun applyBottomNavThemeColors() {
-        val bgColor = resolveThemeColor(R.attr.bottomNavBackground)
-        val iconTint = resolveThemeColor(R.attr.bottomNavIconTint)
-        val textColor = resolveThemeColor(R.attr.bottomNavTextColor)
-        val selectedColor = resolveThemeColor(R.attr.bottomNavSelectedItemColor)
-
-        if (bgColor != 0 || iconTint != 0 || textColor != 0 || selectedColor != 0) {
-            val bottomNav = binding.bottomInventoryNavigation
-
-            if (bgColor != 0) {
-                bottomNav.setBackgroundColor(bgColor)
-            }
-
-            val states = arrayOf(
-                intArrayOf(android.R.attr.state_checked),
-                intArrayOf(-android.R.attr.state_checked)
-            )
-
-            if (iconTint != 0 && selectedColor != 0) {
-                bottomNav.itemIconTintList = ColorStateList(states, intArrayOf(selectedColor, iconTint))
-            }
-
-            if (textColor != 0) {
-                bottomNav.itemTextColor = ColorStateList(states, intArrayOf(selectedColor, textColor))
-            }
-        }
     }
 
     /** Resolves a theme attribute to its color int value; returns 0 if not found. */

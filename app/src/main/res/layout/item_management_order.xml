@@ -6,7 +6,7 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:paddingStart="@dimen/content_card_padding"
-    android:paddingTop="@dimen/content_section_gap"
+    android:paddingTop="14dp"
     android:paddingEnd="@dimen/content_card_padding">
 
     <LinearLayout
@@ -118,30 +118,29 @@
             android:id="@+id/tvOrderTotal"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="0.8"
+            android:layout_weight="0.95"
             android:gravity="end"
+            android:paddingEnd="14dp"
             android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
             android:textColor="@color/pos_text_primary"
+            android:textStyle="bold"
             tools:text="PHP 12.50" />
 
-        <FrameLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="0.35">
-
-            <ImageView
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:layout_gravity="center"
-                android:contentDescription="@string/order_actions"
-                android:src="@drawable/ic_more_vert_24"
-                app:tint="@color/pos_text_secondary" />
-        </FrameLayout>
+        <ImageButton
+            android:id="@+id/btnOrderActions"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_page_button"
+            android:contentDescription="@string/order_actions"
+            android:padding="10dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_more_vert_24"
+            app:tint="@color/pos_text_secondary" />
     </LinearLayout>
 
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:layout_marginTop="@dimen/content_section_gap"
+        android:layout_marginTop="14dp"
         android:background="@color/pos_border" />
 </LinearLayout>

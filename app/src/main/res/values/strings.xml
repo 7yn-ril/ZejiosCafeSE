@@ -286,6 +286,19 @@
     <string name="pagination_previous">Previous</string>
     <string name="pagination_next">Next</string>
     <string name="pagination_page_status">Page %1$d of %2$d</string>
+    <string name="inventory_tab_ingredients">Ingredients</string>
+    <string name="inventory_tab_can_produce">Can Produce</string>
+    <string name="orders_sort_default">Default order</string>
+    <string name="orders_sort_total_desc">Sort: Total (high → low)</string>
+    <string name="orders_sort_total_asc">Sort: Total (low → high)</string>
+    <string name="orders_sort_items_desc">Sort: Items (most first)</string>
+    <string name="orders_sort_reset">Reset filters</string>
+    <string name="order_action_view_details">View details</string>
+    <string name="order_action_mark_preparing">Mark as preparing</string>
+    <string name="order_action_mark_completed">Mark as completed</string>
+    <string name="order_action_print_receipt">Print receipt</string>
+    <string name="order_action_cancel">Cancel order</string>
+    <string name="order_action_placeholder">%1$s — %2$s (coming soon)</string>
 
     <string name="currency_format">PHP %1$.2f</string>
     <string name="quantity_format">x%1$d</string>

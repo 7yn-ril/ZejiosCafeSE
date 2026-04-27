@@ -4,7 +4,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
@@ -43,8 +42,8 @@ class IngredientAdapter(
         private val tvTotalValue: TextView = itemView.findViewById(R.id.tvTotalValue)
         private val stockBarTrack: View = itemView.findViewById(R.id.stockBarTrack)
         private val stockBarFill: View = itemView.findViewById(R.id.stockBarFill)
-        private val btnEdit: ImageButton = itemView.findViewById(R.id.btnEditIngredient)
-        private val btnRestock: ImageButton = itemView.findViewById(R.id.btnRestockIngredient)
+        private val btnEdit: View = itemView.findViewById(R.id.btnEditIngredient)
+        private val btnRestock: View = itemView.findViewById(R.id.btnRestockIngredient)
 
         fun bind(ingredient: Ingredient) {
             tvName.text = ingredient.name
