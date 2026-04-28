@@ -207,6 +207,7 @@
     <string name="no_items_added">No items added yet</string>
     <string name="no_products_found">No menu items match this filter.</string>
     <string name="payment_method">Payment Method</string>
+    <string name="discount">Discount</string>
     <string name="order_type">Order Type</string>
     <string name="dine_in">Dine In</string>
     <string name="take_away">Take Away</string>

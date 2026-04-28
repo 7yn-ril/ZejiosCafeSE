@@ -259,8 +259,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         renderSection(initialSection)
         loadSidebarLogo()
         applySidebarState(isSidebarExpanded, animate = false)
-        configureCashOnlyCheckout()
-        viewModel.setPaymentMethod(PosViewModel.PaymentMethod.CASH)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -780,6 +778,38 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         content.addView(createSectionLabel(getString(R.string.order_field_customer_name)))
         content.addView(customerNameInput)
 
+        // Discount section
+        content.addView(createSectionLabel(getString(R.string.discount)))
+        val discountTypeGroup = RadioGroup(this).apply {
+            orientation = RadioGroup.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = 6.dp(); bottomMargin = 8.dp() }
+        }
+        val rbDiscountPesos = RadioButton(this).apply {
+            id = View.generateViewId()
+            text = "₱ Pesos"
+            isChecked = true
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
+            textSize = 13f
+        }
+        val rbDiscountPercent = RadioButton(this).apply {
+            id = View.generateViewId()
+            text = "% Percentage"
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
+            textSize = 13f
+        }
+        discountTypeGroup.addView(rbDiscountPesos)
+        discountTypeGroup.addView(rbDiscountPercent)
+        content.addView(discountTypeGroup)
+
+        val discountInput = createDialogInput(
+            hint = "0",
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+        )
+        content.addView(discountInput)
+
         val paymentInput = createDialogInput(
             hint = getString(R.string.checkout_cash_received_hint),
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
@@ -795,62 +825,135 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         )
         content.addView(paymentHelper)
 
+        // Create scrollable content
         val scrollView = ScrollView(this).apply {
             addView(content)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0
+            ).apply { weight = 1f }
+        }
+
+        // Create button container (fixed at bottom)
+        val buttonContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = 16.dp() }
+            setPadding(16.dp(), 8.dp(), 16.dp(), 16.dp())
+        }
+
+        val cancelButton = com.google.android.material.button.MaterialButton(this).apply {
+            text = getString(android.R.string.cancel)
+            layoutParams = LinearLayout.LayoutParams(0, 44.dp(), 1f)
+            setBackgroundColor(ContextCompat.getColor(this@MainActivity, android.R.color.transparent))
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_primary))
+            strokeColor = ColorStateList.valueOf(ContextCompat.getColor(this@MainActivity, R.color.pos_primary))
+            strokeWidth = 2.dp()
+            cornerRadius = 12.dp()
+        }
+
+        val confirmButton = com.google.android.material.button.MaterialButton(this).apply {
+            text = getString(R.string.checkout_confirm_payment)
+            layoutParams = LinearLayout.LayoutParams(0, 44.dp(), 1.4f).apply { marginStart = 10.dp() }
+            setBackgroundColor(ContextCompat.getColor(this@MainActivity, R.color.pos_secondary))
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.white))
+            cornerRadius = 12.dp()
+        }
+
+        buttonContainer.addView(cancelButton)
+        buttonContainer.addView(confirmButton)
+
+        // Create main container with scrollView + buttons
+        val mainContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            setPadding(0, 20.dp(), 0, 0)
+            addView(scrollView)
+            addView(buttonContainer)
         }
 
         val dialog = AlertDialog.Builder(this)
             .setTitle(getString(R.string.checkout_review_title))
-            .setView(scrollView)
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(R.string.checkout_confirm_payment, null)
+            .setView(mainContainer)
             .create()
 
-        dialog.setOnShowListener {
-            val confirmButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+        fun refreshPaymentState() {
+            val discountStr = discountInput.text?.toString().orEmpty()
+            val discountAmount = discountStr.toDoubleOrNull() ?: 0.0
+            val isPercentage = rbDiscountPercent.isChecked
+            val discountValue = if (isPercentage && discountAmount > 0) {
+                (total * discountAmount / 100).coerceAtMost(total)
+            } else if (discountAmount > 0) {
+                discountAmount.coerceAtMost(total)
+            } else {
+                0.0
+            }
+            val finalTotal = total - discountValue
 
-            fun refreshPaymentState() {
-                val cashReceived = paymentInput.text?.toString().orEmpty().toCashAmount()
-                val change = cashReceived?.minus(total)
-                val isValid = cashReceived != null && change != null && change >= 0
+            val cashReceived = paymentInput.text?.toString().orEmpty().toCashAmount()
+            val change = cashReceived?.minus(finalTotal)
+            val isValid = cashReceived != null && change != null && change >= 0
 
-                confirmButton.isEnabled = isValid && !isCheckoutSaving
-                paymentHelper.text = when {
-                    cashReceived == null -> getString(R.string.checkout_change_due_pending)
-                    change == null || change < 0 -> getString(R.string.checkout_cash_required)
-                    else -> getString(R.string.checkout_change_due, formatCurrency(change))
-                }
+            confirmButton.isEnabled = isValid && !isCheckoutSaving
+            paymentHelper.text = when {
+                cashReceived == null -> getString(R.string.checkout_change_due_pending)
+                change == null || change < 0 -> getString(R.string.checkout_cash_required)
+                else -> getString(R.string.checkout_change_due, formatCurrency(change))
+            }
+        }
+
+        discountInput.doAfterTextChanged { refreshPaymentState() }
+        rbDiscountPesos.setOnCheckedChangeListener { _, _ -> refreshPaymentState() }
+        rbDiscountPercent.setOnCheckedChangeListener { _, _ -> refreshPaymentState() }
+        paymentInput.doAfterTextChanged { refreshPaymentState() }
+        refreshPaymentState()
+
+        cancelButton.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        confirmButton.setOnClickListener {
+            val discountStr = discountInput.text?.toString().orEmpty()
+            val discountAmount = discountStr.toDoubleOrNull() ?: 0.0
+            val isPercentage = rbDiscountPercent.isChecked
+            val discountValue = if (isPercentage && discountAmount > 0) {
+                (total * discountAmount / 100).coerceAtMost(total)
+            } else if (discountAmount > 0) {
+                discountAmount.coerceAtMost(total)
+            } else {
+                0.0
+            }
+            val finalTotal = total - discountValue
+
+            val cashReceived = paymentInput.text?.toString().orEmpty().toCashAmount()
+            if (cashReceived == null || cashReceived < finalTotal) {
+                refreshPaymentState()
+                return@setOnClickListener
             }
 
-            paymentInput.doAfterTextChanged { refreshPaymentState() }
-            refreshPaymentState()
-
-            confirmButton.setOnClickListener {
-                val cashReceived = paymentInput.text?.toString().orEmpty().toCashAmount()
-                if (cashReceived == null || cashReceived < total) {
-                    refreshPaymentState()
-                    return@setOnClickListener
-                }
-
-                // Update selected payment method from modal
-                val selectedMethod = when (paymentMethodGroup.checkedRadioButtonId) {
-                    rbGcash.id -> PosViewModel.PaymentMethod.GCASH
-                    rbCard.id -> PosViewModel.PaymentMethod.MAYA
-                    else -> PosViewModel.PaymentMethod.CASH
-                }
-                viewModel.setPaymentMethod(selectedMethod)
-
-                pendingCheckoutReceipt = PendingCheckoutReceipt(
-                    customerName = customerNameInput.text?.toString()?.trim()?.takeIf(String::isNotBlank),
-                    cashReceived = cashReceived,
-                    subtotal = subtotal,
-                    total = total,
-                    lines = receiptLines
-                )
-
-                dialog.dismiss()
-                viewModel.checkout(customerName = customerNameInput.text?.toString())
+            // Update selected payment method from modal
+            val selectedMethod = when (paymentMethodGroup.checkedRadioButtonId) {
+                rbGcash.id -> PosViewModel.PaymentMethod.GCASH
+                rbCard.id -> PosViewModel.PaymentMethod.MAYA
+                else -> PosViewModel.PaymentMethod.CASH
             }
+            viewModel.setPaymentMethod(selectedMethod)
+
+            pendingCheckoutReceipt = PendingCheckoutReceipt(
+                customerName = customerNameInput.text?.toString()?.trim()?.takeIf(String::isNotBlank),
+                cashReceived = cashReceived,
+                subtotal = subtotal,
+                total = total,
+                lines = receiptLines
+            )
+
+            dialog.dismiss()
+            viewModel.checkout(customerName = customerNameInput.text?.toString())
         }
 
         dialog.show()
@@ -1611,16 +1714,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         }
         binding.btnNextProductsPage.setOnClickListener {
             viewModel.goToNextProductPage()
-        }
-
-        binding.btnCash.setOnClickListener {
-            viewModel.setPaymentMethod(PosViewModel.PaymentMethod.CASH)
-        }
-        binding.btnGcash.setOnClickListener {
-            viewModel.setPaymentMethod(PosViewModel.PaymentMethod.GCASH)
-        }
-        binding.btnCard.setOnClickListener {
-            viewModel.setPaymentMethod(PosViewModel.PaymentMethod.MAYA)
         }
 
         binding.notificationFrame.setOnClickListener {
@@ -2475,11 +2568,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         // Subtotal / tax / total are no longer rendered in the side cart;
         // the checkout dialog reads them straight from the ViewModel.
 
-        // Payment method selection is now handled in the checkout modal only
-
-        viewModel.selectedPaymentMethod.observe(this) { paymentMethod ->
-            applyPaymentSelection(paymentMethod)
-        }
+        // Payment method is now selected in the checkout modal only
 
         viewModel.selectedOrderType.observe(this) { orderType ->
             applyOrderTypeSelection(orderType)
@@ -2977,44 +3066,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val isEnabled = hasCheckoutItems && !isCheckoutSaving
         binding.btnCheckout.isEnabled = isEnabled
         binding.btnCheckout.alpha = if (isEnabled) 1f else 0.6f
-    }
-
-    private fun applyPaymentSelection(method: PosViewModel.PaymentMethod) {
-        val selectedBg = ContextCompat.getColor(this, R.color.pos_secondary)
-        val unselectedBg = ContextCompat.getColor(this, R.color.pos_surface_soft)
-        val selectedText = ContextCompat.getColor(this, R.color.white)
-        val unselectedText = ContextCompat.getColor(this, R.color.pos_text_primary)
-        val unselectedStroke = ContextCompat.getColor(this, R.color.pos_border)
-
-        val buttons = mapOf(
-            binding.btnCash to PosViewModel.PaymentMethod.CASH,
-            binding.btnGcash to PosViewModel.PaymentMethod.GCASH,
-            binding.btnCard to PosViewModel.PaymentMethod.MAYA
-        )
-
-        buttons.forEach { (button, value) ->
-            val isSelected = method == value
-            button.backgroundTintList = ColorStateList.valueOf(if (isSelected) selectedBg else unselectedBg)
-            button.setTextColor(if (isSelected) selectedText else unselectedText)
-            button.strokeColor = ColorStateList.valueOf(if (isSelected) selectedBg else unselectedStroke)
-            button.strokeWidth = if (isSelected) 0 else resources.getDimensionPixelSize(R.dimen.payment_button_stroke_width)
-        }
-
-        binding.btnClear.backgroundTintList = ColorStateList.valueOf(
-            ContextCompat.getColor(this, R.color.pos_clear_bg)
-        )
-        binding.btnClear.setTextColor(ContextCompat.getColor(this, R.color.pos_text_primary))
-
-        binding.btnCheckout.backgroundTintList = ColorStateList.valueOf(
-            ContextCompat.getColor(this, R.color.pos_secondary)
-        )
-        binding.btnCheckout.setTextColor(ContextCompat.getColor(this, R.color.pos_checkout_text))
-    }
-
-    private fun configureCashOnlyCheckout() {
-        binding.btnGcash.visibility = View.VISIBLE
-        binding.btnCard.visibility = View.VISIBLE
-        updateCheckoutButtonState()
     }
 
     private fun updatePosCategoryStripPadding(expanded: Boolean) {

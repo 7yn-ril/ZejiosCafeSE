@@ -910,73 +910,13 @@
                     android:visibility="gone"
                     tools:listitem="@layout/item_order" />
 
-                <!-- Divider above payment section -->
+                <!-- Divider above Clear + Checkout buttons -->
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:layout_marginTop="@dimen/content_inline_gap"
                     android:layout_marginBottom="@dimen/content_inline_gap"
                     android:background="@color/pos_divider" />
-
-                <!-- Payment method label -->
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:layout_marginBottom="6dp"
-                    android:text="@string/payment_method"
-                    android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
-                    android:textColor="@color/pos_text_secondary"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.06" />
-
-                <!-- Payment method toggle buttons -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnCash"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="44dp"
-                        android:layout_weight="1"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:text="@string/cash"
-                        android:textAllCaps="false"
-                        android:textSize="12sp"
-                        app:cornerRadius="12dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnGcash"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="44dp"
-                        android:layout_marginStart="6dp"
-                        android:layout_weight="1"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:text="@string/gcash"
-                        android:textAllCaps="false"
-                        android:textSize="12sp"
-                        app:cornerRadius="12dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnCard"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="44dp"
-                        android:layout_marginStart="6dp"
-                        android:layout_weight="1"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:text="@string/maya"
-                        android:textAllCaps="false"
-                        android:textSize="12sp"
-                        app:cornerRadius="12dp" />
-                </LinearLayout>
 
                 <!-- Clear + Checkout row -->
                 <LinearLayout
@@ -987,13 +927,15 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnClear"
-                        style="@style/Widget.Material3.Button.UnelevatedButton"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="0dp"
                         android:layout_height="46dp"
                         android:layout_weight="1"
                         android:insetTop="0dp"
                         android:insetBottom="0dp"
                         android:text="@string/clear"
+                                                app:cornerRadius="12dp"
+                                                app:strokeColor="@color/pos_primary" />
                         android:textAllCaps="false"
                         app:cornerRadius="12dp" />
 
@@ -1009,6 +951,8 @@
                         android:text="@string/checkout"
                         android:textAllCaps="false"
                         android:textStyle="bold"
+                                                android:textColor="@color/white"
+                                                app:backgroundTint="@color/pos_secondary"
                         app:cornerRadius="12dp" />
                 </LinearLayout>
             </LinearLayout>

@@ -63,60 +63,69 @@
                     tools:text="PHP 141.75 each" />
             </LinearLayout>
 
-            <TextView
-                android:id="@+id/tvOrderItemPrice"
+            <!-- Price and quantity control on the right -->
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:textColor="@color/pos_primary"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                tools:text="PHP 141.75" />
-        </LinearLayout>
+                android:gravity="center_horizontal"
+                android:orientation="vertical">
 
-        <!-- Row 2: full-width stepper at the bottom of the card -->
-        <LinearLayout
-            android:id="@+id/orderQuantityContainer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:background="@drawable/bg_cart_stepper"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:padding="4dp">
+                <TextView
+                    android:id="@+id/tvOrderItemPrice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp"
+                    android:textColor="@color/pos_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    tools:text="PHP 141.75" />
 
-            <ImageButton
-                android:id="@+id/btnOrderItemDecrease"
-                android:layout_width="34dp"
-                android:layout_height="34dp"
-                android:background="@drawable/bg_stepper_decrease"
-                android:contentDescription="@string/decrease_quantity"
-                android:padding="0dp"
-                android:scaleType="centerInside"
-                android:src="@drawable/ic_remove_18"
-                app:tint="@color/pos_primary" />
+                <!-- Compact stepper control below price -->
+                <LinearLayout
+                    android:id="@+id/orderQuantityContainer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_cart_stepper"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="2dp">
 
-            <TextView
-                android:id="@+id/tvOrderItemQty"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center"
-                android:textColor="@color/pos_text_primary"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                tools:text="1" />
+                    <ImageButton
+                        android:id="@+id/btnOrderItemDecrease"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:background="@drawable/bg_stepper_decrease"
+                        android:contentDescription="@string/decrease_quantity"
+                        android:padding="0dp"
+                        android:scaleType="centerInside"
+                        android:src="@drawable/ic_remove_18"
+                        app:tint="@color/pos_primary" />
 
-            <ImageButton
-                android:id="@+id/btnOrderItemIncrease"
-                android:layout_width="34dp"
-                android:layout_height="34dp"
-                android:background="@drawable/bg_stepper_increase"
-                android:contentDescription="@string/increase_quantity"
-                android:padding="0dp"
-                android:scaleType="centerInside"
-                android:src="@drawable/ic_add_18"
-                app:tint="@color/white" />
+                    <TextView
+                        android:id="@+id/tvOrderItemQty"
+                        android:layout_width="28dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:layout_marginEnd="4dp"
+                        android:gravity="center"
+                        android:textColor="@color/pos_text_primary"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        tools:text="1" />
+
+                    <ImageButton
+                        android:id="@+id/btnOrderItemIncrease"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:background="@drawable/bg_stepper_increase"
+                        android:contentDescription="@string/increase_quantity"
+                        android:padding="0dp"
+                        android:scaleType="centerInside"
+                        android:src="@drawable/ic_add_18"
+                        app:tint="@color/white" />
+                </LinearLayout>
+            </LinearLayout>
         </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
