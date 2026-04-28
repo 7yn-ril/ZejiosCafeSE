@@ -1,6 +1,5 @@
 package com.example.zejioscafese.ui
 
-import android.app.AlertDialog
 import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.os.Bundle
@@ -21,6 +20,7 @@ import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.Fragment
 import android.graphics.Rect
+import androidx.appcompat.app.AlertDialog
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -31,6 +31,8 @@ import com.example.zejioscafese.inventory.data.model.ProductEditorDraft
 import com.example.zejioscafese.inventory.data.model.ProductRecipeIngredient
 import com.example.zejioscafese.inventory.data.model.ProducibleProduct
 import com.example.zejioscafese.pos.data.model.Ingredient
+import com.example.zejioscafese.ui.applyZejiosCafeButtonStyling
+import com.example.zejioscafese.ui.showStyledDialog
 import com.google.android.material.snackbar.Snackbar
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -438,7 +440,7 @@ class InventoryFragment : Fragment() {
                 }
             }
             .setNegativeButton("Cancel", null)
-            .show()
+            .showStyledDialog(ctx)
     }
 
     private fun showEditDialog(ingredient: Ingredient) {
@@ -487,7 +489,7 @@ class InventoryFragment : Fragment() {
                 setupFilterChips()
             }
             .setNegativeButton("Cancel", null)
-            .show()
+            .showStyledDialog(ctx)
     }
 
     private fun showAddDialog() {
@@ -541,7 +543,7 @@ class InventoryFragment : Fragment() {
                 }
             }
             .setNegativeButton("Cancel", null)
-            .show()
+            .showStyledDialog(ctx)
     }
 
     private fun showSoftDeleteProductDialog(product: ProducibleProduct) {
@@ -557,7 +559,7 @@ class InventoryFragment : Fragment() {
                 viewModel.softDeleteProduct(product)
             }
             .setNegativeButton(R.string.inventory_dialog_cancel, null)
-            .show()
+            .showStyledDialog(requireContext())
     }
 
     private fun showProductIngredientsDialog(product: ProducibleProduct) {
@@ -584,7 +586,7 @@ class InventoryFragment : Fragment() {
             )
             .setMessage(message)
             .setPositiveButton(R.string.inventory_dialog_close, null)
-            .show()
+            .showStyledDialog(requireContext())
     }
 
     private fun showProductDialog(product: ProducibleProduct? = null) {
@@ -776,6 +778,7 @@ class InventoryFragment : Fragment() {
             .create()
 
         dialog.setOnShowListener {
+            dialog.applyZejiosCafeButtonStyling(ctx)
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val selectedCategory = categoryOptions.getOrNull(categorySpinner.selectedItemPosition)
                 val productName = etProductName.text.toString().trim()

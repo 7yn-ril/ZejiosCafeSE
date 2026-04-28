@@ -75,16 +75,16 @@
                 android:minWidth="134dp"
                 android:text="@string/filter_sort"
                 android:textAllCaps="false"
-                android:textColor="@color/pos_text_primary"
+                android:textColor="@color/pos_primary"
                 android:textSize="12sp"
-                app:backgroundTint="@color/pos_surface_header"
+                app:backgroundTint="@color/white"
                 app:cornerRadius="18dp"
                 app:icon="@drawable/ic_filter_24"
                 app:iconGravity="textStart"
                 app:iconPadding="4dp"
                 app:iconSize="16dp"
                 app:iconTint="@color/pos_primary"
-                app:strokeColor="@color/pos_border"
+                app:strokeColor="@color/pos_primary"
                 app:strokeWidth="1dp" />
 
             <com.google.android.material.button.MaterialButton
@@ -113,16 +113,20 @@
 
         <!-- ─────────────────────────────────────────────────────────────
              Section B — Status pill row
-             Each pill is a clickable filter that doubles as a small KPI
-             (label + count). The selection state styling is applied in
-             MainActivity, which still toggles `bg_hint_chip` on/off.
+             Wrapped in a white outlined container so the four filter
+             pills sit inside one well-defined panel — the same visual
+             grouping used by the POS category strip. The pills inside
+             keep their selected/unselected backgrounds; this outer
+             container just binds them visually.
              ───────────────────────────────────────────────────────────── -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/content_section_gap"
+            android:background="@drawable/bg_category_strip"
             android:baselineAligned="false"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:padding="8dp">
 
             <LinearLayout
                 android:id="@+id/chipAllOrders"
@@ -475,10 +479,10 @@
                         android:text="@string/pagination_previous"
                         android:textAllCaps="false"
                         android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                        android:textColor="@color/pos_text_primary"
-                        app:backgroundTint="@color/pos_surface"
+                        android:textColor="@color/pos_primary"
+                        app:backgroundTint="@color/white"
                         app:cornerRadius="14dp"
-                        app:strokeColor="@color/pos_border"
+                        app:strokeColor="@color/pos_primary"
                         app:strokeWidth="1dp" />
 
                     <TextView
@@ -486,7 +490,6 @@
                         android:layout_width="wrap_content"
                         android:layout_height="40dp"
                         android:layout_marginStart="10dp"
-                        android:background="@drawable/bg_page_button"
                         android:gravity="center"
                         android:minWidth="120dp"
                         android:paddingStart="14dp"

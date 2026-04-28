@@ -21,6 +21,7 @@
         <!-- All AlertDialog.Builder calls inherit our themed dialog. -->
         <item name="android:alertDialogTheme">@style/ThemeOverlay.ZejiosCafe.Dialog</item>
         <item name="alertDialogTheme">@style/ThemeOverlay.ZejiosCafe.Dialog</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.ZejiosCafe.Dialog</item>
     </style>
 
     <!-- Dark theme: inherits light and overrides bottom nav + surface colors -->
@@ -41,6 +42,7 @@
         <item name="bottomNavIconTint">#8C7A68</item>
         <item name="bottomNavTextColor">#D4A574</item>
         <item name="bottomNavSelectedItemColor">#2A1F17</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.ZejiosCafe.Dialog</item>
     </style>
 
     <style name="ShapeAppearanceOverlay.ZejiosCafe.Image" parent="">

@@ -85,22 +85,16 @@
             android:orientation="horizontal"
             android:padding="4dp">
 
-            <com.google.android.material.button.MaterialButton
+            <ImageButton
                 android:id="@+id/btnOrderItemDecrease"
-                style="@style/Widget.Material3.Button"
                 android:layout_width="34dp"
                 android:layout_height="34dp"
+                android:background="@drawable/bg_stepper_decrease"
                 android:contentDescription="@string/decrease_quantity"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:minWidth="0dp"
                 android:padding="0dp"
-                app:backgroundTint="@color/white"
-                app:cornerRadius="11dp"
-                app:elevation="0dp"
-                app:icon="@drawable/ic_remove_18"
-                app:iconSize="14dp"
-                app:iconTint="@color/pos_primary" />
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_remove_18"
+                app:tint="@color/pos_primary" />
 
             <TextView
                 android:id="@+id/tvOrderItemQty"
@@ -113,22 +107,16 @@
                 android:textStyle="bold"
                 tools:text="1" />
 
-            <com.google.android.material.button.MaterialButton
+            <ImageButton
                 android:id="@+id/btnOrderItemIncrease"
-                style="@style/Widget.Material3.Button"
                 android:layout_width="34dp"
                 android:layout_height="34dp"
+                android:background="@drawable/bg_stepper_increase"
                 android:contentDescription="@string/increase_quantity"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:minWidth="0dp"
                 android:padding="0dp"
-                app:backgroundTint="@color/pos_primary"
-                app:cornerRadius="11dp"
-                app:elevation="0dp"
-                app:icon="@drawable/ic_add_18"
-                app:iconSize="14dp"
-                app:iconTint="@color/white" />
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_add_18"
+                app:tint="@color/white" />
         </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

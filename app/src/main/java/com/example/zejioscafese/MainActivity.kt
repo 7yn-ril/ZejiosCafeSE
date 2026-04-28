@@ -1,7 +1,6 @@
 // app/src/main/java/com/example/zejioscafese/MainActivity.kt
 package com.example.zejioscafese
 
-import android.app.AlertDialog
 import android.animation.ValueAnimator
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
@@ -21,9 +20,12 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import androidx.activity.viewModels
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.content.ContextCompat
 import androidx.core.view.updateLayoutParams
@@ -59,6 +61,8 @@ import com.example.zejioscafese.ui.InventoryFragment
 import com.example.zejioscafese.ui.NavigationHost
 import com.example.zejioscafese.ui.ReportsFragment
 import com.example.zejioscafese.ui.Screen
+import com.example.zejioscafese.ui.applyZejiosCafeButtonStyling
+import com.example.zejioscafese.ui.showStyledDialog
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.github.mikephil.charting.components.XAxis
@@ -474,7 +478,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 ).show()
             }
             .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            .showStyledDialog(this)
     }
 
     private fun showOrderReceiptPreview(order: CafeOrder) {
@@ -492,7 +496,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             .setTitle(getString(R.string.order_receipt_preview_title))
             .setMessage(receiptMessage)
             .setPositiveButton(getString(R.string.receipt_done), null)
-            .show()
+            .showStyledDialog(this)
     }
 
     private fun formatOrderStatus(status: CafeOrderStatus): String {
@@ -602,7 +606,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             .setMessage(getString(R.string.remove_item_message, productName))
             .setPositiveButton(getString(R.string.remove_item_confirm)) { _, _ -> onConfirm() }
             .setNegativeButton(getString(R.string.remove_item_cancel), null)
-            .show()
+            .showStyledDialog(this)
     }
 
     private fun toggleCategoryExpansion() {
@@ -627,10 +631,11 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     }
 
     private fun applyOrderTypeSelection(type: PosViewModel.OrderType) {
+        // Delivery has been removed from the UI; the ViewModel still exposes
+        // the enum, but the cart only offers Dine In and Take Away.
         val buttons = listOf(
             binding.btnOrderTypeDineIn to PosViewModel.OrderType.DINE_IN,
-            binding.btnOrderTypeTakeAway to PosViewModel.OrderType.TAKE_AWAY,
-            binding.btnOrderTypeDelivery to PosViewModel.OrderType.DELIVERY
+            binding.btnOrderTypeTakeAway to PosViewModel.OrderType.TAKE_AWAY
         )
         buttons.forEach { (view, value) ->
             val isSelected = value == type
@@ -658,7 +663,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             .setTitle(getString(R.string.order_items_dialog_title, order.id))
             .setItems(itemsToShow.toTypedArray(), null)
             .setPositiveButton(android.R.string.ok, null)
-            .show()
+            .showStyledDialog(this)
     }
 
     private fun showCheckoutReviewDialog() {
@@ -715,16 +720,58 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             )
         }
 
+        // Summary: subtotal and total
         content.addView(createSectionLabel(getString(R.string.subtotal)))
-        content.addView(createDialogText(formatCurrency(subtotal), textSizeSp = 16f))
+        content.addView(
+            createDialogText(
+                text = formatCurrency(subtotal),
+                textSizeSp = 16f
+            )
+        )
         content.addView(createSectionLabel(getString(R.string.total)))
         content.addView(
             createDialogText(
                 text = formatCurrency(total),
-                textSizeSp = 22f,
-                typeface = Typeface.DEFAULT_BOLD
+                textSizeSp = 18f,
+                typeface = Typeface.DEFAULT_BOLD,
+                textColorRes = R.color.pos_primary
             )
         )
+
+        // Payment method selector (moved from cart to modal)
+        content.addView(createSectionLabel(getString(R.string.payment_method)))
+        val paymentMethodGroup = RadioGroup(this).apply {
+            orientation = RadioGroup.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = 6.dp() }
+        }
+        val rbCash = RadioButton(this).apply {
+            id = View.generateViewId()
+            text = getString(R.string.cash)
+            isChecked = (viewModel.selectedPaymentMethod.value ?: PosViewModel.PaymentMethod.CASH) == PosViewModel.PaymentMethod.CASH
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
+            textSize = 13f
+        }
+        val rbGcash = RadioButton(this).apply {
+            id = View.generateViewId()
+            text = getString(R.string.gcash)
+            isChecked = (viewModel.selectedPaymentMethod.value ?: PosViewModel.PaymentMethod.CASH) == PosViewModel.PaymentMethod.GCASH
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
+            textSize = 13f
+        }
+        val rbCard = RadioButton(this).apply {
+            id = View.generateViewId()
+            text = getString(R.string.card)
+            isChecked = (viewModel.selectedPaymentMethod.value ?: PosViewModel.PaymentMethod.CASH) == PosViewModel.PaymentMethod.MAYA
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
+            textSize = 13f
+        }
+        paymentMethodGroup.addView(rbCash)
+        paymentMethodGroup.addView(rbGcash)
+        paymentMethodGroup.addView(rbCard)
+        content.addView(paymentMethodGroup)
 
         val customerNameInput = createDialogInput(
             hint = getString(R.string.checkout_customer_name_hint),
@@ -743,7 +790,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val paymentHelper = createDialogText(
             text = getString(R.string.checkout_change_due_pending),
             textSizeSp = 13f,
-            textColorRes = R.color.pos_text_secondary
+            textColorRes = R.color.pos_text_secondary,
+            topMarginDp = 6
         )
         content.addView(paymentHelper)
 
@@ -783,6 +831,14 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                     refreshPaymentState()
                     return@setOnClickListener
                 }
+
+                // Update selected payment method from modal
+                val selectedMethod = when (paymentMethodGroup.checkedRadioButtonId) {
+                    rbGcash.id -> PosViewModel.PaymentMethod.GCASH
+                    rbCard.id -> PosViewModel.PaymentMethod.MAYA
+                    else -> PosViewModel.PaymentMethod.CASH
+                }
+                viewModel.setPaymentMethod(selectedMethod)
 
                 pendingCheckoutReceipt = PendingCheckoutReceipt(
                     customerName = customerNameInput.text?.toString()?.trim()?.takeIf(String::isNotBlank),
@@ -1236,7 +1292,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 onSelectionSaved()
             }
             .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            .showStyledDialog(this)
     }
 
     private fun parseOrderStatus(value: String): CafeOrderStatus {
@@ -1529,9 +1585,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         binding.btnOrderTypeTakeAway.setOnClickListener {
             viewModel.setOrderType(PosViewModel.OrderType.TAKE_AWAY)
         }
-        binding.btnOrderTypeDelivery.setOnClickListener {
-            viewModel.setOrderType(PosViewModel.OrderType.DELIVERY)
-        }
         binding.btnClear.setOnClickListener { viewModel.clearOrder() }
         binding.btnCheckout.setOnClickListener {
             if (viewModel.orderItems.value.isNullOrEmpty()) {
@@ -1736,6 +1789,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             .create()
 
         dialog.setOnShowListener {
+            dialog.applyZejiosCafeButtonStyling(this)
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val name = etName.text.toString().trim()
                 val email = etEmail.text.toString().trim()
@@ -1792,7 +1846,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 ).show()
             }
             .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            .showStyledDialog(this)
     }
 
     private fun applyUserProfileStateToUi() {
@@ -1917,10 +1971,10 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                         Snackbar.LENGTH_SHORT
                     ).show()
                 }
-            }
 
-            refreshStaffUi()
-            dialog.dismiss()
+                refreshStaffUi()
+                dialog.dismiss()
+            }
         }
 
         dialog.show()
@@ -2084,7 +2138,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 showStaffDialog(card)
             }
             .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            .showStyledDialog(this)
     }
 
     private fun showRemoveStaffDialog(card: StaffCardViews) {
@@ -2102,7 +2156,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 ).show()
             }
             .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            .showStyledDialog(this)
     }
 
     private fun updateStaffStatus(card: StaffCardViews, status: String) {
@@ -2189,7 +2243,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 }
             }
             .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            .showStyledDialog(this)
     }
 
     private fun focusStaffStatus(status: String?) {
@@ -2282,7 +2336,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 }
             }
             .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            .showStyledDialog(this)
     }
 
     private fun refreshNotificationBadges() {
@@ -2418,17 +2472,10 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             binding.tvOrderNumber.text = getString(R.string.order_number_format, orderNumber)
         }
 
-        viewModel.subtotal.observe(this) { amount ->
-            binding.tvSubtotal.text = getString(R.string.currency_format, amount)
-        }
+        // Subtotal / tax / total are no longer rendered in the side cart;
+        // the checkout dialog reads them straight from the ViewModel.
 
-        viewModel.tax.observe(this) { amount ->
-            binding.tvTax.text = getString(R.string.currency_format, amount)
-        }
-
-        viewModel.total.observe(this) { amount ->
-            binding.tvTotal.text = getString(R.string.currency_format, amount)
-        }
+        // Payment method selection is now handled in the checkout modal only
 
         viewModel.selectedPaymentMethod.observe(this) { paymentMethod ->
             applyPaymentSelection(paymentMethod)
@@ -2926,6 +2973,12 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         }
     }
 
+    private fun updateCheckoutButtonState() {
+        val isEnabled = hasCheckoutItems && !isCheckoutSaving
+        binding.btnCheckout.isEnabled = isEnabled
+        binding.btnCheckout.alpha = if (isEnabled) 1f else 0.6f
+    }
+
     private fun applyPaymentSelection(method: PosViewModel.PaymentMethod) {
         val selectedBg = ContextCompat.getColor(this, R.color.pos_secondary)
         val unselectedBg = ContextCompat.getColor(this, R.color.pos_surface_soft)
@@ -2962,12 +3015,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         binding.btnGcash.visibility = View.VISIBLE
         binding.btnCard.visibility = View.VISIBLE
         updateCheckoutButtonState()
-    }
-
-    private fun updateCheckoutButtonState() {
-        val isEnabled = hasCheckoutItems && !isCheckoutSaving
-        binding.btnCheckout.isEnabled = isEnabled
-        binding.btnCheckout.alpha = if (isEnabled) 1f else 0.6f
     }
 
     private fun updatePosCategoryStripPadding(expanded: Boolean) {

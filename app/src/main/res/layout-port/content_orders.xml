@@ -71,16 +71,16 @@
                     android:maxLines="1"
                     android:text="@string/filter_sort"
                     android:textAllCaps="false"
-                    android:textColor="@color/pos_text_primary"
+                    android:textColor="@color/pos_primary"
                     android:textSize="12sp"
-                    app:backgroundTint="@color/pos_surface_header"
+                    app:backgroundTint="@color/white"
                     app:cornerRadius="18dp"
                     app:icon="@drawable/ic_filter_24"
                     app:iconGravity="textStart"
                     app:iconPadding="4dp"
                     app:iconSize="16dp"
                     app:iconTint="@color/pos_primary"
-                    app:strokeColor="@color/pos_border"
+                    app:strokeColor="@color/pos_primary"
                     app:strokeWidth="1dp" />
 
                 <com.google.android.material.button.MaterialButton
@@ -108,11 +108,13 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Status pills: scroll horizontally on portrait -->
+        <!-- Status pills wrapped in a white outlined container, scrolls horizontally -->
         <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/content_section_gap"
+            android:background="@drawable/bg_category_strip"
+            android:padding="8dp"
             android:scrollbars="none">
 
             <LinearLayout
@@ -387,10 +389,10 @@
                             android:text="@string/pagination_previous"
                             android:textAllCaps="false"
                             android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                            android:textColor="@color/pos_text_primary"
-                            app:backgroundTint="@color/pos_surface"
+                            android:textColor="@color/pos_primary"
+                            app:backgroundTint="@color/white"
                             app:cornerRadius="14dp"
-                            app:strokeColor="@color/pos_border"
+                            app:strokeColor="@color/pos_primary"
                             app:strokeWidth="1dp" />
 
                         <TextView
@@ -398,7 +400,6 @@
                             android:layout_width="wrap_content"
                             android:layout_height="40dp"
                             android:layout_marginStart="10dp"
-                            android:background="@drawable/bg_page_button"
                             android:gravity="center"
                             android:minWidth="120dp"
                             android:paddingStart="14dp"

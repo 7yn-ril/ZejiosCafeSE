@@ -18,6 +18,7 @@ import com.example.zejioscafese.R
 import com.example.zejioscafese.databinding.FragmentReportsBinding
 import com.example.zejioscafese.pos.data.model.CategorySalesRecord
 import com.example.zejioscafese.reports.data.model.ReportTransaction
+import com.example.zejioscafese.ui.showStyledDialog
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
@@ -135,7 +136,7 @@ class ReportsFragment : Fragment() {
                 viewModel.refreshReports(force = true)
             }
             .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            .showStyledDialog(requireContext())
     }
 
     private fun copyExportSummary(summary: String) {

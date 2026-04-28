@@ -840,7 +840,7 @@
                         app:tint="@color/pos_text_secondary" />
                 </FrameLayout>
 
-                <!-- Order type segment control (Dine In / Take Away / Delivery) -->
+                <!-- Order type segment control (Dine In / Take Away) -->
                 <LinearLayout
                     android:id="@+id/orderTypeSegment"
                     android:layout_width="match_parent"
@@ -870,18 +870,6 @@
                         android:background="@drawable/bg_segment_unselected"
                         android:gravity="center"
                         android:text="@string/take_out"
-                        android:textColor="@color/pos_text_primary"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/btnOrderTypeDelivery"
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        android:background="@drawable/bg_segment_unselected"
-                        android:gravity="center"
-                        android:text="@string/delivery"
                         android:textColor="@color/pos_text_primary"
                         android:textSize="12sp"
                         android:textStyle="bold" />
@@ -922,107 +910,13 @@
                     android:visibility="gone"
                     tools:listitem="@layout/item_order" />
 
-                <!-- Divider above totals -->
+                <!-- Divider above payment section -->
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:layout_marginTop="@dimen/content_inline_gap"
                     android:layout_marginBottom="@dimen/content_inline_gap"
                     android:background="@color/pos_divider" />
-
-                <!-- Totals section -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:background="@drawable/bg_order_summary"
-                    android:orientation="vertical"
-                    android:paddingStart="12dp"
-                    android:paddingTop="10dp"
-                    android:paddingEnd="12dp"
-                    android:paddingBottom="10dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="@string/subtotal"
-                            android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyLarge"
-                            android:textColor="@color/pos_text_secondary" />
-
-                        <TextView
-                            android:id="@+id/tvSubtotal"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                            android:textColor="@color/pos_text_primary"
-                            android:textSize="13sp"
-                            tools:text="PHP 235.00" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="5dp"
-                        android:orientation="horizontal"
-                        android:visibility="gone">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="@string/tax"
-                            android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyLarge"
-                            android:textColor="@color/pos_text_secondary" />
-
-                        <TextView
-                            android:id="@+id/tvTax"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                            android:textColor="@color/pos_text_primary"
-                            android:textSize="13sp"
-                            tools:text="PHP 28.20" />
-                    </LinearLayout>
-
-                    <!-- Divider before total -->
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:layout_marginTop="8dp"
-                        android:layout_marginBottom="8dp"
-                        android:background="@color/pos_divider"
-                        android:visibility="gone" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="@string/total"
-                            android:textAppearance="@style/TextAppearance.ZejiosCafe.SectionTitle"
-                            android:textColor="@color/pos_text_primary"
-                            android:textStyle="normal" />
-
-                        <TextView
-                            android:id="@+id/tvTotal"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textAppearance="@style/TextAppearance.ZejiosCafe.KpiValue"
-                            android:textColor="@color/pos_primary"
-                            android:textStyle="bold"
-                            tools:text="PHP 263.20" />
-                    </LinearLayout>
-                </LinearLayout>
 
                 <!-- Payment method label -->
                 <TextView

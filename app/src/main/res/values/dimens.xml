@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <dimen name="dialog_button_min_height">54dp</dimen>
+    <dimen name="dialog_button_min_width">96dp</dimen>
+    <dimen name="dialog_button_padding_horizontal">28dp</dimen>
+
     <dimen name="screen_padding">18dp</dimen>
     <dimen name="section_spacing">20dp</dimen>
     <dimen name="card_corner_radius">22dp</dimen>

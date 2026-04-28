@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Filled increase button background for the cart stepper. Rounded
+    square that matches the outer stepper pill so the icon sits in a
+    neat 34dp tile. Ripple feedback on touch.
+-->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="@color/pos_primary_dark">
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="11dp" />
+            <solid android:color="@color/pos_primary" />
+        </shape>
+    </item>
+</ripple>

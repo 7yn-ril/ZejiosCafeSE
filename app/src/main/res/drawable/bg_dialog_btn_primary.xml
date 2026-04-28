@@ -1,16 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    Filled pill background for dialog primary action buttons. Applied via
-    Widget.ZejiosCafe.Dialog.Button.Primary in styles.xml so every default
-    AlertDialog positive button reads as a clear themed CTA.
--->
-<ripple xmlns:android="http://schemas.android.com/apk/res/android"
-    android:color="@color/pos_primary_dark">
-
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <corners android:radius="14dp" />
+            <solid android:color="@color/pos_secondary_dark" />
+        </shape>
+    </item>
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <corners android:radius="14dp" />
+            <solid android:color="@color/pos_secondary" />
+        </shape>
+    </item>
     <item>
         <shape android:shape="rectangle">
             <corners android:radius="14dp" />
-            <solid android:color="@color/pos_primary" />
+            <solid android:color="@color/pos_secondary" />
         </shape>
     </item>
-</ripple>
+</selector>
