@@ -94,15 +94,15 @@
     <string name="reports_metric_avg_order">Avg. Order Value</string>
     <string name="reports_metric_avg_order_subtitle">Per completed order</string>
     <string name="reports_metric_best_seller">Best Seller</string>
-    <string name="reports_metric_best_seller_subtitle">Top category</string>
+    <string name="reports_metric_best_seller_subtitle">Top product</string>
     <string name="reports_best_seller_empty">N/A</string>
     <string name="reports_zero_currency">PHP 0.00</string>
     <string name="reports_revenue_trend_title">Revenue Trend</string>
     <string name="reports_sales_by_category_title">Sales by Category</string>
-    <string name="reports_recent_transactions_title">Recent Transactions</string>
+    <string name="reports_sales_by_products_title">Sales by Products</string>
     <string name="reports_total_php_label">Total (PHP)</string>
     <string name="reports_empty_categories">No category sales are available for this date range yet.</string>
-    <string name="reports_empty_transactions">No completed transactions were recorded in this date range yet.</string>
+    <string name="reports_empty_products">No product sales are available for this date range yet.</string>
     <string name="reports_export_dialog_title">Export Report Summary</string>
     <string name="reports_export_copy">Copy summary</string>
     <string name="reports_export_refresh">Refresh data</string>
@@ -111,7 +111,7 @@
     <string name="reports_export_revenue_summary">Revenue: %1$s</string>
     <string name="reports_export_orders_summary">Orders: %1$d</string>
     <string name="reports_export_average_summary">Average order: %1$s</string>
-    <string name="reports_export_best_category_summary">Best category: %1$s</string>
+    <string name="reports_export_best_product_summary">Best product: %1$s</string>
     <string name="reports_export_transactions_summary">Transactions in view: %1$d</string>
     <string name="staff_title">Staff</string>
     <string name="staff_subtitle">Team roles, shifts, and availability</string>
@@ -182,7 +182,6 @@
 
     <string name="order_dialog_new_title">Create New Order</string>
     <string name="order_field_customer_name">Customer Name</string>
-    <string name="order_field_table_number">Table Number</string>
     <string name="order_field_items_summary">Items Summary</string>
     <string name="order_field_item_count">Item Count</string>
     <string name="order_field_total_amount">Total Amount (PHP)</string>
@@ -213,9 +212,6 @@
     <string name="take_away">Take Away</string>
     <string name="take_out">Take Out</string>
     <string name="delivery">Delivery</string>
-    <string name="table_number_label">Table %1$s</string>
-    <string name="table_default">01</string>
-    <string name="edit_table">Edit table</string>
     <string name="add_to_dish">Add to Dish</string>
     <string name="add_to_cart">Add to Cart</string>
     <string name="remove_item_title">Remove item?</string>
@@ -234,7 +230,6 @@
     <string name="receipt_thank_you">- Thank you, visit us again -</string>
     <string name="receipt_items_header">Items</string>
     <string name="receipt_order_type_label">Order Type</string>
-    <string name="receipt_table_label">Table</string>
 
     <string name="cash">Cash</string>
     <string name="gcash">GCash</string>
@@ -324,14 +319,20 @@
     <string name="order_action_view_details">View details</string>
     <string name="order_action_mark_preparing">Mark as preparing</string>
     <string name="order_action_mark_completed">Mark as completed</string>
+    <string name="order_action_save_item_progress">Save progress</string>
+    <string name="order_item_progress_format">%1$d of %2$d completed</string>
+    <string name="order_item_progress_saved_message">Saved item progress for %1$s.</string>
+    <string name="order_item_progress_save_failed">Could not save item progress yet. %1$s</string>
     <string name="order_action_print_receipt">Print receipt</string>
     <string name="order_action_cancel">Cancel order</string>
     <string name="order_action_placeholder">%1$s — %2$s (coming soon)</string>
     <string name="order_status_updated_message">%1$s updated to %2$s.</string>
+    <string name="order_status_update_failed">Could not update the order status yet. %1$s</string>
     <string name="order_cancel_dialog_title">Remove order?</string>
-    <string name="order_cancel_dialog_message">Remove %1$s for %2$s from the orders board? This only changes the current UI session.</string>
+    <string name="order_cancel_dialog_message">Remove %1$s for %2$s from the orders board and database?</string>
     <string name="order_cancel_dialog_confirm">Remove order</string>
-    <string name="order_removed_message">%1$s was removed from the board.</string>
+    <string name="order_removed_message">%1$s was removed from the orders board.</string>
+    <string name="order_remove_failed">Could not remove the order yet. %1$s</string>
     <string name="order_receipt_preview_title">Receipt Preview</string>
 
     <string name="currency_format">PHP %1$.2f</string>
@@ -473,7 +474,6 @@
     <string name="status_label">Status</string>
     <string name="total_label">Total</string>
     <string name="action_label">Action</string>
-    <string name="table_format">Table %1$s</string>
     <string name="order_walk_in_label">Walk-in</string>
     <string name="items_count_format">%1$d items</string>
     <string name="order_items_preview_more">%1$s + %2$d more</string>

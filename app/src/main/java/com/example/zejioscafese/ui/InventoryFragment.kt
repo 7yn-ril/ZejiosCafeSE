@@ -420,6 +420,11 @@ class InventoryFragment : Fragment() {
 
     private fun showRestockDialog(ingredient: Ingredient) {
         val ctx = requireContext()
+        if (ingredient.isLiquid) {
+            showLiquidRestockDialog(ingredient)
+            return
+        }
+
         val inputField = EditText(ctx).apply {
             hint = "Quantity to add (${ingredient.unit})"
             inputType =
@@ -443,6 +448,96 @@ class InventoryFragment : Fragment() {
             .showStyledDialog(ctx)
     }
 
+    private fun showLiquidRestockDialog(ingredient: Ingredient) {
+        val ctx = requireContext()
+        val container = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dpToPx(20), dpToPx(12), dpToPx(20), dpToPx(4))
+        }
+
+        val currentStock = TextView(ctx).apply {
+            text = "Current stock: ${formatQuantity(ingredient.currentStock)} ml"
+            textSize = 13f
+            setTextColor(ContextCompat.getColor(ctx, R.color.pos_text_secondary))
+            setPadding(0, 0, 0, dpToPx(8))
+        }
+        container.addView(currentStock)
+
+        val etBottleCount = createLabeledField(
+            container,
+            "Bottles to Add",
+            "",
+            android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        ).apply {
+            hint = "e.g. 3"
+        }
+        val etMlPerBottle = createLabeledField(
+            container,
+            "ML per Bottle",
+            ingredient.mlPerBottle?.let(::trimDecimal).orEmpty(),
+            android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        ).apply {
+            hint = "e.g. 200"
+        }
+
+        val preview = TextView(ctx).apply {
+            textSize = 13f
+            setTextColor(ContextCompat.getColor(ctx, R.color.pos_text_secondary))
+            setPadding(0, dpToPx(12), 0, 0)
+        }
+        container.addView(preview)
+
+        fun updatePreview() {
+            val bottles = etBottleCount.text.toString().toDoubleOrNull()
+            val mlPerBottle = etMlPerBottle.text.toString().toDoubleOrNull()
+            val addedMl = if (
+                bottles != null && bottles > 0.0 &&
+                mlPerBottle != null && mlPerBottle > 0.0
+            ) {
+                bottles * mlPerBottle
+            } else {
+                0.0
+            }
+
+            if (addedMl <= 0.0) {
+                preview.text = "Enter bottles and ml per bottle to compute total ml."
+                return
+            }
+
+            val newStock = ingredient.currentStock + addedMl
+            val servingLine = ingredient.mlPerServing?.takeIf { it > 0.0 }?.let { mlPerServing ->
+                val addedServings = addedMl / mlPerServing
+                val totalServings = newStock / mlPerServing
+                "\nAdds ${formatServingCount(addedServings)} servings; new total ${formatServingCount(totalServings)} servings."
+            }.orEmpty()
+            val addedValue = addedMl * ingredient.costPerUnit
+            val totalValue = newStock * ingredient.costPerUnit
+
+            preview.text = "Adds ${formatQuantity(addedMl)} ml. New stock: ${formatQuantity(newStock)} ml.$servingLine\nAdded value: ${formatCurrency(addedValue)}; total value: ${formatCurrency(totalValue)}."
+        }
+
+        etBottleCount.doAfterTextChanged { updatePreview() }
+        etMlPerBottle.doAfterTextChanged { updatePreview() }
+        updatePreview()
+
+        AlertDialog.Builder(ctx)
+            .setTitle("Restock: ${ingredient.name}")
+            .setView(container)
+            .setPositiveButton("Restock") { _, _ ->
+                val bottles = etBottleCount.text.toString().toDoubleOrNull()
+                val mlPerBottle = etMlPerBottle.text.toString().toDoubleOrNull()
+                if (
+                    bottles != null && bottles > 0.0 &&
+                    mlPerBottle != null && mlPerBottle > 0.0
+                ) {
+                    viewModel.restockIngredient(ingredient.id, bottles * mlPerBottle)
+                    setupFilterChips()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .showStyledDialog(ctx)
+    }
+
     private fun showEditDialog(ingredient: Ingredient) {
         val ctx = requireContext()
         val container = LinearLayout(ctx).apply {
@@ -451,7 +546,13 @@ class InventoryFragment : Fragment() {
         }
 
         val etName = createLabeledField(container, "Name", ingredient.name)
-        val etCategory = createLabeledField(container, "Category", ingredient.category)
+        val categoryOptions = viewModel.getIngredientCategoriesForEditor()
+        val categorySpinner = createLabeledSpinner(
+            container = container,
+            label = "Category",
+            options = categoryOptions,
+            selectedIndex = categoryOptions.indexOf(ingredient.category).coerceAtLeast(0)
+        )
         val etUnit = createLabeledField(container, "Unit", ingredient.unit)
         val etStock = createLabeledField(
             container,
@@ -467,8 +568,22 @@ class InventoryFragment : Fragment() {
         )
         val etCost = createLabeledField(
             container,
-            "Cost Per Unit (PHP)",
-            ingredient.costPerUnit.toString(),
+            "Cost (PHP; ml = per serving)",
+            displayCostForEditor(ingredient),
+            android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        ).apply {
+            hint = "For ml: cost per serving; otherwise cost per unit"
+        }
+        val etMlPerServing = createLabeledField(
+            container,
+            "ML per Serving (liquids only)",
+            ingredient.mlPerServing?.let(::trimDecimal).orEmpty(),
+            android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        )
+        val etMlPerBottle = createLabeledField(
+            container,
+            "ML per Bottle (default size for restock)",
+            ingredient.mlPerBottle?.let(::trimDecimal).orEmpty(),
             android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
         )
 
@@ -476,20 +591,61 @@ class InventoryFragment : Fragment() {
             .setTitle("Edit Ingredient")
             .setView(container)
             .setPositiveButton("Save") { _, _ ->
+                val updatedUnit = etUnit.text.toString().ifBlank { ingredient.unit }
+                val updatedMlPerServing = liquidValue(updatedUnit, etMlPerServing)
                 val updated = ingredient.copy(
                     name = etName.text.toString().ifBlank { ingredient.name },
-                    category = etCategory.text.toString().ifBlank { ingredient.category },
-                    unit = etUnit.text.toString().ifBlank { ingredient.unit },
+                    category = categoryOptions
+                        .getOrNull(categorySpinner.selectedItemPosition)
+                        ?: ingredient.category,
+                    unit = updatedUnit,
                     currentStock = etStock.text.toString().toDoubleOrNull() ?: ingredient.currentStock,
                     minimumStock = etMinStock.text.toString().toDoubleOrNull()
                         ?: ingredient.minimumStock,
-                    costPerUnit = etCost.text.toString().toDoubleOrNull() ?: ingredient.costPerUnit
+                    costPerUnit = costPerUnitFromEditor(
+                        unit = updatedUnit,
+                        mlPerServing = updatedMlPerServing,
+                        costInput = etCost.text.toString().toDoubleOrNull(),
+                        fallbackCostPerUnit = ingredient.costPerUnit
+                    ),
+                    mlPerServing = updatedMlPerServing,
+                    mlPerBottle = liquidValue(updatedUnit, etMlPerBottle)
                 )
                 viewModel.updateIngredient(updated)
                 setupFilterChips()
             }
             .setNegativeButton("Cancel", null)
             .showStyledDialog(ctx)
+    }
+
+    private fun trimDecimal(value: Double): String {
+        return if (value % 1.0 == 0.0) value.toInt().toString()
+        else value.toString()
+    }
+
+    private fun displayCostForEditor(ingredient: Ingredient): String {
+        if (ingredient.isLiquid && ingredient.mlPerServing == null) return ""
+        val displayCost = ingredient.costPerServing ?: ingredient.costPerUnit
+        return trimDecimal(displayCost)
+    }
+
+    private fun liquidValue(unit: String, field: EditText): Double? {
+        if (!unit.trim().equals("ml", ignoreCase = true)) return null
+        return field.text.toString().toDoubleOrNull()?.takeIf { it > 0.0 }
+    }
+
+    private fun costPerUnitFromEditor(
+        unit: String,
+        mlPerServing: Double?,
+        costInput: Double?,
+        fallbackCostPerUnit: Double
+    ): Double {
+        val cost = costInput ?: return fallbackCostPerUnit
+        return if (unit.trim().equals("ml", ignoreCase = true) && (mlPerServing ?: 0.0) > 0.0) {
+            cost / mlPerServing!!
+        } else {
+            cost
+        }
     }
 
     private fun showAddDialog() {
@@ -500,14 +656,14 @@ class InventoryFragment : Fragment() {
         }
 
         val etName = createLabeledField(container, "Name", "")
-        val etCategory = createLabeledField(container, "Category (e.g. Dairy, Produce)", "")
-        val etUnit = createLabeledField(container, "Unit (e.g. kg, L, pcs)", "")
-        val etStock = createLabeledField(
-            container,
-            "Initial Stock",
-            "",
-            android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        val categoryOptions = viewModel.getIngredientCategoriesForEditor()
+        val categorySpinner = createLabeledSpinner(
+            container = container,
+            label = "Category",
+            options = categoryOptions,
+            selectedIndex = categoryOptions.indexOf("Pantry").coerceAtLeast(0)
         )
+        val etUnit = createLabeledField(container, "Unit (e.g. kg, L, pcs)", "")
         val etMinStock = createLabeledField(
             container,
             "Minimum Stock",
@@ -516,7 +672,21 @@ class InventoryFragment : Fragment() {
         )
         val etCost = createLabeledField(
             container,
-            "Cost Per Unit (PHP)",
+            "Cost (PHP; ml = per serving)",
+            "",
+            android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        ).apply {
+            hint = "For ml: cost per serving; otherwise cost per unit"
+        }
+        val etMlPerServing = createLabeledField(
+            container,
+            "ML per Serving (liquids only)",
+            "",
+            android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        )
+        val etMlPerBottle = createLabeledField(
+            container,
+            "ML per Bottle (default size for restock)",
             "",
             android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
         )
@@ -527,16 +697,27 @@ class InventoryFragment : Fragment() {
             .setPositiveButton("Add") { _, _ ->
                 val name = etName.text.toString()
                 if (name.isNotBlank()) {
+                    val unit = etUnit.text.toString().ifBlank { "pcs" }
+                    val mlPerServing = liquidValue(unit, etMlPerServing)
                     val newIngredient = Ingredient(
                         id = viewModel.generateId(),
                         name = name,
-                        category = etCategory.text.toString().ifBlank { "Dry Goods" },
-                        unit = etUnit.text.toString().ifBlank { "pcs" },
-                        currentStock = etStock.text.toString().toDoubleOrNull() ?: 0.0,
+                        category = categoryOptions
+                            .getOrNull(categorySpinner.selectedItemPosition)
+                            ?: "Pantry",
+                        unit = unit,
+                        currentStock = 0.0,
                         minimumStock = etMinStock.text.toString().toDoubleOrNull() ?: 1.0,
-                        costPerUnit = etCost.text.toString().toDoubleOrNull() ?: 0.0,
+                        costPerUnit = costPerUnitFromEditor(
+                            unit = unit,
+                            mlPerServing = mlPerServing,
+                            costInput = etCost.text.toString().toDoubleOrNull(),
+                            fallbackCostPerUnit = 0.0
+                        ),
                         lastRestocked = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                            .format(Date())
+                            .format(Date()),
+                        mlPerServing = mlPerServing,
+                        mlPerBottle = liquidValue(unit, etMlPerBottle)
                     )
                     viewModel.addIngredient(newIngredient)
                     setupFilterChips()
@@ -927,6 +1108,16 @@ class InventoryFragment : Fragment() {
             quantity.toInt().toString()
         } else {
             String.format(Locale.getDefault(), "%.2f", quantity)
+                .trimEnd('0')
+                .trimEnd('.')
+        }
+    }
+
+    private fun formatServingCount(servings: Double): String {
+        return if (servings % 1.0 == 0.0) {
+            servings.toInt().toString()
+        } else {
+            String.format(Locale.getDefault(), "%.1f", servings)
                 .trimEnd('0')
                 .trimEnd('.')
         }

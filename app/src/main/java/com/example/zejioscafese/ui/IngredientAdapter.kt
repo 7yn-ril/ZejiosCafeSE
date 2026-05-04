@@ -38,6 +38,7 @@ class IngredientAdapter(
         private val tvName: TextView = itemView.findViewById(R.id.tvIngredientName)
         private val tvCategory: TextView = itemView.findViewById(R.id.tvIngredientCategory)
         private val tvStock: TextView = itemView.findViewById(R.id.tvCurrentStock)
+        private val tvServings: TextView = itemView.findViewById(R.id.tvServings)
         private val tvCostPerUnit: TextView = itemView.findViewById(R.id.tvCostPerUnit)
         private val tvTotalValue: TextView = itemView.findViewById(R.id.tvTotalValue)
         private val stockBarTrack: View = itemView.findViewById(R.id.stockBarTrack)
@@ -52,8 +53,35 @@ class IngredientAdapter(
             // Stock display
             tvStock.text = String.format(Locale.getDefault(), "%.1f %s", ingredient.currentStock, ingredient.unit)
 
-            // Cost display
-            tvCostPerUnit.text = String.format(Locale.getDefault(), "PHP %.2f/%s", ingredient.costPerUnit, ingredient.unit)
+            val totalServings = ingredient.totalServings
+            val costPerServing = ingredient.costPerServing
+            val mlPerServing = ingredient.mlPerServing
+            if (totalServings != null && costPerServing != null && mlPerServing != null) {
+                // ml ingredient with per-serving config: show servings count
+                // and switch the cost cell to PHP/serving so staff sees
+                // recipe economics directly.
+                tvServings.visibility = View.VISIBLE
+                tvServings.text = String.format(
+                    Locale.getDefault(),
+                    "≈ %d servings · %s ml each",
+                    totalServings.toInt(),
+                    formatTrim(mlPerServing)
+                )
+                tvCostPerUnit.text = String.format(
+                    Locale.getDefault(),
+                    "PHP %.2f/serving",
+                    costPerServing
+                )
+            } else {
+                tvServings.visibility = View.GONE
+                tvCostPerUnit.text = String.format(
+                    Locale.getDefault(),
+                    "PHP %.2f/%s",
+                    ingredient.costPerUnit,
+                    ingredient.unit
+                )
+            }
+
             val totalVal = ingredient.currentStock * ingredient.costPerUnit
             tvTotalValue.text = String.format(Locale.getDefault(), "PHP %,.2f", totalVal)
 
@@ -85,6 +113,14 @@ class IngredientAdapter(
             // Actions
             btnEdit.setOnClickListener { onEditClick(ingredient) }
             btnRestock.setOnClickListener { onRestockClick(ingredient) }
+        }
+
+        private fun formatTrim(value: Double): String {
+            return if (value % 1.0 == 0.0) {
+                value.toInt().toString()
+            } else {
+                String.format(Locale.getDefault(), "%.1f", value)
+            }
         }
     }
 

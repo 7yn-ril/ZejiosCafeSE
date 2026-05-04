@@ -6,6 +6,7 @@ import com.example.zejioscafese.dashboard.model.DashboardChartPoint
 import com.example.zejioscafese.dashboard.model.DashboardInsight
 import com.example.zejioscafese.dashboard.model.DashboardPeriod
 import com.example.zejioscafese.dashboard.model.DashboardTopItem
+import com.example.zejioscafese.pos.data.local.ProductImageResolver
 
 object DashboardSampleData {
 
@@ -18,28 +19,28 @@ object DashboardSampleData {
 
     val topItems = listOf(
         DashboardTopItem(
-            name = "Iced Caramel Latte",
+            name = "Caramel Macchiato",
             orders = 47,
             revenue = 7755.0,
-            imageUrl = "https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=800&q=80"
+            imageUrl = ProductImageResolver.resolve("Caramel Macchiato").orEmpty()
         ),
         DashboardTopItem(
-            name = "Cappuccino",
+            name = "Latte",
             orders = 34,
             revenue = 5100.0,
-            imageUrl = "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80"
+            imageUrl = ProductImageResolver.resolve("Latte").orEmpty()
         ),
         DashboardTopItem(
-            name = "Chicken Pesto Panini",
+            name = "Chicken Poppers",
             orders = 21,
             revenue = 4935.0,
-            imageUrl = "https://images.unsplash.com/photo-1550317138-10000687a72b?auto=format&fit=crop&w=800&q=80"
+            imageUrl = ProductImageResolver.resolve("Chicken Poppers").orEmpty()
         ),
         DashboardTopItem(
-            name = "Butter Croissant",
+            name = "Beefy Nachos Solo",
             orders = 29,
             revenue = 2755.0,
-            imageUrl = "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=800&q=80"
+            imageUrl = ProductImageResolver.resolve("Beefy Nachos Solo").orEmpty()
         )
     )
 

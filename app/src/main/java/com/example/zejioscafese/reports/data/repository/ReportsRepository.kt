@@ -3,6 +3,7 @@ package com.example.zejioscafese.reports.data.repository
 import com.example.zejioscafese.core.supabase.SupabaseProvider
 import com.example.zejioscafese.core.supabase.SupabaseSessionHelper
 import com.example.zejioscafese.pos.data.model.CategorySalesRecord
+import com.example.zejioscafese.pos.data.model.ProductSalesRecord
 import com.example.zejioscafese.pos.data.remote.dto.ProductVariantStockDto
 import com.example.zejioscafese.reports.data.model.ReportTransaction
 import com.example.zejioscafese.reports.data.model.ReportsSnapshot
@@ -107,6 +108,25 @@ class ReportsRepository(
             }
             .sortedByDescending(CategorySalesRecord::totalRevenue)
 
+        val salesByProduct = itemsByOrderId
+            .values
+            .flatten()
+            .groupBy { item -> item.toProductDisplayName() }
+            .map { (productName, items) ->
+                val productRevenue = items.sumOf(OrderItemRowDto::orderItemLineTotal)
+                ProductSalesRecord(
+                    productName = productName,
+                    totalRevenue = productRevenue,
+                    itemsSold = items.sumOf(OrderItemRowDto::orderItemQuantity),
+                    percentageOfTotal = if (totalRevenue > 0.0) {
+                        (productRevenue / totalRevenue) * 100.0
+                    } else {
+                        0.0
+                    }
+                )
+            }
+            .sortedByDescending(ProductSalesRecord::totalRevenue)
+
         val transactions = ordersInRange.map { order ->
             val orderedItems = itemsByOrderId[order.orderId]
                 .orEmpty()
@@ -124,11 +144,22 @@ class ReportsRepository(
             totalRevenue = totalRevenue,
             totalOrders = totalOrders,
             averageOrderValue = averageOrderValue,
-            bestCategory = salesByCategory.firstOrNull()?.categoryName ?: NO_CATEGORY,
+            bestProduct = salesByProduct.firstOrNull()?.productName ?: NO_CATEGORY,
             salesByDateRange = salesByDate,
             salesByCategory = salesByCategory,
+            salesByProduct = salesByProduct,
             transactions = transactions
         )
+    }
+
+    // The product list groups by the displayed product+variant label so that
+    // a "Coffee (Iced)" sale doesn't collapse into a sibling "Coffee (Hot)".
+    private fun OrderItemRowDto.toProductDisplayName(): String {
+        return when {
+            orderItemVariantName.equals(STANDARD_VARIANT, ignoreCase = true) -> orderItemProductName
+            orderItemVariantName.equals(COMBO_VARIANT, ignoreCase = true) -> orderItemProductName
+            else -> "$orderItemProductName ($orderItemVariantName)"
+        }
     }
 
     private suspend fun fetchOrders(): List<OrderRowDto> {

@@ -15,6 +15,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -41,6 +42,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
 import com.example.zejioscafese.dashboard.model.AlertLevel
 import com.example.zejioscafese.dashboard.model.DashboardPeriod
+import com.example.zejioscafese.dashboard.model.DashboardRecentOrder
 import com.example.zejioscafese.dashboard.model.DashboardSnapshot
 import com.example.zejioscafese.dashboard.presentation.DashboardViewModel
 import com.example.zejioscafese.dashboard.ui.DashboardAlertAdapter
@@ -154,6 +156,10 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private lateinit var orderManagementAdapter: OrderManagementAdapter
     private lateinit var userProfileState: UserProfileState
     private val orders = mutableListOf<CafeOrder>()
+    // In-memory tracker for which line items in a PREPARING order have been
+    // marked done by staff. Keyed by order id; value is the set of item
+    // indices (positions in CafeOrder.orderedItems) that are completed.
+    private val orderItemCompletion = mutableMapOf<String, MutableSet<Int>>()
     private val orderRepository = OrderRepository()
     private var selectedOrderStatus: CafeOrderStatus? = null
     private var orderSearchQuery: String = ""
@@ -377,12 +383,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             applyOrderFilters()
         }
 
-        binding.ordersContent.chipPendingOrders.setOnClickListener {
-            selectedOrderStatus = CafeOrderStatus.PENDING
-            ordersPage = 0
-            applyOrderFilters()
-        }
-
         binding.ordersContent.chipPreparingOrders.setOnClickListener {
             selectedOrderStatus = CafeOrderStatus.PREPARING
             ordersPage = 0
@@ -393,10 +393,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             selectedOrderStatus = CafeOrderStatus.COMPLETED
             ordersPage = 0
             applyOrderFilters()
-        }
-
-        binding.ordersContent.btnNewOrder.setOnClickListener {
-            showNewOrderDialog()
         }
 
         binding.ordersContent.btnOrdersFilter.setOnClickListener { anchor ->
@@ -426,15 +422,23 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private fun showOrderRowActionsMenu(order: CafeOrder, anchor: View) {
         val popup = PopupMenu(this, anchor)
         popup.menu.add(0, 1, 0, getString(R.string.order_action_view_details))
-        popup.menu.add(0, 2, 1, getString(R.string.order_action_mark_preparing))
-        popup.menu.add(0, 3, 2, getString(R.string.order_action_mark_completed))
+        when (order.status) {
+            CafeOrderStatus.PENDING -> {
+                popup.menu.add(0, 2, 1, getString(R.string.order_action_mark_preparing))
+                popup.menu.add(0, 3, 2, getString(R.string.order_action_mark_completed))
+            }
+            CafeOrderStatus.PREPARING -> {
+                popup.menu.add(0, 3, 1, getString(R.string.order_action_mark_completed))
+            }
+            CafeOrderStatus.COMPLETED -> Unit
+        }
         popup.menu.add(0, 4, 3, getString(R.string.order_action_print_receipt))
         popup.menu.add(0, 5, 4, getString(R.string.order_action_cancel))
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 1 -> showOrderItemsDialog(order)
                 2 -> updateOrderStatus(order, CafeOrderStatus.PREPARING)
-                3 -> updateOrderStatus(order, CafeOrderStatus.COMPLETED)
+                3 -> handleCompleteOrderAction(order)
                 4 -> showOrderReceiptPreview(order)
                 5 -> showRemoveOrderDialog(order)
             }
@@ -443,23 +447,92 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         popup.show()
     }
 
+    private fun handleCompleteOrderAction(order: CafeOrder) {
+        val items = order.orderedItems.ifEmpty { listOf(order.itemsSummary) }
+        if (order.status == CafeOrderStatus.PREPARING && items.size > 1) {
+            showOrderItemsDialog(order)
+        } else {
+            updateOrderStatus(order, CafeOrderStatus.COMPLETED)
+        }
+    }
+
     private fun updateOrderStatus(order: CafeOrder, newStatus: CafeOrderStatus) {
         val index = orders.indexOfFirst { it.id == order.id }
         if (index == -1) {
             return
         }
 
-        orders[index] = orders[index].copy(status = newStatus)
+        val previous = orders[index]
+        val previousCompletion = orderItemCompletion[order.id]?.toMutableSet()
+        val updated = previous.copy(
+            status = newStatus,
+            completedItemVariantIds = if (newStatus == CafeOrderStatus.COMPLETED) {
+                previous.orderedItemVariantIds.toSet()
+            } else {
+                previous.completedItemVariantIds
+            },
+            completedAtMillis = if (newStatus == CafeOrderStatus.COMPLETED) {
+                previous.completedAtMillis ?: System.currentTimeMillis()
+            } else {
+                null
+            }
+        )
+        orders[index] = updated
+
+        // Keep the per-item completion state in sync with status changes so
+        // the dialog shows the right state next time it's opened.
+        when (newStatus) {
+            CafeOrderStatus.COMPLETED -> {
+                val items = updated.orderedItems.ifEmpty { listOf(updated.itemsSummary) }
+                orderItemCompletion[updated.id] = items.indices.toMutableSet()
+            }
+            CafeOrderStatus.PENDING -> orderItemCompletion.remove(updated.id)
+            CafeOrderStatus.PREPARING -> Unit
+        }
+
         applyOrderFilters()
-        Snackbar.make(
-            binding.root,
-            getString(
-                R.string.order_status_updated_message,
-                order.id,
-                formatOrderStatus(newStatus)
-            ),
-            Snackbar.LENGTH_SHORT
-        ).show()
+
+        lifecycleScope.launch {
+            try {
+                orderRepository.updateOrderStatus(order.id, newStatus)
+                loadOrdersFromSupabase(
+                    showError = true,
+                    force = true,
+                    orderToKeepVisible = updated
+                )
+                dashboardViewModel.refreshDashboard(force = true)
+                Snackbar.make(
+                    binding.root,
+                    getString(
+                        R.string.order_status_updated_message,
+                        order.id,
+                        formatOrderStatus(newStatus)
+                    ),
+                    Snackbar.LENGTH_SHORT
+                ).show()
+            } catch (exception: Exception) {
+                val rollbackIndex = orders.indexOfFirst { it.id == previous.id }
+                if (rollbackIndex >= 0) {
+                    orders[rollbackIndex] = previous
+                } else {
+                    orders.add(previous)
+                }
+                if (previousCompletion == null) {
+                    orderItemCompletion.remove(order.id)
+                } else {
+                    orderItemCompletion[order.id] = previousCompletion
+                }
+                applyOrderFilters()
+                Snackbar.make(
+                    binding.root,
+                    getString(
+                        R.string.order_status_update_failed,
+                        exception.message ?: "Please try again."
+                    ),
+                    Snackbar.LENGTH_LONG
+                ).show()
+            }
+        }
     }
 
     private fun showRemoveOrderDialog(order: CafeOrder) {
@@ -467,13 +540,41 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             .setTitle(getString(R.string.order_cancel_dialog_title))
             .setMessage(getString(R.string.order_cancel_dialog_message, order.id, order.customerName))
             .setPositiveButton(getString(R.string.order_cancel_dialog_confirm)) { _, _ ->
+                val removedIndex = orders.indexOfFirst { it.id == order.id }
+                val removedCompletion = orderItemCompletion[order.id]?.toMutableSet()
                 orders.removeAll { it.id == order.id }
+                orderItemCompletion.remove(order.id)
                 applyOrderFilters()
-                Snackbar.make(
-                    binding.root,
-                    getString(R.string.order_removed_message, order.id),
-                    Snackbar.LENGTH_SHORT
-                ).show()
+
+                lifecycleScope.launch {
+                    try {
+                        orderRepository.deleteOrder(order.id)
+                        loadOrdersFromSupabase(showError = true, force = true)
+                        dashboardViewModel.refreshDashboard(force = true)
+                        Snackbar.make(
+                            binding.root,
+                            getString(R.string.order_removed_message, order.id),
+                            Snackbar.LENGTH_SHORT
+                        ).show()
+                    } catch (exception: Exception) {
+                        if (orders.none { it.id == order.id }) {
+                            val insertIndex = removedIndex.coerceIn(0, orders.size)
+                            orders.add(insertIndex, order)
+                        }
+                        if (removedCompletion != null) {
+                            orderItemCompletion[order.id] = removedCompletion
+                        }
+                        applyOrderFilters()
+                        Snackbar.make(
+                            binding.root,
+                            getString(
+                                R.string.order_remove_failed,
+                                exception.message ?: "Please try again."
+                            ),
+                            Snackbar.LENGTH_LONG
+                        ).show()
+                    }
+                }
             }
             .setNegativeButton(android.R.string.cancel, null)
             .showStyledDialog(this)
@@ -483,7 +584,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val receiptMessage = buildString {
             appendLine(getString(R.string.receipt_order_label) + ": " + order.id)
             appendLine(getString(R.string.customer_label) + ": " + order.customerName)
-            appendLine(getString(R.string.table_format, order.tableLabel))
             appendLine(getString(R.string.items_label) + ": " + order.itemCount)
             appendLine(getString(R.string.status_label) + ": " + formatOrderStatus(order.status))
             appendLine(getString(R.string.total_label) + ": " + formatCurrency(order.total))
@@ -532,7 +632,11 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         popup.show()
     }
 
-    private fun loadOrdersFromSupabase(showError: Boolean = false, force: Boolean = false) {
+    private fun loadOrdersFromSupabase(
+        showError: Boolean = false,
+        force: Boolean = false,
+        orderToKeepVisible: CafeOrder? = null
+    ) {
         if (isOrdersLoading) {
             return
         }
@@ -540,7 +644,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val hasFreshOrders = orders.isNotEmpty() &&
             System.currentTimeMillis() - lastOrdersLoadedAtMs < ORDERS_REFRESH_INTERVAL_MS
         if (!force && hasFreshOrders) {
-            applyOrderFilters()
+            orderToKeepVisible?.let { addOrReplaceOrder(it, reveal = true) } ?: applyOrderFilters()
             return
         }
 
@@ -550,8 +654,14 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 val fetchedOrders = orderRepository.fetchOrders()
                 orders.clear()
                 orders.addAll(fetchedOrders)
+                val visibleOrder = orderToKeepVisible?.let { savedOrder ->
+                    fetchedOrders.firstOrNull { it.id == savedOrder.id } ?: savedOrder
+                }
+                if (visibleOrder != null && orders.none { it.id == visibleOrder.id }) {
+                    orders.add(visibleOrder)
+                }
                 lastOrdersLoadedAtMs = System.currentTimeMillis()
-                applyOrderFilters()
+                visibleOrder?.let(::revealOrderInOrders) ?: applyOrderFilters()
             } catch (exception: Exception) {
                 if (showError) {
                     Snackbar.make(
@@ -649,19 +759,196 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         }
     }
 
-    private fun addOrReplaceOrder(order: CafeOrder) {
+    private fun addOrReplaceOrder(order: CafeOrder, reveal: Boolean = false) {
+        // Append so the new order joins the end of the queue. The list is
+        // ordered oldest -> newest so that the staff sees the longest-waiting
+        // customer at the top of the Orders / Preparing screens.
         orders.removeAll { it.id == order.id }
-        orders.add(0, order)
+        orders.add(order)
+        if (reveal) {
+            revealOrderInOrders(order)
+        } else {
+            applyOrderFilters()
+        }
+    }
+
+    private fun revealOrderInOrders(order: CafeOrder) {
+        selectedOrderStatus = order.status
+        orderSearchQuery = ""
+        if (binding.ordersContent.etOrderSearch.text?.isNotEmpty() == true) {
+            binding.ordersContent.etOrderSearch.setText("")
+        }
+
+        val visibleOrders = orders.filter { it.status == order.status }
+        val sortedOrders = when (orderSort) {
+            OrderSort.DEFAULT -> if (order.status == CafeOrderStatus.COMPLETED) {
+                visibleOrders.sortedByDescending { it.completedSortMillis() }
+            } else {
+                visibleOrders
+            }
+            OrderSort.TOTAL_DESC -> visibleOrders.sortedByDescending { it.total }
+            OrderSort.TOTAL_ASC -> visibleOrders.sortedBy { it.total }
+            OrderSort.ITEMS_DESC -> visibleOrders.sortedByDescending { it.itemCount }
+        }
+        val orderIndex = sortedOrders.indexOfFirst { it.id == order.id }
+        ordersPage = if (orderIndex >= 0) {
+            orderIndex / ORDERS_PAGE_SIZE
+        } else {
+            0
+        }
         applyOrderFilters()
     }
 
     private fun showOrderItemsDialog(order: CafeOrder) {
         val itemsToShow = order.orderedItems.ifEmpty { listOf(order.itemsSummary) }
-        AlertDialog.Builder(this)
+        val isInteractive = order.status == CafeOrderStatus.PREPARING
+        val completedIndexesFromDatabase = order.orderedItemVariantIds
+            .mapIndexedNotNull { index, variantId ->
+                index.takeIf { variantId in order.completedItemVariantIds }
+            }
+            .toMutableSet()
+        val savedCompletedSet = orderItemCompletion[order.id]
+            ?: if (order.status == CafeOrderStatus.COMPLETED) {
+                itemsToShow.indices.toMutableSet()
+            } else {
+                completedIndexesFromDatabase
+            }
+        val workingCompletedSet = savedCompletedSet.toMutableSet()
+
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(20.dp(), 16.dp(), 20.dp(), 8.dp())
+        }
+
+        val progressLabel = createDialogText(
+            text = "",
+            textSizeSp = 13f,
+            typeface = Typeface.DEFAULT_BOLD,
+            textColorRes = R.color.pos_text_secondary
+        )
+        container.addView(progressLabel)
+
+        val checkBoxes = mutableListOf<CheckBox>()
+
+        fun refreshProgressLabel() {
+            val prepared = workingCompletedSet.size
+            val total = itemsToShow.size
+            progressLabel.text = getString(R.string.order_item_progress_format, prepared, total)
+        }
+
+        itemsToShow.forEachIndexed { index, label ->
+            val checkBox = CheckBox(this).apply {
+                text = label
+                textSize = 14f
+                setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
+                isChecked = workingCompletedSet.contains(index)
+                isEnabled = isInteractive
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = 8.dp() }
+            }
+            checkBoxes.add(checkBox)
+            container.addView(checkBox)
+        }
+        refreshProgressLabel()
+
+        val scrollView = ScrollView(this).apply {
+            addView(container)
+        }
+
+        val builder = AlertDialog.Builder(this)
             .setTitle(getString(R.string.order_items_dialog_title, order.id))
-            .setItems(itemsToShow.toTypedArray(), null)
-            .setPositiveButton(android.R.string.ok, null)
-            .showStyledDialog(this)
+            .setView(scrollView)
+            .setNegativeButton(android.R.string.cancel, null)
+
+        if (isInteractive) {
+            builder.setPositiveButton(R.string.order_action_save_item_progress, null)
+        } else {
+            builder.setPositiveButton(android.R.string.ok, null)
+        }
+
+        val dialog = builder.showStyledDialog(this)
+
+        if (!isInteractive) {
+            return
+        }
+
+        val primaryButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+
+        fun refreshPrimaryButton() {
+            val allChecked = workingCompletedSet.size == itemsToShow.size && itemsToShow.isNotEmpty()
+            primaryButton.text = getString(
+                if (allChecked) {
+                    R.string.order_action_mark_completed
+                } else {
+                    R.string.order_action_save_item_progress
+                }
+            )
+            primaryButton.isEnabled = itemsToShow.isNotEmpty()
+        }
+        refreshPrimaryButton()
+
+        checkBoxes.forEachIndexed { index, checkBox ->
+            checkBox.setOnCheckedChangeListener { _, isChecked ->
+                if (isChecked) {
+                    workingCompletedSet.add(index)
+                } else {
+                    workingCompletedSet.remove(index)
+                }
+                refreshProgressLabel()
+                refreshPrimaryButton()
+            }
+        }
+
+        primaryButton.setOnClickListener {
+            val previousCompletion = orderItemCompletion[order.id]?.toMutableSet()
+            val completedVariantIds = workingCompletedSet
+                .mapNotNull { index -> order.orderedItemVariantIds.getOrNull(index) }
+                .toSet()
+            val updatedOrder = order.copy(completedItemVariantIds = completedVariantIds)
+            orderItemCompletion[order.id] = workingCompletedSet
+            applyOrderFilters()
+
+            lifecycleScope.launch {
+                try {
+                    if (order.orderedItemVariantIds.isNotEmpty()) {
+                        orderRepository.updateOrderItemCompletion(order.id, completedVariantIds)
+                    }
+
+                    if (workingCompletedSet.size == itemsToShow.size && itemsToShow.isNotEmpty()) {
+                        updateOrderStatus(order, CafeOrderStatus.COMPLETED)
+                    } else {
+                        loadOrdersFromSupabase(
+                            showError = true,
+                            force = true,
+                            orderToKeepVisible = updatedOrder
+                        )
+                        Snackbar.make(
+                            binding.root,
+                            getString(R.string.order_item_progress_saved_message, order.id),
+                            Snackbar.LENGTH_SHORT
+                        ).show()
+                    }
+                } catch (exception: Exception) {
+                    if (previousCompletion == null) {
+                        orderItemCompletion.remove(order.id)
+                    } else {
+                        orderItemCompletion[order.id] = previousCompletion
+                    }
+                    applyOrderFilters()
+                    Snackbar.make(
+                        binding.root,
+                        getString(
+                            R.string.order_item_progress_save_failed,
+                            exception.message ?: "Please try again."
+                        ),
+                        Snackbar.LENGTH_LONG
+                    ).show()
+                }
+            }
+            dialog.dismiss()
+        }
     }
 
     private fun showCheckoutReviewDialog() {
@@ -973,9 +1260,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             PosViewModel.OrderType.TAKE_AWAY -> getString(R.string.take_away)
             PosViewModel.OrderType.DELIVERY -> getString(R.string.delivery)
         }
-        val isDineIn = (viewModel.selectedOrderType.value ?: PosViewModel.OrderType.DINE_IN) == PosViewModel.OrderType.DINE_IN
-        receiptBinding.tableRow.visibility = if (isDineIn) View.VISIBLE else View.GONE
-        receiptBinding.tvReceiptTable.text = viewModel.tableNumber.value.orEmpty()
         receiptBinding.tvReceiptPayment.text = when (viewModel.selectedPaymentMethod.value ?: PosViewModel.PaymentMethod.CASH) {
             PosViewModel.PaymentMethod.CASH -> getString(R.string.cash)
             PosViewModel.PaymentMethod.GCASH -> getString(R.string.gcash)
@@ -1087,14 +1371,17 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 order.id,
                 order.customerName,
                 order.itemsSummary,
-                order.tableLabel,
                 order.orderedItems.joinToString(" ")
             ).joinToString(" ").lowercase(Locale.getDefault()).contains(normalizedQuery)
             matchesStatus && matchesQuery
         }
 
         val sortedOrders = when (orderSort) {
-            OrderSort.DEFAULT -> filteredOrders
+            OrderSort.DEFAULT -> if (selectedOrderStatus == CafeOrderStatus.COMPLETED) {
+                filteredOrders.sortedByDescending { it.completedSortMillis() }
+            } else {
+                filteredOrders
+            }
             OrderSort.TOTAL_DESC -> filteredOrders.sortedByDescending { it.total }
             OrderSort.TOTAL_ASC -> filteredOrders.sortedBy { it.total }
             OrderSort.ITEMS_DESC -> filteredOrders.sortedByDescending { it.itemCount }
@@ -1138,10 +1425,12 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         refreshNotificationBadges()
     }
 
+    private fun CafeOrder.completedSortMillis(): Long {
+        return completedAtMillis ?: createdAtMillis
+    }
+
     private fun updateOrderStatusCounts() {
         binding.ordersContent.tvAllOrdersCount.text = orders.size.toString()
-        binding.ordersContent.tvPendingOrdersCount.text =
-            orders.count { it.status == CafeOrderStatus.PENDING }.toString()
         binding.ordersContent.tvPreparingOrdersCount.text =
             orders.count { it.status == CafeOrderStatus.PREPARING }.toString()
         binding.ordersContent.tvCompletedOrdersCount.text =
@@ -1156,15 +1445,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             countView = binding.ordersContent.tvAllOrdersCount,
             selected = selectedOrderStatus == null,
             accentTextColorRes = R.color.pos_primary
-        )
-
-        setOrderChipState(
-            chip = binding.ordersContent.chipPendingOrders,
-            iconView = binding.ordersContent.ivPendingOrdersIcon,
-            labelView = binding.ordersContent.tvPendingOrdersLabel,
-            countView = binding.ordersContent.tvPendingOrdersCount,
-            selected = selectedOrderStatus == CafeOrderStatus.PENDING,
-            accentTextColorRes = R.color.pos_warning
         )
 
         setOrderChipState(
@@ -1224,12 +1504,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             container,
             getString(R.string.order_field_customer_name),
             ""
-        )
-        val etTableNumber = createStaffLabeledField(
-            container,
-            getString(R.string.order_field_table_number),
-            "",
-            android.text.InputType.TYPE_CLASS_NUMBER
         )
 
         val tvItemsPreview = createLabeledReadOnlyValue(
@@ -1340,7 +1614,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 val newOrder = CafeOrder(
                     id = generateNextOrderId(),
                     customerName = customerName,
-                    tableLabel = etTableNumber.text.toString().trim().ifBlank { "1" },
                     itemsSummary = itemsSummary,
                     itemCount = chosenProducts.size,
                     timeLabel = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date()),
@@ -1431,8 +1704,84 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         dashboardAlertAdapter.submitList(snapshot.alerts)
         bindDashboardMetrics(snapshot)
         bindDashboardFocus(snapshot.alerts)
+        bindDashboardRecentOrders(snapshot.recentOrders)
         updateDashboardChart(selectedDashboardPeriod, animate = false)
         refreshNotificationBadges()
+    }
+
+    private fun bindDashboardRecentOrders(recentOrders: List<DashboardRecentOrder>) {
+        val dashboardRoot = binding.dashboardContent.root
+        val container = dashboardRoot.findViewById<LinearLayout>(R.id.recentOrdersContainer) ?: return
+        val emptyHint = dashboardRoot.findViewById<TextView>(R.id.tvRecentOrdersEmptyHint)
+
+        container.removeAllViews()
+
+        if (recentOrders.isEmpty()) {
+            emptyHint?.visibility = View.VISIBLE
+            container.visibility = View.GONE
+            return
+        }
+
+        emptyHint?.visibility = View.GONE
+        container.visibility = View.VISIBLE
+
+        recentOrders.forEachIndexed { index, order ->
+            val row = LinearLayout(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(14.dp(), 12.dp(), 14.dp(), 12.dp())
+            }
+
+            row.addView(buildRecentOrderCell(order.orderNumber, weight = 1f, R.color.pos_text_primary, bold = true))
+            row.addView(buildRecentOrderCell(order.customerName, weight = 1f, R.color.pos_text_primary))
+            row.addView(buildRecentOrderCell(order.itemsPreview, weight = 0.7f, R.color.pos_text_secondary))
+            row.addView(buildRecentOrderCell(formatCurrency(order.total), weight = 0.8f, R.color.pos_text_primary, bold = true))
+            val statusColor = when (order.status.lowercase(Locale.US)) {
+                "completed" -> R.color.pos_secondary
+                "preparing" -> R.color.pos_info
+                "pending" -> R.color.pos_warning
+                else -> R.color.pos_text_secondary
+            }
+            row.addView(buildRecentOrderCell(order.status, weight = 0.7f, statusColor, bold = true))
+
+            container.addView(row)
+
+            if (index < recentOrders.lastIndex) {
+                val divider = View(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        1.dp()
+                    )
+                    setBackgroundColor(ContextCompat.getColor(this@MainActivity, R.color.pos_border))
+                }
+                container.addView(divider)
+            }
+        }
+    }
+
+    private fun buildRecentOrderCell(
+        text: String,
+        weight: Float,
+        colorRes: Int,
+        bold: Boolean = false
+    ): TextView {
+        return TextView(this).apply {
+            this.text = text
+            textSize = 13f
+            setTextColor(ContextCompat.getColor(this@MainActivity, colorRes))
+            layoutParams = LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                weight
+            )
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            if (bold) setTypeface(typeface, Typeface.BOLD)
+        }
     }
 
     private fun bindDashboardFocus(alerts: List<com.example.zejioscafese.dashboard.model.DashboardAlert>) {
@@ -2595,8 +2944,12 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             if (savedOrder != null) {
                 val receipt = pendingCheckoutReceipt
                 pendingCheckoutReceipt = null
-                addOrReplaceOrder(savedOrder)
-                loadOrdersFromSupabase(showError = false, force = true)
+                addOrReplaceOrder(savedOrder, reveal = true)
+                loadOrdersFromSupabase(
+                    showError = false,
+                    force = true,
+                    orderToKeepVisible = savedOrder
+                )
                 viewModel.refreshMenu()
                 dashboardViewModel.refreshDashboard(force = true)
                 if (receipt != null) {

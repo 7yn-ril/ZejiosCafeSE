@@ -27,7 +27,6 @@ import kotlinx.serialization.json.put
 @Serializable
 data class CheckoutOrderPayload(
     val customerName: String? = null,
-    val tableLabel: String? = null,
     val subtotal: Double,
     val tax: Double,
     val total: Double,
@@ -101,10 +100,13 @@ class OrderRepository(
 
     suspend fun fetchOrders(): List<CafeOrder> = withContext(Dispatchers.IO) {
         SupabaseSessionHelper.withJwtRetry(supabaseClient) {
+            // Ascending so the queue reads oldest-first: customer 1 (who
+            // ordered earliest) sits at the top of the Orders list and the
+            // Preparing tab, since they should be served first.
             val orderRows = supabaseClient
                 .from(ORDERS_TABLE)
                 .select {
-                    order(column = "created_at", order = Order.DESCENDING)
+                    order(column = "created_at", order = Order.ASCENDING)
                 }
                 .decodeList<OrderRowDto>()
 
@@ -121,9 +123,8 @@ class OrderRepository(
                 .groupBy(OrderItemRowDto::orderId)
 
             orderRows.map { row ->
-                val orderedItems = itemsByOrderId[row.orderId]
-                    .orEmpty()
-                    .map { it.toDisplayLabel() }
+                val orderItemRows = itemsByOrderId[row.orderId].orEmpty()
+                val orderedItems = orderItemRows.map { it.toDisplayLabel() }
                 val customerName = row.orderCustomerName
                     ?.trim()
                     ?.takeIf(String::isNotBlank)
@@ -132,15 +133,120 @@ class OrderRepository(
                 CafeOrder(
                     id = row.orderNumber,
                     customerName = customerName,
-                    tableLabel = row.orderTableLabel.orEmpty(),
                     itemsSummary = orderedItems.joinToString(", ").ifBlank { EMPTY_ORDER_SUMMARY },
-                    itemCount = itemsByOrderId[row.orderId].orEmpty().sumOf(OrderItemRowDto::orderItemQuantity),
+                    itemCount = orderItemRows.sumOf(OrderItemRowDto::orderItemQuantity),
                     timeLabel = row.createdAt.toTimeLabel(),
                     status = row.orderStatus.toCafeOrderStatus(),
                     total = row.orderTotal,
                     initials = customerName.toInitials(),
-                    orderedItems = orderedItems
+                    orderedItems = orderedItems,
+                    orderedItemVariantIds = orderItemRows.map(OrderItemRowDto::productVariantId),
+                    completedItemVariantIds = orderItemRows
+                        .filter(OrderItemRowDto::orderItemIsCompleted)
+                        .map(OrderItemRowDto::productVariantId)
+                        .toSet(),
+                    createdAtMillis = row.createdAt.toEpochMillis(),
+                    completedAtMillis = row.orderCompletedAt?.toEpochMillis()
                 )
+            }
+        }
+    }
+
+    suspend fun updateOrderStatus(orderNumber: String, status: CafeOrderStatus) = withContext(Dispatchers.IO) {
+        SupabaseSessionHelper.withJwtRetry(supabaseClient) {
+            if (status == CafeOrderStatus.COMPLETED) {
+                supabaseClient.postgrest.rpc(
+                    COMPLETE_ORDER_RPC,
+                    buildJsonObject {
+                        put("p_order_number", orderNumber)
+                    }
+                )
+            } else {
+                supabaseClient
+                    .from(ORDERS_TABLE)
+                    .update(
+                        {
+                            set("order_status", status.toDatabaseValue())
+                        }
+                    ) {
+                        filter {
+                            eq("order_number", orderNumber)
+                        }
+                    }
+            }
+        }
+    }
+
+    suspend fun deleteOrder(orderNumber: String) = withContext(Dispatchers.IO) {
+        SupabaseSessionHelper.withJwtRetry(supabaseClient) {
+            val orderId = supabaseClient
+                .from(ORDERS_TABLE)
+                .select {
+                    filter {
+                        eq("order_number", orderNumber)
+                    }
+                }
+                .decodeSingle<OrderIdentityDto>()
+                .orderId
+
+            supabaseClient
+                .from(ORDER_ITEMS_TABLE)
+                .delete {
+                    filter {
+                        eq("order_id", orderId)
+                    }
+                }
+
+            supabaseClient
+                .from(ORDERS_TABLE)
+                .delete {
+                    filter {
+                        eq("order_id", orderId)
+                    }
+                }
+        }
+    }
+
+    suspend fun updateOrderItemCompletion(
+        orderNumber: String,
+        completedVariantIds: Set<String>
+    ) = withContext(Dispatchers.IO) {
+        SupabaseSessionHelper.withJwtRetry(supabaseClient) {
+            val orderId = supabaseClient
+                .from(ORDERS_TABLE)
+                .select {
+                    filter {
+                        eq("order_number", orderNumber)
+                    }
+                }
+                .decodeSingle<OrderIdentityDto>()
+                .orderId
+
+            supabaseClient
+                .from(ORDER_ITEMS_TABLE)
+                .update(
+                    {
+                        set("order_item_is_completed", false)
+                    }
+                ) {
+                    filter {
+                        eq("order_id", orderId)
+                    }
+                }
+
+            completedVariantIds.forEach { productVariantId ->
+                supabaseClient
+                    .from(ORDER_ITEMS_TABLE)
+                    .update(
+                        {
+                            set("order_item_is_completed", true)
+                        }
+                    ) {
+                        filter {
+                            eq("order_id", orderId)
+                            eq("product_variant_id", productVariantId)
+                        }
+                    }
             }
         }
     }
@@ -158,7 +264,6 @@ class OrderRepository(
         suggestedOrderNumber: String?
     ) = buildJsonObject {
         putNullableText("p_customer_name", payload.customerName?.trim()?.takeIf(String::isNotBlank))
-        putNullableText("p_table_label", payload.tableLabel?.trim()?.takeIf(String::isNotBlank))
         putNullableText("p_requested_order_number", suggestedOrderNumber)
         put("p_payment_method", payload.paymentMethod.lowercase(Locale.US))
         put("p_status", payload.status.lowercase(Locale.US))
@@ -175,14 +280,15 @@ class OrderRepository(
         return CafeOrder(
             id = rpcResult.orderNumber,
             customerName = customerName,
-            tableLabel = tableLabel.orEmpty(),
             itemsSummary = orderedItems.joinToString(", ").ifBlank { EMPTY_ORDER_SUMMARY },
             itemCount = items.sumOf(CheckoutOrderLine::quantity),
             timeLabel = rpcResult.createdAt.toTimeLabel(),
             status = status.toCafeOrderStatus(),
             total = rpcResult.orderTotal,
             initials = customerName.toInitials(),
-            orderedItems = orderedItems
+            orderedItems = orderedItems,
+            orderedItemVariantIds = items.map(CheckoutOrderLine::productVariantId),
+            createdAtMillis = rpcResult.createdAt.toEpochMillis()
         )
     }
 
@@ -226,6 +332,14 @@ class OrderRepository(
         }
     }
 
+    private fun CafeOrderStatus.toDatabaseValue(): String {
+        return when (this) {
+            CafeOrderStatus.PENDING -> "pending"
+            CafeOrderStatus.PREPARING -> "preparing"
+            CafeOrderStatus.COMPLETED -> "completed"
+        }
+    }
+
     private fun String.toInitials(): String {
         val parts = trim().split("\\s+".toRegex()).filter(String::isNotBlank)
         return when {
@@ -248,6 +362,14 @@ class OrderRepository(
             OffsetDateTime.parse(this).toTimeLabel()
         } catch (_: Exception) {
             ""
+        }
+    }
+
+    private fun String.toEpochMillis(): Long {
+        return try {
+            OffsetDateTime.parse(this).toInstant().toEpochMilli()
+        } catch (_: Exception) {
+            0L
         }
     }
 
@@ -275,12 +397,12 @@ class OrderRepository(
         val orderNumber: String,
         @SerialName("order_customer_name")
         val orderCustomerName: String? = null,
-        @SerialName("order_table_label")
-        val orderTableLabel: String? = null,
         @SerialName("order_total")
         val orderTotal: Double,
         @SerialName("order_status")
         val orderStatus: String,
+        @SerialName("order_completed_at")
+        val orderCompletedAt: String? = null,
         @SerialName("created_at")
         val createdAt: String
     )
@@ -289,12 +411,22 @@ class OrderRepository(
     private data class OrderItemRowDto(
         @SerialName("order_id")
         val orderId: String,
+        @SerialName("product_variant_id")
+        val productVariantId: String,
         @SerialName("order_item_product_name")
         val orderItemProductName: String,
         @SerialName("order_item_variant_name")
         val orderItemVariantName: String,
         @SerialName("order_item_quantity")
-        val orderItemQuantity: Int
+        val orderItemQuantity: Int,
+        @SerialName("order_item_is_completed")
+        val orderItemIsCompleted: Boolean = false
+    )
+
+    @Serializable
+    private data class OrderIdentityDto(
+        @SerialName("order_id")
+        val orderId: String
     )
 
     @Serializable
@@ -315,6 +447,7 @@ class OrderRepository(
             DateTimeFormatter.ofPattern("hh:mm a", Locale.getDefault())
         const val PEEK_NEXT_ORDER_RPC = "peek_next_pos_order_number"
         const val PROCESS_CHECKOUT_RPC = "process_checkout_order"
+        const val COMPLETE_ORDER_RPC = "complete_order"
     }
 }
 

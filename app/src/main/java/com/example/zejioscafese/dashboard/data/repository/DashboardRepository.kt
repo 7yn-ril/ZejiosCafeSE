@@ -9,8 +9,10 @@ import com.example.zejioscafese.dashboard.model.DashboardChartPoint
 import com.example.zejioscafese.dashboard.model.DashboardInsight
 import com.example.zejioscafese.dashboard.model.DashboardMetric
 import com.example.zejioscafese.dashboard.model.DashboardPeriod
+import com.example.zejioscafese.dashboard.model.DashboardRecentOrder
 import com.example.zejioscafese.dashboard.model.DashboardSnapshot
 import com.example.zejioscafese.dashboard.model.DashboardTopItem
+import com.example.zejioscafese.pos.data.local.ProductImageResolver
 import com.example.zejioscafese.pos.data.remote.dto.ProductVariantStockDto
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
@@ -153,7 +155,8 @@ class DashboardRepository(
                     name = displayName,
                     orders = rows.size,
                     revenue = rows.sumOf(OrderItemRowDto::lineTotal),
-                    imageUrl = metadata?.productImageUrl.orEmpty()
+                    imageUrl = ProductImageResolver.resolve(metadata?.productName ?: firstRow.productName)
+                        ?: metadata?.productImageUrl.orEmpty()
                 )
             }
             .sortedWith(
@@ -223,6 +226,21 @@ class DashboardRepository(
             DashboardPeriod.MONTHLY to buildMonthlyChart(completedOrders, lastTwelveMonthsStart, today)
         )
 
+        val itemsByOrderId = rawData.orderItems.groupBy(OrderItemRowDto::orderId)
+        val recentOrders = rawData.orders
+            .sortedByDescending(OrderRecord::createdAt)
+            .take(MAX_RECENT_ORDERS)
+            .map { record ->
+                val items = itemsByOrderId[record.id].orEmpty()
+                DashboardRecentOrder(
+                    orderNumber = record.orderNumber,
+                    customerName = record.customerName,
+                    itemsPreview = buildRecentItemsPreview(items),
+                    total = record.total,
+                    status = formatStatusLabel(record.status)
+                )
+            }
+
         return DashboardSnapshot(
             salesMetric = buildComparisonMetric(
                 title = "Total Sales Today",
@@ -266,8 +284,24 @@ class DashboardRepository(
             insights = insights,
             topItems = topItems,
             alerts = alerts,
-            charts = charts
+            charts = charts,
+            recentOrders = recentOrders
         )
+    }
+
+    private fun buildRecentItemsPreview(items: List<OrderItemRowDto>): String {
+        val labels = items.map { it.displayName() }
+        return when {
+            labels.isEmpty() -> NO_ITEMS_PREVIEW
+            labels.size == 1 -> labels.first()
+            else -> "${labels.first()} + ${labels.size - 1} more"
+        }
+    }
+
+    private fun formatStatusLabel(status: String): String {
+        return status.replaceFirstChar { character ->
+            if (character.isLowerCase()) character.titlecase(Locale.getDefault()) else character.toString()
+        }
     }
 
     private suspend fun fetchOrders(): List<OrderRowDto> {
@@ -335,9 +369,16 @@ class DashboardRepository(
             null
         }
 
+        val resolvedCustomer = orderCustomerName
+            ?.trim()
+            ?.takeIf(String::isNotBlank)
+            ?: DEFAULT_CUSTOMER_NAME
+
         return zonedDateTime?.let { parsedTime ->
             OrderRecord(
                 id = orderId,
+                orderNumber = orderNumber,
+                customerName = resolvedCustomer,
                 createdAt = parsedTime,
                 localDate = parsedTime.toLocalDate(),
                 total = orderTotal,
@@ -509,6 +550,8 @@ class DashboardRepository(
 
     private data class OrderRecord(
         val id: String,
+        val orderNumber: String,
+        val customerName: String,
         val createdAt: java.time.ZonedDateTime,
         val localDate: LocalDate,
         val total: Double,
@@ -521,6 +564,10 @@ class DashboardRepository(
     private data class OrderRowDto(
         @SerialName("order_id")
         val orderId: String,
+        @SerialName("order_number")
+        val orderNumber: String,
+        @SerialName("order_customer_name")
+        val orderCustomerName: String? = null,
         @SerialName("created_at")
         val createdAt: String,
         @SerialName("order_total")
@@ -589,7 +636,10 @@ class DashboardRepository(
 
         const val MAX_ALERT_COUNT = 3
         const val MAX_TOP_ITEMS = 4
+        const val MAX_RECENT_ORDERS = 10
         const val CRITICAL_THRESHOLD_RATIO = 0.5
+        const val DEFAULT_CUSTOMER_NAME = "Walk-in"
+        const val NO_ITEMS_PREVIEW = "No items"
 
         val CHART_HOUR_FORMATTER: DateTimeFormatter =
             DateTimeFormatter.ofPattern("ha", Locale.getDefault())

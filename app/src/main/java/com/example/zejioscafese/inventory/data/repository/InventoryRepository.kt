@@ -95,7 +95,9 @@ class InventoryRepository(
                     ingredientCurrentStock = ingredient.currentStock,
                     ingredientMinimumStock = ingredient.minimumStock,
                     ingredientCostPerUnit = ingredient.costPerUnit,
-                    ingredientLastRestockedAt = currentTimestamp()
+                    ingredientLastRestockedAt = currentTimestamp(),
+                    ingredientMlPerServing = ingredient.mlPerServing,
+                    ingredientMlPerBottle = ingredient.mlPerBottle
                 )
             )
     }
@@ -113,6 +115,8 @@ class InventoryRepository(
                     set("ingredient_current_stock", ingredient.currentStock)
                     set("ingredient_minimum_stock", ingredient.minimumStock)
                     set("ingredient_cost_per_unit", ingredient.costPerUnit)
+                    set("ingredient_ml_per_serving", ingredient.mlPerServing)
+                    set("ingredient_ml_per_bottle", ingredient.mlPerBottle)
                 }
             ) {
                 filter {
@@ -430,7 +434,11 @@ class InventoryRepository(
         @SerialName("ingredient_cost_per_unit")
         val ingredientCostPerUnit: Double,
         @SerialName("ingredient_last_restocked_at")
-        val ingredientLastRestockedAt: String
+        val ingredientLastRestockedAt: String,
+        @SerialName("ingredient_ml_per_serving")
+        val ingredientMlPerServing: Double? = null,
+        @SerialName("ingredient_ml_per_bottle")
+        val ingredientMlPerBottle: Double? = null
     )
 
     @Serializable

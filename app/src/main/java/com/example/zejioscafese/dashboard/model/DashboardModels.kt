@@ -19,7 +19,8 @@ data class DashboardSnapshot(
     val insights: List<DashboardInsight>,
     val topItems: List<DashboardTopItem>,
     val alerts: List<DashboardAlert>,
-    val charts: Map<DashboardPeriod, List<DashboardChartPoint>>
+    val charts: Map<DashboardPeriod, List<DashboardChartPoint>>,
+    val recentOrders: List<DashboardRecentOrder>
 ) {
 
     companion object {
@@ -59,11 +60,20 @@ data class DashboardSnapshot(
                 insights = emptyList(),
                 topItems = emptyList(),
                 alerts = emptyList(),
-                charts = emptyCharts
+                charts = emptyCharts,
+                recentOrders = emptyList()
             )
         }
     }
 }
+
+data class DashboardRecentOrder(
+    val orderNumber: String,
+    val customerName: String,
+    val itemsPreview: String,
+    val total: Double,
+    val status: String
+)
 
 data class DashboardInsight(
     val title: String,

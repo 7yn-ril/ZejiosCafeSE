@@ -306,6 +306,16 @@ class InventoryViewModel(
         return allIngredients.toList()
     }
 
+    fun getIngredientCategoriesForEditor(): List<String> {
+        val existingCategories = allIngredients
+            .map(Ingredient::category)
+            .filter(String::isNotBlank)
+
+        return (DEFAULT_INGREDIENT_CATEGORIES + existingCategories)
+            .distinct()
+            .sorted()
+    }
+
     fun getProductCategoriesForEditor(): List<ProductCategoryOption> {
         return productCategories.toList()
     }
@@ -509,6 +519,17 @@ class InventoryViewModel(
         const val INGREDIENT_ID_PREFIX = "ING-"
         const val INVENTORY_PAGE_SIZE = 8
         const val INVENTORY_REFRESH_INTERVAL_MS = 60_000L
+        val DEFAULT_INGREDIENT_CATEGORIES = listOf(
+            "Beverages",
+            "Dairy",
+            "Dry Goods",
+            "Frozen & Sides",
+            "Pantry",
+            "Powders & Mixes",
+            "Produce",
+            "Proteins",
+            "Syrups & Sauces"
+        )
     }
 
     private data class InventorySnapshot(

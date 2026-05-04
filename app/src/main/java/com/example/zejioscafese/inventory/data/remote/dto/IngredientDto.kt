@@ -25,7 +25,11 @@ data class IngredientDto(
     @SerialName("ingredient_cost_per_unit")
     val ingredientCostPerUnit: Double,
     @SerialName("ingredient_last_restocked_at")
-    val ingredientLastRestockedAt: String? = null
+    val ingredientLastRestockedAt: String? = null,
+    @SerialName("ingredient_ml_per_serving")
+    val ingredientMlPerServing: Double? = null,
+    @SerialName("ingredient_ml_per_bottle")
+    val ingredientMlPerBottle: Double? = null
 ) {
 
     fun toIngredient(): Ingredient {
@@ -37,7 +41,9 @@ data class IngredientDto(
             currentStock = ingredientCurrentStock,
             minimumStock = ingredientMinimumStock,
             costPerUnit = ingredientCostPerUnit,
-            lastRestocked = ingredientLastRestockedAt.toDisplayDate()
+            lastRestocked = ingredientLastRestockedAt.toDisplayDate(),
+            mlPerServing = ingredientMlPerServing?.takeIf { it > 0.0 },
+            mlPerBottle = ingredientMlPerBottle?.takeIf { it > 0.0 }
         )
     }
 

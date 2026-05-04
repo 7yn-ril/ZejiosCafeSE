@@ -46,11 +46,6 @@ class OrderManagementAdapter(
 
             binding.tvOrderId.text = item.id
             binding.tvOrderCustomerName.text = item.customerName
-            binding.tvOrderCustomerTable.text = if (item.tableLabel.isBlank()) {
-                context.getString(R.string.order_walk_in_label)
-            } else {
-                context.getString(R.string.table_format, item.tableLabel)
-            }
             binding.tvOrderTime.text = item.timeLabel
             binding.tvOrderStatus.text = context.getString(label)
             binding.tvOrderTotal.text = context.getString(R.string.currency_format, item.total)
@@ -77,13 +72,20 @@ class OrderManagementAdapter(
             } else {
                 primaryItemLabel
             }
-            binding.tvOrderItemCount.text = if (hasMultipleItems) {
+            val isPreparing = item.status == CafeOrderStatus.PREPARING
+            binding.tvOrderItemCount.text = if (hasMultipleItems || isPreparing) {
                 context.getString(R.string.order_items_tap_to_view, item.itemCount)
             } else {
                 context.getString(R.string.items_count_format, item.itemCount)
             }
+            // Tap opens the per-item completion dialog. We surface it for any
+            // multi-item order (so the items are inspectable) and for any
+            // PREPARING order (so single-item PREPARING tickets can be
+            // checked off the same way as multi-item ones).
+            val tappable = item.orderedItems.isNotEmpty() && (hasMultipleItems || isPreparing)
+            val highlightAsAction = hasMultipleItems || isPreparing
 
-            val orderItemClickListener = if (hasMultipleItems) {
+            val orderItemClickListener = if (tappable) {
                 View.OnClickListener { onOrderItemsClick(item) }
             } else {
                 null
@@ -91,12 +93,12 @@ class OrderManagementAdapter(
 
             binding.tvOrderItems.setOnClickListener(orderItemClickListener)
             binding.tvOrderItemCount.setOnClickListener(orderItemClickListener)
-            binding.tvOrderItems.isClickable = hasMultipleItems
-            binding.tvOrderItemCount.isClickable = hasMultipleItems
-            binding.tvOrderItems.isFocusable = hasMultipleItems
-            binding.tvOrderItemCount.isFocusable = hasMultipleItems
-            binding.tvOrderItems.setTextColor(if (hasMultipleItems) actionTextColor else defaultTextColor)
-            binding.tvOrderItems.setTypeface(null, if (hasMultipleItems) Typeface.BOLD else Typeface.NORMAL)
+            binding.tvOrderItems.isClickable = tappable
+            binding.tvOrderItemCount.isClickable = tappable
+            binding.tvOrderItems.isFocusable = tappable
+            binding.tvOrderItemCount.isFocusable = tappable
+            binding.tvOrderItems.setTextColor(if (highlightAsAction) actionTextColor else defaultTextColor)
+            binding.tvOrderItems.setTypeface(null, if (highlightAsAction) Typeface.BOLD else Typeface.NORMAL)
 
             binding.btnOrderActions.setOnClickListener { anchor ->
                 onOrderActionClick(item, anchor)

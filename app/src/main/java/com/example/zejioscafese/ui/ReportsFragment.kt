@@ -17,7 +17,7 @@ import androidx.fragment.app.Fragment
 import com.example.zejioscafese.R
 import com.example.zejioscafese.databinding.FragmentReportsBinding
 import com.example.zejioscafese.pos.data.model.CategorySalesRecord
-import com.example.zejioscafese.reports.data.model.ReportTransaction
+import com.example.zejioscafese.pos.data.model.ProductSalesRecord
 import com.example.zejioscafese.ui.showStyledDialog
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -112,16 +112,10 @@ class ReportsFragment : Fragment() {
             appendLine(getString(R.string.reports_export_revenue_summary, revenueText))
             appendLine(getString(R.string.reports_export_orders_summary, viewModel.totalOrders.value ?: 0))
             appendLine(getString(R.string.reports_export_average_summary, averageText))
-            appendLine(
-                getString(
-                    R.string.reports_export_best_category_summary,
-                    viewModel.bestCategory.value ?: getString(R.string.reports_best_seller_empty)
-                )
-            )
             append(
                 getString(
-                    R.string.reports_export_transactions_summary,
-                    viewModel.transactions.value?.size ?: 0
+                    R.string.reports_export_best_product_summary,
+                    viewModel.bestProduct.value ?: getString(R.string.reports_best_seller_empty)
                 )
             )
         }
@@ -162,8 +156,8 @@ class ReportsFragment : Fragment() {
             binding.tvReportAvgOrder.text = String.format(Locale.getDefault(), "PHP %,.2f", avg)
         }
 
-        viewModel.bestCategory.observe(viewLifecycleOwner) { category ->
-            binding.tvBestCategory.text = category
+        viewModel.bestProduct.observe(viewLifecycleOwner) { product ->
+            binding.tvBestCategory.text = product
         }
 
         viewModel.selectedRange.observe(viewLifecycleOwner) { range ->
@@ -178,8 +172,8 @@ class ReportsFragment : Fragment() {
             buildCategoryBreakdown(categories)
         }
 
-        viewModel.transactions.observe(viewLifecycleOwner) { transactions ->
-            buildTransactionTable(transactions)
+        viewModel.salesByProduct.observe(viewLifecycleOwner) { products ->
+            buildProductBreakdown(products)
         }
 
         viewModel.reportError.observe(viewLifecycleOwner) { errorMessage ->
@@ -330,66 +324,82 @@ class ReportsFragment : Fragment() {
         }
     }
 
-    private fun buildTransactionTable(transactions: List<ReportTransaction>) {
-        val container = binding.transactionTableBody
+    private fun buildProductBreakdown(products: List<ProductSalesRecord>) {
+        val container = binding.productBreakdownContainer
         container.removeAllViews()
         val ctx = requireContext()
 
-        if (transactions.isEmpty()) {
+        if (products.isEmpty()) {
             container.addView(
                 TextView(ctx).apply {
-                    text = getString(R.string.reports_empty_transactions)
+                    text = getString(R.string.reports_empty_products)
                     textSize = 13f
                     setTextColor(ContextCompat.getColor(ctx, R.color.pos_text_secondary))
-                    setPadding(dpToPx(12), dpToPx(14), dpToPx(12), dpToPx(6))
                 }
             )
             return
         }
 
-        transactions.forEachIndexed { index, tx ->
-            // Row
-            val row = LinearLayout(ctx).apply {
+        val maxRevenue = products.maxOfOrNull { it.totalRevenue } ?: 1.0
+
+        products.forEachIndexed { index, record ->
+            val rowLayout = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(0, dpToPx(6), 0, dpToPx(6))
+            }
+
+            val labelRow = LinearLayout(ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
-                setPadding(dpToPx(12), dpToPx(10), dpToPx(12), dpToPx(10))
+                gravity = android.view.Gravity.CENTER_VERTICAL
             }
 
-            row.addView(createTableCell(tx.orderId, 1f, R.color.pos_text_primary))
-            row.addView(createTableCell(tx.items, 1.5f, R.color.pos_text_secondary))
-            row.addView(createTableCell(
-                String.format(Locale.getDefault(), "PHP %,.2f", tx.total),
-                1f, R.color.pos_text_primary
-            ))
-            row.addView(createTableCell(
-                tx.status,
-                0.8f,
-                if (tx.status == "Completed") R.color.pos_secondary else R.color.pos_primary
-            ))
-            row.addView(createTableCell(tx.date, 1f, R.color.pos_text_secondary))
+            val nameLabel = TextView(ctx).apply {
+                text = record.productName
+                textSize = 13f
+                setTextColor(ContextCompat.getColor(ctx, R.color.pos_text_primary))
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            }
+            labelRow.addView(nameLabel)
 
-            container.addView(row)
+            val statsLabel = TextView(ctx).apply {
+                text = String.format(
+                    Locale.getDefault(),
+                    "PHP %,.2f  ·  %d sold  ·  %.1f%%",
+                    record.totalRevenue,
+                    record.itemsSold,
+                    record.percentageOfTotal
+                )
+                textSize = 12f
+                setTextColor(ContextCompat.getColor(ctx, R.color.pos_text_secondary))
+            }
+            labelRow.addView(statsLabel)
+            rowLayout.addView(labelRow)
 
-            // Divider (skip after last)
-            if (index < transactions.lastIndex) {
-                val divider = View(ctx).apply {
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(1)
-                    )
-                    setBackgroundColor(ContextCompat.getColor(ctx, R.color.pos_chip_bg))
+            val barTrack = FrameLayout(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(10)
+                ).apply { topMargin = dpToPx(4) }
+                setBackgroundResource(R.drawable.bg_stock_bar_track)
+            }
+
+            val barFill = View(ctx).apply {
+                val ratio = record.totalRevenue / maxRevenue
+                layoutParams = FrameLayout.LayoutParams(0, FrameLayout.LayoutParams.MATCH_PARENT)
+                setBackgroundResource(R.drawable.bg_stock_bar_fill)
+                val color = fallbackCategoryPalette[index % fallbackCategoryPalette.size]
+                backgroundTintList = ColorStateList.valueOf(color)
+
+                post {
+                    val params = layoutParams as FrameLayout.LayoutParams
+                    params.width = (barTrack.width * ratio).toInt()
+                    layoutParams = params
                 }
-                container.addView(divider)
             }
-        }
-    }
-
-    private fun createTableCell(text: String, weight: Float, colorRes: Int): TextView {
-        return TextView(requireContext()).apply {
-            this.text = text
-            this.textSize = 13f
-            setTextColor(ContextCompat.getColor(requireContext(), colorRes))
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, weight)
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
+            barTrack.addView(barFill)
+            rowLayout.addView(barTrack)
+            container.addView(rowLayout)
         }
     }
 

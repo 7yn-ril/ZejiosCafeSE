@@ -13,3 +13,22 @@
 .externalNativeBuild
 .cxx
 /.gradle-runner
+
+# Local Gradle/Android homes used by sandboxed builds
+/.gradle-user-home/
+/.gradle-user/
+/.android-home/
+
+# Local IDE and Kotlin daemon state
+/.kotlin/
+/.vscode/
+
+# Local diagnostics, screenshots, and temporary UI dumps
+/build_log*.txt
+/build_output.txt
+/compile_errors.txt
+/errors.txt
+/emulator_capture*.png
+/tmp_*.png
+/tmp_*.xml
+/null

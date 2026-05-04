@@ -72,6 +72,21 @@
             android:textStyle="bold"
             tools:text="12.5 kg" />
 
+        <!-- Servings breakdown (only visible for ml ingredients with a
+             configured per-serving size). -->
+        <TextView
+            android:id="@+id/tvServings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
+            android:textColor="@color/pos_text_secondary"
+            android:visibility="gone"
+            tools:text="≈ 400 servings · 5 ml each"
+            tools:visibility="visible" />
+
         <!-- Stock-level progress bar -->
         <FrameLayout
             android:layout_width="match_parent"

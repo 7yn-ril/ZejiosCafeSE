@@ -23,10 +23,9 @@
 
         <!-- ─────────────────────────────────────────────────────────────
              Section A — Action bar (POS-style)
-             Search input is a standalone field; Filter and New Order are
-             sibling buttons sitting beside it, not wrapped inside the
-             same container. All three are 56dp tall so they line up
-             flush along their top and bottom edges.
+             Search input is a standalone field with the Filter button
+             sitting beside it. Both are 56dp tall so they line up flush
+             along their top and bottom edges.
              ───────────────────────────────────────────────────────────── -->
         <LinearLayout
             android:layout_width="match_parent"
@@ -86,29 +85,6 @@
                 app:iconTint="@color/pos_primary"
                 app:strokeColor="@color/pos_primary"
                 app:strokeWidth="1dp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnNewOrder"
-                style="@style/Widget.Material3.Button"
-                android:layout_width="wrap_content"
-                android:layout_height="@dimen/search_height"
-                android:layout_marginStart="12dp"
-                android:ellipsize="end"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:maxLines="1"
-                android:minWidth="140dp"
-                android:text="@string/new_order"
-                android:textAllCaps="false"
-                android:textColor="@color/white"
-                android:textSize="12sp"
-                app:backgroundTint="@color/pos_secondary"
-                app:cornerRadius="18dp"
-                app:icon="@drawable/ic_add_18"
-                app:iconGravity="textStart"
-                app:iconPadding="4dp"
-                app:iconSize="16dp"
-                app:iconTint="@color/white" />
         </LinearLayout>
 
         <!-- ─────────────────────────────────────────────────────────────
@@ -176,61 +152,6 @@
                     android:text="@string/all_orders_count"
                     android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
                     android:textColor="@color/pos_primary" />
-            </LinearLayout>
-
-            <Space
-                android:layout_width="@dimen/content_inline_gap"
-                android:layout_height="1dp" />
-
-            <LinearLayout
-                android:id="@+id/chipPendingOrders"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:background="@drawable/bg_chip_unselected"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center_vertical"
-                android:minHeight="64dp"
-                android:orientation="horizontal"
-                android:paddingStart="18dp"
-                android:paddingTop="14dp"
-                android:paddingEnd="14dp"
-                android:paddingBottom="14dp">
-
-                <ImageView
-                    android:id="@+id/ivPendingOrdersIcon"
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
-                    android:src="@drawable/ic_clock_24"
-                    app:tint="@color/pos_warning" />
-
-                <TextView
-                    android:id="@+id/tvPendingOrdersLabel"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:layout_weight="1"
-                    android:text="@string/pending"
-                    android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                    android:textColor="@color/pos_text_primary"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/tvPendingOrdersCount"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/bg_page_button"
-                    android:gravity="center"
-                    android:minWidth="32dp"
-                    android:paddingStart="10dp"
-                    android:paddingTop="4dp"
-                    android:paddingEnd="10dp"
-                    android:paddingBottom="4dp"
-                    android:text="@string/pending_orders_count"
-                    android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
-                    android:textColor="@color/pos_warning"
-                    android:textStyle="bold" />
             </LinearLayout>
 
             <Space

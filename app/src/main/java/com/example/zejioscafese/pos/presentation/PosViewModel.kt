@@ -102,9 +102,6 @@ class PosViewModel(
     private val _selectedOrderType = MutableLiveData(OrderType.DINE_IN)
     val selectedOrderType: LiveData<OrderType> = _selectedOrderType
 
-    private val _tableNumber = MutableLiveData("01")
-    val tableNumber: LiveData<String> = _tableNumber
-
     private val _isMenuLoading = MutableLiveData(false)
     val isMenuLoading: LiveData<Boolean> = _isMenuLoading
 
@@ -193,10 +190,6 @@ class PosViewModel(
         _selectedOrderType.value = type
     }
 
-    fun setTableNumber(table: String) {
-        _tableNumber.value = table
-    }
-
     fun checkout(customerName: String? = null) {
         val itemsToCheckout = _orderItems.value.orEmpty()
         if (itemsToCheckout.isEmpty() || _isCheckoutInProgress.value == true) {
@@ -217,7 +210,7 @@ class PosViewModel(
                         tax = _tax.value ?: 0.0,
                         total = _total.value ?: 0.0,
                         paymentMethod = (_selectedPaymentMethod.value ?: PaymentMethod.CASH).name.lowercase(Locale.US),
-                        status = "completed",
+                        status = "preparing",
                         items = buildCheckoutLines(itemsToCheckout)
                     ),
                     suggestedOrderNumber = currentOrderNumber

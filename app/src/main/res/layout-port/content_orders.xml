@@ -53,59 +53,29 @@
                     android:textSize="14sp" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <LinearLayout
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnOrdersFilter"
+                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:layout_marginTop="12dp"
-                android:orientation="horizontal">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnOrdersFilter"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_weight="1"
-                    android:ellipsize="end"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:maxLines="1"
-                    android:text="@string/filter_sort"
-                    android:textAllCaps="false"
-                    android:textColor="@color/pos_primary"
-                    android:textSize="12sp"
-                    app:backgroundTint="@color/white"
-                    app:cornerRadius="18dp"
-                    app:icon="@drawable/ic_filter_24"
-                    app:iconGravity="textStart"
-                    app:iconPadding="4dp"
-                    app:iconSize="16dp"
-                    app:iconTint="@color/pos_primary"
-                    app:strokeColor="@color/pos_primary"
-                    app:strokeWidth="1dp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnNewOrder"
-                    style="@style/Widget.Material3.Button"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_marginStart="@dimen/content_inline_gap"
-                    android:layout_weight="1"
-                    android:ellipsize="end"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:maxLines="1"
-                    android:text="@string/new_order"
-                    android:textAllCaps="false"
-                    android:textColor="@color/white"
-                    android:textSize="12sp"
-                    app:backgroundTint="@color/pos_secondary"
-                    app:cornerRadius="18dp"
-                    app:icon="@drawable/ic_add_18"
-                    app:iconGravity="textStart"
-                    app:iconPadding="4dp"
-                    app:iconSize="16dp"
-                    app:iconTint="@color/white" />
-            </LinearLayout>
+                android:ellipsize="end"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:maxLines="1"
+                android:text="@string/filter_sort"
+                android:textAllCaps="false"
+                android:textColor="@color/pos_primary"
+                android:textSize="12sp"
+                app:backgroundTint="@color/white"
+                app:cornerRadius="18dp"
+                app:icon="@drawable/ic_filter_24"
+                app:iconGravity="textStart"
+                app:iconPadding="4dp"
+                app:iconSize="16dp"
+                app:iconTint="@color/pos_primary"
+                app:strokeColor="@color/pos_primary"
+                app:strokeWidth="1dp" />
         </LinearLayout>
 
         <!-- Status pills wrapped in a white outlined container, scrolls horizontally -->
@@ -169,57 +139,6 @@
                         android:text="@string/all_orders_count"
                         android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
                         android:textColor="@color/pos_primary" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/chipPendingOrders"
-                    android:layout_width="160dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
-                    android:background="@drawable/bg_chip_unselected"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:minHeight="56dp"
-                    android:orientation="horizontal"
-                    android:paddingStart="16dp"
-                    android:paddingTop="10dp"
-                    android:paddingEnd="14dp"
-                    android:paddingBottom="10dp">
-
-                    <ImageView
-                        android:id="@+id/ivPendingOrdersIcon"
-                        android:layout_width="18dp"
-                        android:layout_height="18dp"
-                        android:src="@drawable/ic_clock_24"
-                        app:tint="@color/pos_warning" />
-
-                    <TextView
-                        android:id="@+id/tvPendingOrdersLabel"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:layout_weight="1"
-                        android:text="@string/pending"
-                        android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                        android:textColor="@color/pos_text_primary"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/tvPendingOrdersCount"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:background="@drawable/bg_page_button"
-                        android:gravity="center"
-                        android:minWidth="28dp"
-                        android:paddingStart="8dp"
-                        android:paddingTop="3dp"
-                        android:paddingEnd="8dp"
-                        android:paddingBottom="3dp"
-                        android:text="@string/pending_orders_count"
-                        android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
-                        android:textColor="@color/pos_warning"
-                        android:textStyle="bold" />
                 </LinearLayout>
 
                 <LinearLayout

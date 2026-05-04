@@ -8,6 +8,7 @@ import androidx.annotation.StringRes
 import com.example.zejioscafese.R
 import com.example.zejioscafese.core.network.NetworkErrorFormatter
 import com.example.zejioscafese.pos.data.model.CategorySalesRecord
+import com.example.zejioscafese.pos.data.model.ProductSalesRecord
 import com.example.zejioscafese.reports.data.model.ReportTransaction
 import com.example.zejioscafese.reports.data.model.SalesTimelinePoint
 import com.example.zejioscafese.reports.data.repository.ReportsRepository
@@ -57,6 +58,9 @@ class ReportsViewModel(
     private val _salesByCategory = MutableLiveData<List<CategorySalesRecord>>(emptyList())
     val salesByCategory: LiveData<List<CategorySalesRecord>> = _salesByCategory
 
+    private val _salesByProduct = MutableLiveData<List<ProductSalesRecord>>(emptyList())
+    val salesByProduct: LiveData<List<ProductSalesRecord>> = _salesByProduct
+
     private val _totalRevenue = MutableLiveData(0.0)
     val totalRevenue: LiveData<Double> = _totalRevenue
 
@@ -66,8 +70,8 @@ class ReportsViewModel(
     private val _avgOrderValue = MutableLiveData(0.0)
     val avgOrderValue: LiveData<Double> = _avgOrderValue
 
-    private val _bestCategory = MutableLiveData(NO_CATEGORY)
-    val bestCategory: LiveData<String> = _bestCategory
+    private val _bestProduct = MutableLiveData(NO_PRODUCT)
+    val bestProduct: LiveData<String> = _bestProduct
 
     private val _transactions = MutableLiveData<List<ReportTransaction>>(emptyList())
     val transactions: LiveData<List<ReportTransaction>> = _transactions
@@ -124,10 +128,11 @@ class ReportsViewModel(
                 val snapshot = reportsRepository.fetchReportsSnapshot(dateWindow)
                 _salesByDateRange.value = snapshot.salesByDateRange
                 _salesByCategory.value = snapshot.salesByCategory
+                _salesByProduct.value = snapshot.salesByProduct
                 _totalRevenue.value = snapshot.totalRevenue
                 _totalOrders.value = snapshot.totalOrders
                 _avgOrderValue.value = snapshot.averageOrderValue
-                _bestCategory.value = snapshot.bestCategory
+                _bestProduct.value = snapshot.bestProduct
                 _transactions.value = snapshot.transactions
                 _reportError.value = null
                 lastSuccessfulRefreshAt = System.currentTimeMillis()
@@ -168,7 +173,7 @@ class ReportsViewModel(
     }
 
     private companion object {
-        const val NO_CATEGORY = "N/A"
+        const val NO_PRODUCT = "N/A"
         const val DEFAULT_ERROR_MESSAGE = "Failed to load reports right now."
         const val REPORT_REFRESH_INTERVAL_MS = 60_000L
     }
