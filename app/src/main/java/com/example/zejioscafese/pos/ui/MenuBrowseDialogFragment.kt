@@ -14,12 +14,11 @@ import com.example.zejioscafese.databinding.DialogMenuBrowseBinding
 import com.example.zejioscafese.pos.presentation.PosViewModel
 
 /**
- * Fullscreen category-picker dialog.
+ * Centered category-picker modal.
  *
- * Shows every menu category as a card with a representative product
- * thumbnail in a 2-column grid.  Tapping a card selects that category
- * in the shared [PosViewModel] and immediately dismisses the dialog,
- * so the POS inline grid filters to that category.
+ * Shows every menu category as a tile in a non-scrollable 3-column grid.
+ * Tapping a card selects that category in the shared [PosViewModel] and
+ * dismisses the dialog so the POS inline grid filters to that category.
  */
 class MenuBrowseDialogFragment : DialogFragment() {
 
@@ -30,10 +29,7 @@ class MenuBrowseDialogFragment : DialogFragment() {
 
     private lateinit var pickerAdapter: CategoryPickerAdapter
 
-    /**
-     * Category → representative product image URL.
-     * Set by the host before showing the dialog.
-     */
+    /** Category → representative product image URL. Set by the host. */
     private var categoryThumbnails: Map<String, String?> = emptyMap()
 
     fun setThumbnails(thumbnails: Map<String, String?>) {
@@ -63,8 +59,6 @@ class MenuBrowseDialogFragment : DialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.tvModalTitle.text = getString(R.string.filter_sort)
-        binding.tvModalSubtitle.text = getString(R.string.search_hint)
         binding.btnCloseModal.setOnClickListener { dismiss() }
 
         pickerAdapter = CategoryPickerAdapter { category ->
@@ -74,14 +68,14 @@ class MenuBrowseDialogFragment : DialogFragment() {
 
         binding.rvModalCategories.apply {
             adapter = pickerAdapter
-            layoutManager = GridLayoutManager(requireContext(), 3)
+            layoutManager = GridLayoutManager(requireContext(), CATEGORY_COLUMNS)
             itemAnimator = null
+            isNestedScrollingEnabled = false
+            setHasFixedSize(true)
         }
 
-        // Push thumbnails to the adapter.
         pickerAdapter.submitThumbnails(categoryThumbnails)
 
-        // Observe categories and selected state.
         viewModel.categories.observe(viewLifecycleOwner) { categories ->
             pickerAdapter.submitList(categories)
         }
@@ -94,12 +88,15 @@ class MenuBrowseDialogFragment : DialogFragment() {
     override fun onStart() {
         super.onStart()
         dialog?.window?.apply {
+            // Full-window scrim; the inner FrameLayout centers the card.
             setLayout(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT
             )
             setBackgroundDrawableResource(android.R.color.transparent)
-            clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+            // Strong black scrim so the modal pops from the busy POS surface.
+            addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+            setDimAmount(0.75f)
         }
     }
 
@@ -110,5 +107,6 @@ class MenuBrowseDialogFragment : DialogFragment() {
 
     companion object {
         const val TAG = "MenuBrowseDialog"
+        private const val CATEGORY_COLUMNS = 6
     }
 }

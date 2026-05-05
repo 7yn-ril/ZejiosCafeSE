@@ -2029,7 +2029,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
         binding.btnFilterSort.setOnClickListener { showSortMenu(it) }
 
-        binding.btnBrowseMenu.setOnClickListener { toggleCategoryExpansion() }
+        binding.btnBrowseMenu.setOnClickListener { showMenuBrowseDialog() }
 
         binding.btnOrderTypeDineIn.setOnClickListener {
             viewModel.setOrderType(PosViewModel.OrderType.DINE_IN)
@@ -2125,10 +2125,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
         binding.staffContent.btnStaffStatusFilter.setOnClickListener { anchor ->
             showStaffStatusFilterMenu(anchor)
-        }
-
-        binding.staffContent.staffNotificationFrame.setOnClickListener {
-            showStaffNotificationDialog()
         }
 
         refreshStaffUi()
@@ -2626,12 +2622,14 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             matches
         }
 
-        binding.staffContent.tvStaffPageSubtitle.text =
-            if (normalizedQuery.isBlank() && selectedStaffRole.isNullOrBlank() && selectedStaffStatus.isNullOrBlank()) {
-                getString(R.string.staff_management_subtitle)
-            } else {
-                getString(R.string.staff_results_summary, visibleCount, staffCards.size)
-            }
+        if (currentSection == Section.STAFF) {
+            binding.tvTopSubtitle.text =
+                if (normalizedQuery.isBlank() && selectedStaffRole.isNullOrBlank() && selectedStaffStatus.isNullOrBlank()) {
+                    getString(R.string.staff_subtitle)
+                } else {
+                    getString(R.string.staff_results_summary, visibleCount, staffCards.size)
+                }
+        }
 
         binding.staffContent.btnStaffRoleFilter.text = selectedStaffRole ?: getString(R.string.all_roles)
         binding.staffContent.btnStaffStatusFilter.text = selectedStaffStatus ?: getString(R.string.all_status)
@@ -2787,11 +2785,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             staffCards.count {
                 normalizeStaffStatus(it.statusView.text.toString()) != getString(R.string.staff_status_active)
             }
-        val staffCount = countStaffWithStatus(getString(R.string.on_break)) +
-            countStaffWithStatus(getString(R.string.off_duty))
-
         setBadgeCount(binding.tvNotificationBadge, topCount)
-        setBadgeCount(binding.staffContent.tvStaffNotificationBadge, staffCount)
     }
 
     private fun setBadgeCount(badgeView: TextView, count: Int) {
@@ -3054,7 +3048,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val showProfile = section == Section.PROFILE
         val showPlaceholder = !showPos && !showDashboard && !showOrders && !showStaff && !showProfile && !showFragmentScreen
 
-        val hideTopBar = showStaff || section == Section.REPORTS
+        val hideTopBar = section == Section.REPORTS
         binding.topBar.visibility = if (hideTopBar) View.GONE else View.VISIBLE
         binding.leftPanel.visibility = if (showPos) View.VISIBLE else View.GONE
         binding.rightPanel.visibility = if (showPos && isCheckoutExpanded) View.VISIBLE else View.GONE

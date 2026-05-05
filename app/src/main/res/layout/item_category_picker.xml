@@ -1,22 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Category-picker tile.
+    Compact card with a 4:3 thumbnail and the category name beneath.
+    When selected, the stroke thickens to pos_primary and a soft brand
+    overlay appears on the thumbnail.
+-->
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/categoryPickerCard"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="6dp"
+    android:layout_margin="4dp"
+    android:clickable="true"
+    android:focusable="true"
     app:cardBackgroundColor="@color/pos_surface"
-    app:cardCornerRadius="18dp"
-    app:cardElevation="2dp"
+    app:cardCornerRadius="14dp"
+    app:cardElevation="0dp"
     app:strokeColor="@color/pos_border"
     app:strokeWidth="1dp">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:padding="8dp">
 
-        <!-- Product image thumbnail -->
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/ivCategoryThumb"
             android:layout_width="0dp"
@@ -24,14 +32,13 @@
             android:background="@drawable/bg_product_placeholder"
             android:contentDescription="@string/product_image"
             android:scaleType="centerCrop"
-            app:layout_constraintDimensionRatio="H,16:10"
+            app:layout_constraintDimensionRatio="H,4:3"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.ZejiosCafe.Image"
             tools:src="@drawable/ic_coffee_24" />
 
-        <!-- Selected check overlay -->
         <View
             android:id="@+id/selectedOverlay"
             android:layout_width="0dp"
@@ -43,23 +50,21 @@
             app:layout_constraintStart_toStartOf="@id/ivCategoryThumb"
             app:layout_constraintTop_toTopOf="@id/ivCategoryThumb" />
 
-        <!-- Category name -->
         <TextView
             android:id="@+id/tvCategoryName"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             android:ellipsize="end"
             android:gravity="center"
             android:maxLines="1"
-            android:paddingHorizontal="10dp"
-            android:paddingTop="10dp"
-            android:paddingBottom="12dp"
+            android:paddingBottom="2dp"
             android:textColor="@color/pos_text_primary"
-            android:textSize="14sp"
+            android:textSize="12sp"
             android:textStyle="bold"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/ivCategoryThumb"
-            tools:text="Coffee" />
+            tools:text="Drinks" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 </com.google.android.material.card.MaterialCardView>

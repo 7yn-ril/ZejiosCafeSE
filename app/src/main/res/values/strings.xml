@@ -288,6 +288,8 @@
     <string name="profile_updated_message">Profile updated successfully.</string>
     <string name="profile_name_required">Name is required.</string>
     <string name="profile_email_invalid">Enter a valid email address.</string>
+    <string name="menu_browse_title">Browse Categories</string>
+    <string name="menu_browse_subtitle">Tap a category to filter the menu</string>
     <string name="profile_menu_view_profile">View Profile</string>
     <string name="profile_menu_edit_profile">Edit Profile</string>
     <string name="profile_menu_go_to_settings">Go to Settings</string>

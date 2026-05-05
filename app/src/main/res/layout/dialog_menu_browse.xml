@@ -1,77 +1,70 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!--
+    Category-picker modal.
+    Centered, flat card. Simple title bar + a 6-column grid that holds
+    up to 6×4 = 24 tiles without scrolling.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/pos_surface">
+    android:background="@android:color/transparent">
 
-    <!-- Header: title + close button -->
-    <TextView
-        android:id="@+id/tvModalTitle"
-        android:layout_width="0dp"
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="@dimen/content_panel_padding"
-        android:layout_marginTop="20dp"
-        android:textAppearance="@style/TextAppearance.ZejiosCafe.Title"
-        android:textColor="@color/pos_text_primary"
-        app:layout_constraintEnd_toStartOf="@id/btnCloseModal"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:text="Browse Categories" />
+        android:layout_gravity="center"
+        android:layout_margin="24dp"
+        app:cardBackgroundColor="@color/pos_surface"
+        app:cardCornerRadius="18dp"
+        app:cardElevation="0dp"
+        app:strokeColor="@color/pos_border"
+        app:strokeWidth="1dp">
 
-    <TextView
-        android:id="@+id/tvModalSubtitle"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="@dimen/content_panel_padding"
-        android:layout_marginTop="2dp"
-        android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
-        android:textColor="@color/pos_text_secondary"
-        app:layout_constraintEnd_toStartOf="@id/btnCloseModal"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tvModalTitle"
-        tools:text="Tap a category to filter the menu" />
+        <LinearLayout
+            android:layout_width="960dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="20dp">
 
-    <ImageButton
-        android:id="@+id/btnCloseModal"
-        android:layout_width="44dp"
-        android:layout_height="44dp"
-        android:layout_marginTop="12dp"
-        android:layout_marginEnd="12dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="@string/close_checkout"
-        android:padding="10dp"
-        android:src="@drawable/ic_close_24"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:tint="@color/pos_text_secondary" />
+            <!-- Header — title on the left, close button on the right -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-    <!-- Divider -->
-    <View
-        android:id="@+id/headerDivider"
-        android:layout_width="0dp"
-        android:layout_height="1dp"
-        android:layout_marginTop="16dp"
-        android:background="@color/pos_divider"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tvModalSubtitle" />
+                <TextView
+                    android:id="@+id/tvModalTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/menu_browse_title"
+                    android:textColor="@color/pos_text_primary"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
 
-    <!-- Category cards in a 2-column grid -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rvModalCategories"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_marginTop="8dp"
-        android:clipToPadding="false"
-        android:paddingStart="10dp"
-        android:paddingEnd="10dp"
-        android:paddingBottom="@dimen/content_panel_padding"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/headerDivider"
-        tools:listitem="@layout/item_category_picker" />
+                <ImageButton
+                    android:id="@+id/btnCloseModal"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/close_checkout"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_close_24"
+                    app:tint="@color/pos_text_secondary" />
+            </LinearLayout>
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+            <!-- Category grid — non-scrollable, up to 6×4 tiles -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvModalCategories"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:nestedScrollingEnabled="false"
+                android:overScrollMode="never"
+                tools:listitem="@layout/item_category_picker" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+</FrameLayout>
