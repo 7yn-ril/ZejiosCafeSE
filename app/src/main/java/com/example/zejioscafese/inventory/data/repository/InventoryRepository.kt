@@ -115,8 +115,14 @@ class InventoryRepository(
                     set("ingredient_current_stock", ingredient.currentStock)
                     set("ingredient_minimum_stock", ingredient.minimumStock)
                     set("ingredient_cost_per_unit", ingredient.costPerUnit)
-                    set("ingredient_ml_per_serving", ingredient.mlPerServing)
-                    set("ingredient_ml_per_bottle", ingredient.mlPerBottle)
+                    if (ingredient.isLiquid) {
+                        ingredient.mlPerServing?.let {
+                            set("ingredient_ml_per_serving", it)
+                        }
+                        ingredient.mlPerBottle?.let {
+                            set("ingredient_ml_per_bottle", it)
+                        }
+                    }
                 }
             ) {
                 filter {

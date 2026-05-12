@@ -203,6 +203,9 @@ class PosViewModel(
             _checkoutError.value = null
 
             try {
+                // CHANGE: Orders — pass the cart's selected order type
+                // through to the RPC. TAKE_AWAY (cart enum) maps to
+                // 'takeout' (DB token) so the SQL deduction runs.
                 val savedOrder = orderRepository.saveCheckoutOrder(
                     payload = CheckoutOrderPayload(
                         customerName = customerName?.trim()?.takeIf(String::isNotBlank),
@@ -211,7 +214,12 @@ class PosViewModel(
                         total = _total.value ?: 0.0,
                         paymentMethod = (_selectedPaymentMethod.value ?: PaymentMethod.CASH).name.lowercase(Locale.US),
                         status = "preparing",
-                        items = buildCheckoutLines(itemsToCheckout)
+                        items = buildCheckoutLines(itemsToCheckout),
+                        orderType = when (_selectedOrderType.value ?: OrderType.DINE_IN) {
+                            OrderType.DINE_IN -> "dine_in"
+                            OrderType.TAKE_AWAY -> "takeout"
+                            OrderType.DELIVERY -> "delivery"
+                        }
                     ),
                     suggestedOrderNumber = currentOrderNumber
                 )

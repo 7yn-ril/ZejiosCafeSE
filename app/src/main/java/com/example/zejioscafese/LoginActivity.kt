@@ -1,0 +1,103 @@
+package com.example.zejioscafese
+
+import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import android.view.inputmethod.EditorInfo
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.example.zejioscafese.databinding.ActivityLoginBinding
+import com.google.android.material.snackbar.Snackbar
+
+class LoginActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityLoginBinding
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
+        super.onCreate(savedInstanceState)
+
+        if (isRememberedSession()) {
+            openMainActivity()
+            return
+        }
+
+        binding = ActivityLoginBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        binding.btnLogin.setOnClickListener {
+            attemptLogin()
+        }
+
+        binding.etLoginPassword.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                attemptLogin()
+                true
+            } else {
+                false
+            }
+        }
+    }
+
+    private fun attemptLogin() {
+        val username = binding.etLoginUsername.text?.toString()?.trim().orEmpty()
+        val password = binding.etLoginPassword.text?.toString().orEmpty()
+
+        binding.usernameInputLayout.error = null
+        binding.passwordInputLayout.error = null
+
+        if (username.isBlank() || password.isBlank()) {
+            if (username.isBlank()) {
+                binding.usernameInputLayout.error = getString(R.string.login_username_required)
+            }
+            if (password.isBlank()) {
+                binding.passwordInputLayout.error = getString(R.string.login_password_required)
+            }
+            Snackbar.make(binding.root, R.string.login_empty_fields, Snackbar.LENGTH_SHORT).show()
+            return
+        }
+
+        if (username == ADMIN_USERNAME && password == ADMIN_PASSWORD) {
+            setRememberedSession(binding.checkboxRemember.isChecked)
+            openMainActivity()
+        } else {
+            binding.passwordInputLayout.error = getString(R.string.login_invalid_credentials)
+            binding.etLoginPassword.text?.clear()
+            Snackbar.make(binding.root, R.string.login_invalid_credentials, Snackbar.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun openMainActivity() {
+        startActivity(
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+        )
+    }
+
+    private fun isRememberedSession(): Boolean {
+        return getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean(KEY_REMEMBER_SESSION, false)
+    }
+
+    private fun setRememberedSession(remember: Boolean) {
+        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_REMEMBER_SESSION, remember)
+            .apply()
+    }
+
+    companion object {
+        private const val ADMIN_USERNAME = "admin"
+        private const val ADMIN_PASSWORD = "admin123"
+        private const val PREFS_NAME = "zejios_login"
+        private const val KEY_REMEMBER_SESSION = "remember_session"
+
+        fun clearRememberedSession(context: Context) {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .remove(KEY_REMEMBER_SESSION)
+                .apply()
+        }
+    }
+}

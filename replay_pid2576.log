@@ -1,0 +1,5 @@
+JvmtiExport can_access_local_variables 0
+JvmtiExport can_hotswap_or_post_breakpoint 0
+JvmtiExport can_post_on_exceptions 0
+# 648 ciObject found
+ciMethodData java/util/ArrayDeque$$Lambda$701+0x000001c53a449eb0 accept (Ljava/lang/Object;)V 1 4330 orig 80 0 0 0 0 0 0 0 0 0 0 0 0 253 127 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 data 17 0x50005 0x0 0x0 0x1c501b17c20 0x280 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x9 0x2 0x0 0x0 oops 1

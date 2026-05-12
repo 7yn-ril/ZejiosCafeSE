@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(.\\\\run_tablet.ps1 -SkipBuild 2>&1)",
+      "Bash(tail -40 \"/tmp/zejios_emulator.log\")",
+      "Read(//tmp/**)"
+    ]
+  }
+}

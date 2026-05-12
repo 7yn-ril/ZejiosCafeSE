@@ -3,8 +3,8 @@ package com.example.zejioscafese.ui
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.FrameLayout
-import android.widget.LinearLayout
+import android.widget.ImageButton
+import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.zejioscafese.R
 import com.example.zejioscafese.pos.data.model.Ingredient
 import java.util.Locale
+import kotlin.math.floor
 
 class IngredientAdapter(
     private val onEditClick: (Ingredient) -> Unit,
@@ -41,86 +42,100 @@ class IngredientAdapter(
         private val tvServings: TextView = itemView.findViewById(R.id.tvServings)
         private val tvCostPerUnit: TextView = itemView.findViewById(R.id.tvCostPerUnit)
         private val tvTotalValue: TextView = itemView.findViewById(R.id.tvTotalValue)
-        private val stockBarTrack: View = itemView.findViewById(R.id.stockBarTrack)
-        private val stockBarFill: View = itemView.findViewById(R.id.stockBarFill)
-        private val btnEdit: View = itemView.findViewById(R.id.btnEditIngredient)
-        private val btnRestock: View = itemView.findViewById(R.id.btnRestockIngredient)
+        private val tvStockStatus: TextView = itemView.findViewById(R.id.tvStockStatus)
+        // UI CHANGE: per-row Edit/Restock buttons collapsed into a kebab menu.
+        private val btnRowActions: ImageButton = itemView.findViewById(R.id.btnRowActions)
 
+        // UI CHANGE: bind() now renders the seven required columns and never
+        // exposes raw ml/L/kg/g. Liquid ingredients are surfaced via their
+        // backend-computed servings figures so the user only ever sees
+        // "{N} piece" / "PHP X / piece".
         fun bind(ingredient: Ingredient) {
             tvName.text = ingredient.name
             tvCategory.text = ingredient.category
 
-            // Stock display
-            tvStock.text = String.format(Locale.getDefault(), "%.1f %s", ingredient.currentStock, ingredient.unit)
+            val servingsRemaining = pieceCountForStock(ingredient)
+            val amountPerServing = amountPerServingInPieces(ingredient)
+            val pricePerPiece = pricePerPiece(ingredient)
+            val totalValue = servingsRemaining * pricePerPiece
 
-            val totalServings = ingredient.totalServings
-            val costPerServing = ingredient.costPerServing
-            val mlPerServing = ingredient.mlPerServing
-            if (totalServings != null && costPerServing != null && mlPerServing != null) {
-                // ml ingredient with per-serving config: show servings count
-                // and switch the cost cell to PHP/serving so staff sees
-                // recipe economics directly.
-                tvServings.visibility = View.VISIBLE
-                tvServings.text = String.format(
-                    Locale.getDefault(),
-                    "≈ %d servings · %s ml each",
-                    totalServings.toInt(),
-                    formatTrim(mlPerServing)
-                )
-                tvCostPerUnit.text = String.format(
-                    Locale.getDefault(),
-                    "PHP %.2f/serving",
-                    costPerServing
-                )
-            } else {
-                tvServings.visibility = View.GONE
-                tvCostPerUnit.text = String.format(
-                    Locale.getDefault(),
-                    "PHP %.2f/%s",
-                    ingredient.costPerUnit,
-                    ingredient.unit
-                )
+            tvStock.text = formatPieces(servingsRemaining)
+            tvServings.text = formatPieces(amountPerServing)
+            tvCostPerUnit.text = String.format(Locale.getDefault(), "PHP %,.2f", pricePerPiece)
+            tvTotalValue.text = String.format(Locale.getDefault(), "PHP %,.2f", totalValue)
+
+            // UI CHANGE: Stock Level badge — ≤10 servings remaining flips the
+            // pill into the red "Low Stock" state. Toast notification is
+            // fired once per refresh by InventoryFragment, not per row.
+            applyStockStatusBadge(servingsRemaining)
+
+            btnRowActions.setOnClickListener { anchor ->
+                PopupMenu(anchor.context, anchor).apply {
+                    menuInflater.inflate(R.menu.inventory_row_actions, menu)
+                    setOnMenuItemClickListener { item ->
+                        when (item.itemId) {
+                            R.id.action_edit_ingredient -> {
+                                onEditClick(ingredient); true
+                            }
+                            R.id.action_restock_ingredient -> {
+                                onRestockClick(ingredient); true
+                            }
+                            else -> false
+                        }
+                    }
+                }.show()
             }
-
-            val totalVal = ingredient.currentStock * ingredient.costPerUnit
-            tvTotalValue.text = String.format(Locale.getDefault(), "PHP %,.2f", totalVal)
-
-            // Stock level bar
-            val ratio = if (ingredient.minimumStock > 0)
-                (ingredient.currentStock / (ingredient.minimumStock * 3.0)).coerceIn(0.0, 1.0)
-            else 1.0
-
-            stockBarFill.post {
-                val trackWidth = stockBarTrack.width
-                val params = stockBarFill.layoutParams as FrameLayout.LayoutParams
-                params.width = (trackWidth * ratio).toInt()
-                stockBarFill.layoutParams = params
-            }
-
-            // Color based on stock level
-            val ctx = itemView.context
-            val stockColor = when {
-                ingredient.currentStock <= ingredient.minimumStock ->
-                    ContextCompat.getColor(ctx, R.color.stock_critical)
-                ingredient.currentStock <= ingredient.minimumStock * 1.5 ->
-                    ContextCompat.getColor(ctx, R.color.stock_warning)
-                else ->
-                    ContextCompat.getColor(ctx, R.color.stock_good)
-            }
-            stockBarFill.backgroundTintList = android.content.res.ColorStateList.valueOf(stockColor)
-            tvStock.setTextColor(stockColor)
-
-            // Actions
-            btnEdit.setOnClickListener { onEditClick(ingredient) }
-            btnRestock.setOnClickListener { onRestockClick(ingredient) }
         }
 
-        private fun formatTrim(value: Double): String {
-            return if (value % 1.0 == 0.0) {
-                value.toInt().toString()
+        private fun applyStockStatusBadge(servingsRemaining: Double) {
+            val ctx = itemView.context
+            val isLow = servingsRemaining <= LOW_STOCK_THRESHOLD
+            if (isLow) {
+                tvStockStatus.text = ctx.getString(R.string.inventory_status_low_stock)
+                tvStockStatus.setBackgroundResource(R.drawable.bg_status_low_stock)
+                tvStockStatus.setTextColor(ContextCompat.getColor(ctx, R.color.stock_critical))
             } else {
-                String.format(Locale.getDefault(), "%.1f", value)
+                tvStockStatus.text = ctx.getString(R.string.inventory_status_in_stock)
+                tvStockStatus.setBackgroundResource(R.drawable.bg_status_in_stock)
+                tvStockStatus.setTextColor(ContextCompat.getColor(ctx, R.color.stock_good))
             }
+        }
+
+        // For liquids we display the backend-computed total servings; for
+        // anything else the raw stock count is already in pieces/units we
+        // can label as "piece".
+        private fun pieceCountForStock(ingredient: Ingredient): Double {
+            return ingredient.totalServings ?: ingredient.currentStock
+        }
+
+        // Reference rules: solids show their amount-per-serving (stored in
+        // mlPerServing for both types so the existing schema stays put).
+        // Liquids show "servings per bottle" = floor(mlPerBottle / mlPerServing).
+        private fun amountPerServingInPieces(ingredient: Ingredient): Double {
+            if (ingredient.isLiquid) {
+                val perBottle = ingredient.mlPerBottle ?: 0.0
+                val perServing = ingredient.mlPerServing ?: 0.0
+                if (perBottle > 0.0 && perServing > 0.0) {
+                    return floor(perBottle / perServing)
+                }
+                return 0.0
+            }
+            return ingredient.mlPerServing?.takeIf { it > 0.0 } ?: 1.0
+        }
+
+        // Liquids store cost as PHP/ml, so we re-derive the per-serving (per
+        // piece) cost. Solids already price by piece.
+        private fun pricePerPiece(ingredient: Ingredient): Double {
+            return ingredient.costPerServing ?: ingredient.costPerUnit
+        }
+
+        private fun formatPieces(value: Double): String {
+            val rounded = value.toLong()
+            return itemView.context.getString(R.string.inventory_value_pieces, rounded)
+        }
+
+        private companion object {
+            const val LOW_STOCK_THRESHOLD = 10.0
         }
     }
 

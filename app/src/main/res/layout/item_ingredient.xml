@@ -1,228 +1,165 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Ingredient grid tile.
-    Designed for a 3-column GridLayoutManager. The width is whatever the
-    column gives us; the height is intrinsic so all metrics fit cleanly.
-    Layout flow: name + category badge → stat triplet → progress bar → actions.
+    UI CHANGE: Single horizontal table row to match the reference inventory
+    design. Column weights mirror the header in fragment_inventory.xml so
+    headers and cells line up. paddingEnd on each cell provides the gutter
+    between columns; text sizes are tuned for breathing room over density.
 -->
-<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    app:cardBackgroundColor="@color/pos_surface"
-    app:cardCornerRadius="22dp"
-    app:cardElevation="0dp"
-    app:strokeColor="@color/pos_border"
-    app:strokeWidth="1dp">
+    android:background="?attr/selectableItemBackground"
+    android:baselineAligned="false"
+    android:gravity="center_vertical"
+    android:minHeight="72dp"
+    android:orientation="horizontal"
+    android:paddingStart="20dp"
+    android:paddingTop="18dp"
+    android:paddingEnd="20dp"
+    android:paddingBottom="18dp">
 
-    <LinearLayout
-        android:layout_width="match_parent"
+    <!-- Product Name -->
+    <TextView
+        android:id="@+id/tvIngredientName"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:layout_weight="2.4"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:paddingEnd="16dp"
+        android:textColor="@color/pos_text_primary"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        tools:text="Espresso Beans" />
 
-        <!-- Header: name + category badge -->
-        <TextView
-            android:id="@+id/tvIngredientName"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textAppearance="@style/TextAppearance.ZejiosCafe.SectionTitle"
-            android:textColor="@color/pos_text_primary"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            tools:text="Espresso Beans" />
+    <!-- Category -->
+    <TextView
+        android:id="@+id/tvIngredientCategory"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1.6"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:paddingEnd="16dp"
+        android:textColor="@color/pos_text_secondary"
+        android:textSize="12sp"
+        tools:text="Coffee" />
+
+    <!-- Current Stock — always rendered as "{N} piece" by the adapter. -->
+    <TextView
+        android:id="@+id/tvCurrentStock"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1.2"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:paddingEnd="16dp"
+        android:textColor="@color/pos_text_primary"
+        android:textSize="12sp"
+        tools:text="42 piece" />
+
+    <!-- Amount per Serving — always rendered as "{N} piece". -->
+    <TextView
+        android:id="@+id/tvServings"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1.5"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:paddingEnd="16dp"
+        android:textColor="@color/pos_text_primary"
+        android:textSize="12sp"
+        tools:text="1 piece" />
+
+    <!-- Price per Piece -->
+    <TextView
+        android:id="@+id/tvCostPerUnit"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1.3"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:paddingEnd="16dp"
+        android:textColor="@color/pos_text_primary"
+        android:textSize="12sp"
+        tools:text="PHP 25.00" />
+
+    <!-- Total Value -->
+    <TextView
+        android:id="@+id/tvTotalValue"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1.6"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:paddingEnd="16dp"
+        android:textColor="@color/pos_secondary"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        tools:text="PHP 1,050.00" />
+
+    <!-- Stock Level badge: green "In Stock" / red "Low Stock" pill,
+         swapped by the adapter at the ≤10-servings boundary. -->
+    <FrameLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1.6"
+        android:paddingEnd="12dp">
 
         <TextView
-            android:id="@+id/tvIngredientCategory"
+            android:id="@+id/tvStockStatus"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:background="@drawable/bg_category_badge"
+            android:background="@drawable/bg_status_in_stock"
             android:ellipsize="end"
+            android:gravity="center"
+            android:includeFontPadding="false"
             android:maxLines="1"
-            android:paddingStart="10dp"
-            android:paddingTop="3dp"
-            android:paddingEnd="10dp"
-            android:paddingBottom="3dp"
-            android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
-            android:textColor="@color/pos_secondary"
-            tools:text="Coffee" />
-
-        <!-- Current stock value -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:text="Current Stock"
-            android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
-            android:textColor="@color/pos_text_secondary" />
-
-        <TextView
-            android:id="@+id/tvCurrentStock"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textAppearance="@style/TextAppearance.ZejiosCafe.KpiValue"
-            android:textSize="20sp"
+            android:minWidth="96dp"
+            android:paddingStart="12dp"
+            android:paddingTop="5dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="5dp"
+            android:textColor="@color/stock_good"
+            android:textSize="11sp"
             android:textStyle="bold"
-            tools:text="12.5 kg" />
+            tools:text="• In Stock" />
+    </FrameLayout>
 
-        <!-- Servings breakdown (only visible for ml ingredients with a
-             configured per-serving size). -->
-        <TextView
-            android:id="@+id/tvServings"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
-            android:textColor="@color/pos_text_secondary"
-            android:visibility="gone"
-            tools:text="≈ 400 servings · 5 ml each"
-            tools:visibility="visible" />
+    <!-- UI CHANGE: Edit / Restock collapsed into a kebab menu so the row
+         keeps room for the wider Total Value column. The PopupMenu is
+         inflated by IngredientAdapter and dispatches to the same callbacks. -->
+    <FrameLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="0.5"
+        android:gravity="end">
 
-        <!-- Stock-level progress bar -->
-        <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="6dp"
-            android:layout_marginTop="10dp">
+        <ImageButton
+            android:id="@+id/btnRowActions"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_gravity="end|center_vertical"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Row actions"
+            android:padding="6dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_more_vert_24"
+            app:tint="@color/pos_text_secondary" />
+    </FrameLayout>
 
-            <View
-                android:id="@+id/stockBarTrack"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@drawable/bg_stock_bar_track" />
+    <!-- Hidden anchors so legacy findViewById bindings stay valid. -->
+    <View
+        android:id="@+id/stockBarTrack"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
 
-            <View
-                android:id="@+id/stockBarFill"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:background="@drawable/bg_stock_bar_fill" />
-        </FrameLayout>
-
-        <!-- Cost / Total split row -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:baselineAligned="false"
-            android:orientation="horizontal">
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Cost"
-                    android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
-                    android:textColor="@color/pos_text_secondary" />
-
-                <TextView
-                    android:id="@+id/tvCostPerUnit"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyLarge"
-                    android:textColor="@color/pos_text_primary"
-                    tools:text="PHP 240/kg" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="end"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Value"
-                    android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
-                    android:textColor="@color/pos_text_secondary" />
-
-                <TextView
-                    android:id="@+id/tvTotalValue"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
-                    android:textColor="@color/pos_secondary"
-                    android:textStyle="bold"
-                    tools:text="PHP 3,000" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <!-- Divider before action row -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginTop="14dp"
-            android:background="@color/pos_border" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnEditIngredient"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="40dp"
-                android:layout_weight="1"
-                android:contentDescription="Edit"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:text="Edit"
-                android:textAllCaps="false"
-                android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
-                android:textColor="@color/pos_text_primary"
-                app:backgroundTint="@color/pos_surface_header"
-                app:cornerRadius="14dp"
-                app:icon="@android:drawable/ic_menu_edit"
-                app:iconPadding="4dp"
-                app:iconSize="14dp"
-                app:iconTint="@color/pos_text_secondary"
-                app:strokeColor="@color/pos_border"
-                app:strokeWidth="1dp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnRestockIngredient"
-                style="@style/Widget.Material3.Button"
-                android:layout_width="0dp"
-                android:layout_height="40dp"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:contentDescription="Restock"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:text="Restock"
-                android:textAllCaps="false"
-                android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
-                android:textColor="@color/white"
-                app:backgroundTint="@color/pos_secondary"
-                app:cornerRadius="14dp"
-                app:icon="@drawable/ic_add_18"
-                app:iconPadding="4dp"
-                app:iconSize="14dp"
-                app:iconTint="@color/white" />
-        </LinearLayout>
-    </LinearLayout>
-</com.google.android.material.card.MaterialCardView>
+    <View
+        android:id="@+id/stockBarFill"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+</LinearLayout>

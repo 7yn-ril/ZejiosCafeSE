@@ -100,6 +100,10 @@ class OrderManagementAdapter(
             binding.tvOrderItems.setTextColor(if (highlightAsAction) actionTextColor else defaultTextColor)
             binding.tvOrderItems.setTypeface(null, if (highlightAsAction) Typeface.BOLD else Typeface.NORMAL)
 
+            // CHANGE: Orders — show the Take Out pill on takeout orders.
+            // Visibility flips with the orderType field on CafeOrder.
+            binding.tvOrderTakeoutBadge.visibility = if (item.isTakeout) View.VISIBLE else View.GONE
+
             binding.btnOrderActions.setOnClickListener { anchor ->
                 onOrderActionClick(item, anchor)
             }

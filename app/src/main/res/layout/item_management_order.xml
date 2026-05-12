@@ -56,6 +56,25 @@
                     android:textColor="@color/pos_text_primary"
                     tools:text="Sarah Johnson" />
 
+                <!-- CHANGE: Orders — Take Out pill, shown by the adapter
+                     when order.orderType == "takeout". -->
+                <TextView
+                    android:id="@+id/tvOrderTakeoutBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:background="@drawable/bg_status_low_stock"
+                    android:paddingStart="10dp"
+                    android:paddingTop="3dp"
+                    android:paddingEnd="10dp"
+                    android:paddingBottom="3dp"
+                    android:text="@string/orders_badge_takeout"
+                    android:textColor="@color/stock_critical"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
             </LinearLayout>
         </LinearLayout>
 

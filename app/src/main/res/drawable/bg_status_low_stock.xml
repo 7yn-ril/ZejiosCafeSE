@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- UI CHANGE: rounded red pill background for the "Low Stock" warning badge in the inventory list. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/pos_critical_soft" />
+    <corners android:radius="999dp" />
+</shape>

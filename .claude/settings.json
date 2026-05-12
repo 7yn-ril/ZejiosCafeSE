@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell.exe -NoProfile -Command \"Get-Process -Name qemu-system-* -ErrorAction SilentlyContinue | Select-Object Name,Id\")",
+      "PowerShell(.\\\\run_tablet.ps1 -SkipBuild -GpuMode swiftshader_indirect 2>&1)"
+    ]
+  }
+}

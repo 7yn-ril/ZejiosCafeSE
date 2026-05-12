@@ -1,5 +1,19 @@
 <resources>
     <string name="app_name">Zejios Cafe Management System</string>
+    <string name="login_brand_title">Zejios Cafe</string>
+    <string name="login_brand_subtitle">Cafe management made steady for orders, inventory, reports, and staff.</string>
+    <string name="login_access_label">Admin access</string>
+    <string name="login_welcome_title">Welcome Back</string>
+    <string name="login_welcome_message">Please sign in to continue to your management system.</string>
+    <string name="login_username_hint">Username</string>
+    <string name="login_password_hint">Password</string>
+    <string name="login_remember_me">Remember me</string>
+    <string name="login_sign_in">Sign in</string>
+    <string name="login_empty_fields">Enter your username and password.</string>
+    <string name="login_username_required">Username is required.</string>
+    <string name="login_password_required">Password is required.</string>
+    <string name="login_invalid_credentials">Invalid username or password.</string>
+    <string name="login_logo_description">Zejios Cafe logo</string>
 
     <string name="dashboard">Dashboard</string>
     <string name="pos">Point-of-Sale (POS)</string>
@@ -28,6 +42,23 @@
     <string name="inventory_search_products_hint">Search producible menu items...</string>
     <string name="inventory_add_ingredient">+ Add Ingredient</string>
     <string name="inventory_add_product">+ Add Product</string>
+    <!-- UI CHANGE: badge / piece-only labels for the restyled inventory list. -->
+    <string name="inventory_status_in_stock">•&#160;In&#160;Stock</string>
+    <string name="inventory_status_low_stock">•&#160;Low&#160;Stock</string>
+    <string name="inventory_value_pieces">%1$d piece</string>
+    <string name="inventory_low_stock_alert">Low stock warning: %1$s</string>
+    <!-- UI CHANGE: labels surfaced in the restyled Add Ingredient form. -->
+    <string name="inventory_field_price_per_piece">Price per Piece (PHP)</string>
+    <string name="inventory_field_current_stock_pieces">Current Stock (pieces)</string>
+    <string name="inventory_field_amount_per_serving">Amount per Serving</string>
+    <string name="inventory_field_ml_per_bottle">ML per Bottle / Container</string>
+    <string name="inventory_field_ml_per_serving">ML per Serving</string>
+    <!-- CHANGE: Payment — confirmation screen label for GCash transactions. -->
+    <string name="receipt_paid_via_gcash">Paid via GCash</string>
+    <!-- CHANGE: Orders — Take Out badge + filter labels. -->
+    <string name="orders_badge_takeout">Take Out</string>
+    <string name="orders_filter_takeout">Take Out Orders</string>
+    <string name="orders_filter_gcash">GCash Orders</string>
     <string name="inventory_metric_ingredients_title">Total Ingredients</string>
     <string name="inventory_metric_ingredients_subtitle">Active stock items</string>
     <string name="inventory_metric_low_stock_title">Low Stock</string>

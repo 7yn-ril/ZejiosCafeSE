@@ -4,6 +4,7 @@ package com.example.zejioscafese
 import android.animation.ValueAnimator
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
+import android.content.Intent
 import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.BitmapFactory
@@ -136,12 +137,35 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val lineTotal: Double
     )
 
+    // CHANGE: Payment — receipt now carries the discount label + amount so
+    // the receipt dialog and any downstream summary can render the line.
     private data class PendingCheckoutReceipt(
         val customerName: String?,
         val cashReceived: Double,
         val subtotal: Double,
         val total: Double,
-        val lines: List<ReceiptLine>
+        val lines: List<ReceiptLine>,
+        val discountLabel: String? = null,
+        val discountAmount: Double = 0.0
+    )
+
+    // CHANGE: Payment — configurable discount constants used by the
+    // structured percentage selector. Update the percentages here if the
+    // legal rate changes; never inline the magic number elsewhere.
+    private object DiscountPresets {
+        const val PWD_PERCENT = 20.0
+        const val SENIOR_PERCENT = 20.0
+    }
+
+    private enum class PercentDiscountPreset(val label: String, val percent: Double?) {
+        PWD("PWD Discount", DiscountPresets.PWD_PERCENT),
+        SENIOR("Senior Citizen Discount", DiscountPresets.SENIOR_PERCENT),
+        EVENT("Event Discount", null) // null percent → user enters custom value
+    }
+
+    private data class ResolvedDiscount(
+        val label: String?,
+        val amount: Double
     )
 
     private lateinit var binding: ActivityMainBinding
@@ -168,6 +192,11 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private var lastOrdersLoadedAtMs: Long = 0L
     private var ordersPage: Int = 0
     private var orderSort: OrderSort = OrderSort.DEFAULT
+    // CHANGE: Orders — toggleable filters layered on top of the existing
+    // status chips and search box. Both are independent: the user can
+    // combine "Preparing" + "GCash" + "Take Out" in one view.
+    private var filterGcashOnly: Boolean = false
+    private var filterTakeoutOnly: Boolean = false
 
     private enum class OrderSort { DEFAULT, TOTAL_DESC, TOTAL_ASC, ITEMS_DESC }
     private val staffCards = mutableListOf<StaffCardViews>()
@@ -607,13 +636,24 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         }
     }
 
+    // CHANGE: Orders — filter popup gains two checkable toggles (GCash
+    // Orders, Take Out Orders) that layer on top of the existing sort
+    // and status options. The Reset item also clears these toggles.
     private fun showOrdersFilterMenu(anchor: View) {
         val popup = PopupMenu(this, anchor)
         popup.menu.add(0, 1, 0, getString(R.string.orders_sort_default))
         popup.menu.add(0, 2, 1, getString(R.string.orders_sort_total_desc))
         popup.menu.add(0, 3, 2, getString(R.string.orders_sort_total_asc))
         popup.menu.add(0, 4, 3, getString(R.string.orders_sort_items_desc))
-        popup.menu.add(0, 5, 4, getString(R.string.orders_sort_reset))
+        popup.menu.add(0, 6, 4, getString(R.string.orders_filter_gcash)).apply {
+            isCheckable = true
+            isChecked = filterGcashOnly
+        }
+        popup.menu.add(0, 7, 5, getString(R.string.orders_filter_takeout)).apply {
+            isCheckable = true
+            isChecked = filterTakeoutOnly
+        }
+        popup.menu.add(0, 5, 6, getString(R.string.orders_sort_reset))
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 1 -> orderSort = OrderSort.DEFAULT
@@ -625,7 +665,11 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                     selectedOrderStatus = null
                     orderSearchQuery = ""
                     binding.ordersContent.etOrderSearch.setText("")
+                    filterGcashOnly = false
+                    filterTakeoutOnly = false
                 }
+                6 -> filterGcashOnly = !filterGcashOnly
+                7 -> filterTakeoutOnly = !filterTakeoutOnly
             }
             ordersPage = 0
             applyOrderFilters()
@@ -1048,16 +1092,12 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
             textSize = 13f
         }
-        val rbCard = RadioButton(this).apply {
-            id = View.generateViewId()
-            text = getString(R.string.card)
-            isChecked = (viewModel.selectedPaymentMethod.value ?: PosViewModel.PaymentMethod.CASH) == PosViewModel.PaymentMethod.MAYA
-            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
-            textSize = 13f
-        }
+        // CHANGE: Payment — Card option removed from checkout. Backend
+        // payment_method column accepts free text, so any historical
+        // 'maya' / 'card' rows remain readable; new orders will only ever
+        // be 'cash' or 'gcash'.
         paymentMethodGroup.addView(rbCash)
         paymentMethodGroup.addView(rbGcash)
-        paymentMethodGroup.addView(rbCard)
         content.addView(paymentMethodGroup)
 
         val customerNameInput = createDialogInput(
@@ -1067,7 +1107,10 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         content.addView(createSectionLabel(getString(R.string.order_field_customer_name)))
         content.addView(customerNameInput)
 
-        // Discount section
+        // CHANGE: Payment — discount UX restructured. Pesos still uses
+        // the free input; Percentage now drives a preset dropdown
+        // (PWD / Senior auto-deduct from constants; Event takes a custom
+        // %). The free-input percentage toggle is gone.
         content.addView(createSectionLabel(getString(R.string.discount)))
         val discountTypeGroup = RadioGroup(this).apply {
             orientation = RadioGroup.HORIZONTAL
@@ -1092,6 +1135,28 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         discountTypeGroup.addView(rbDiscountPesos)
         discountTypeGroup.addView(rbDiscountPercent)
         content.addView(discountTypeGroup)
+
+        // Preset percentage dropdown — only visible while % Percentage is
+        // the selected discount type.
+        val presetEntries = PercentDiscountPreset.values()
+        val presetLabels = presetEntries.map { preset ->
+            val percent = preset.percent
+            if (percent != null) "${preset.label} (${formatPercentLabel(percent)})"
+            else "${preset.label} (custom %)"
+        }
+        val presetSpinner = android.widget.Spinner(this).apply {
+            adapter = android.widget.ArrayAdapter(
+                this@MainActivity,
+                android.R.layout.simple_spinner_item,
+                presetLabels
+            ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+            visibility = View.GONE
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = 4.dp(); bottomMargin = 6.dp() }
+        }
+        content.addView(presetSpinner)
 
         val discountInput = createDialogInput(
             hint = "0",
@@ -1171,19 +1236,52 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             .setView(mainContainer)
             .create()
 
-        fun refreshPaymentState() {
-            val discountStr = discountInput.text?.toString().orEmpty()
-            val discountAmount = discountStr.toDoubleOrNull() ?: 0.0
+        // CHANGE: Payment — single source of truth for discount math.
+        // Pesos branch unchanged; Percentage branch now consults the
+        // selected preset (PWD/Senior pull from constants; Event reads
+        // the input as a custom %).
+        fun resolveDiscount(): ResolvedDiscount {
             val isPercentage = rbDiscountPercent.isChecked
-            val discountValue = if (isPercentage && discountAmount > 0) {
-                (total * discountAmount / 100).coerceAtMost(total)
-            } else if (discountAmount > 0) {
-                discountAmount.coerceAtMost(total)
-            } else {
-                0.0
+            if (!isPercentage) {
+                val pesos = discountInput.text?.toString().orEmpty().toDoubleOrNull() ?: 0.0
+                return if (pesos > 0) {
+                    ResolvedDiscount(label = "Discount", amount = pesos.coerceAtMost(total))
+                } else ResolvedDiscount(null, 0.0)
             }
-            val finalTotal = total - discountValue
+            val preset = presetEntries.getOrNull(presetSpinner.selectedItemPosition) ?: return ResolvedDiscount(null, 0.0)
+            val percent = preset.percent
+                ?: discountInput.text?.toString().orEmpty().toDoubleOrNull() ?: 0.0
+            if (percent <= 0.0) return ResolvedDiscount(null, 0.0)
+            val amount = (total * percent / 100).coerceAtMost(total)
+            return ResolvedDiscount(
+                label = "${preset.label} (-${formatPercentLabel(percent)})",
+                amount = amount
+            )
+        }
 
+        fun applyDiscountVisibility() {
+            val isPercentage = rbDiscountPercent.isChecked
+            presetSpinner.visibility = if (isPercentage) View.VISIBLE else View.GONE
+
+            val showInput = if (isPercentage) {
+                val preset = presetEntries.getOrNull(presetSpinner.selectedItemPosition)
+                preset?.percent == null // Event = custom % needs the input
+            } else true // Pesos always uses the input
+
+            discountInput.visibility = if (showInput) View.VISIBLE else View.GONE
+            discountInput.hint = when {
+                !isPercentage -> "0"
+                else -> "Custom %"
+            }
+            if (!showInput) {
+                // Auto-presets ignore any leftover typed value so the
+                // computed deduction always matches the constant.
+                discountInput.setText("")
+            }
+        }
+
+        fun refreshPaymentState() {
+            val finalTotal = total - resolveDiscount().amount
             val cashReceived = paymentInput.text?.toString().orEmpty().toCashAmount()
             val change = cashReceived?.minus(finalTotal)
             val isValid = cashReceived != null && change != null && change >= 0
@@ -1196,9 +1294,20 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             }
         }
 
+        applyDiscountVisibility()
         discountInput.doAfterTextChanged { refreshPaymentState() }
-        rbDiscountPesos.setOnCheckedChangeListener { _, _ -> refreshPaymentState() }
-        rbDiscountPercent.setOnCheckedChangeListener { _, _ -> refreshPaymentState() }
+        rbDiscountPesos.setOnCheckedChangeListener { _, _ ->
+            applyDiscountVisibility(); refreshPaymentState()
+        }
+        rbDiscountPercent.setOnCheckedChangeListener { _, _ ->
+            applyDiscountVisibility(); refreshPaymentState()
+        }
+        presetSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                applyDiscountVisibility(); refreshPaymentState()
+            }
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
+        }
         paymentInput.doAfterTextChanged { refreshPaymentState() }
         refreshPaymentState()
 
@@ -1207,17 +1316,11 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         }
 
         confirmButton.setOnClickListener {
-            val discountStr = discountInput.text?.toString().orEmpty()
-            val discountAmount = discountStr.toDoubleOrNull() ?: 0.0
-            val isPercentage = rbDiscountPercent.isChecked
-            val discountValue = if (isPercentage && discountAmount > 0) {
-                (total * discountAmount / 100).coerceAtMost(total)
-            } else if (discountAmount > 0) {
-                discountAmount.coerceAtMost(total)
-            } else {
-                0.0
-            }
-            val finalTotal = total - discountValue
+            // CHANGE: Payment — discount math comes from resolveDiscount();
+            // Card option no longer offered so the selectedMethod fallback
+            // is just GCash vs Cash.
+            val discount = resolveDiscount()
+            val finalTotal = total - discount.amount
 
             val cashReceived = paymentInput.text?.toString().orEmpty().toCashAmount()
             if (cashReceived == null || cashReceived < finalTotal) {
@@ -1225,10 +1328,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 return@setOnClickListener
             }
 
-            // Update selected payment method from modal
             val selectedMethod = when (paymentMethodGroup.checkedRadioButtonId) {
                 rbGcash.id -> PosViewModel.PaymentMethod.GCASH
-                rbCard.id -> PosViewModel.PaymentMethod.MAYA
                 else -> PosViewModel.PaymentMethod.CASH
             }
             viewModel.setPaymentMethod(selectedMethod)
@@ -1237,8 +1338,10 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 customerName = customerNameInput.text?.toString()?.trim()?.takeIf(String::isNotBlank),
                 cashReceived = cashReceived,
                 subtotal = subtotal,
-                total = total,
-                lines = receiptLines
+                total = finalTotal,
+                lines = receiptLines,
+                discountLabel = discount.label,
+                discountAmount = discount.amount
             )
 
             dialog.dismiss()
@@ -1262,12 +1365,24 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             PosViewModel.OrderType.TAKE_AWAY -> getString(R.string.take_away)
             PosViewModel.OrderType.DELIVERY -> getString(R.string.delivery)
         }
+        // CHANGE: Payment — GCash now reads "Paid via GCash" on the
+        // confirmation screen. Card option is no longer offered, but the
+        // MAYA branch stays as a defensive fallback for legacy orders.
         receiptBinding.tvReceiptPayment.text = when (viewModel.selectedPaymentMethod.value ?: PosViewModel.PaymentMethod.CASH) {
             PosViewModel.PaymentMethod.CASH -> getString(R.string.cash)
-            PosViewModel.PaymentMethod.GCASH -> getString(R.string.gcash)
+            PosViewModel.PaymentMethod.GCASH -> getString(R.string.receipt_paid_via_gcash)
             PosViewModel.PaymentMethod.MAYA -> getString(R.string.maya)
         }
         receiptBinding.tvReceiptSubtotal.text = formatCurrency(receipt.subtotal)
+        // CHANGE: Payment — surface the resolved discount on the receipt
+        // when one was applied; otherwise the row stays collapsed.
+        if (receipt.discountAmount > 0 && !receipt.discountLabel.isNullOrBlank()) {
+            receiptBinding.receiptDiscountRow.visibility = View.VISIBLE
+            receiptBinding.tvReceiptDiscountLabel.text = receipt.discountLabel
+            receiptBinding.tvReceiptDiscountAmount.text = "-${formatCurrency(receipt.discountAmount)}"
+        } else {
+            receiptBinding.receiptDiscountRow.visibility = View.GONE
+        }
         receiptBinding.tvReceiptTotal.text = formatCurrency(receipt.total)
         receiptBinding.tvReceiptCashReceived.text = formatCurrency(receipt.cashReceived)
         receiptBinding.tvReceiptChange.text = formatCurrency(change)
@@ -1364,6 +1479,14 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         return getString(R.string.currency_format, amount)
     }
 
+    // CHANGE: Payment — used by the discount selector and receipt to
+    // render percentages cleanly: integer percents drop the decimal,
+    // fractional percents keep one place.
+    private fun formatPercentLabel(percent: Double): String {
+        return if (percent % 1.0 == 0.0) "${percent.toInt()}%"
+        else String.format(Locale.getDefault(), "%.1f%%", percent)
+    }
+
     private fun applyOrderFilters() {
         val normalizedQuery = orderSearchQuery.trim().lowercase(Locale.getDefault())
 
@@ -1375,7 +1498,11 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 order.itemsSummary,
                 order.orderedItems.joinToString(" ")
             ).joinToString(" ").lowercase(Locale.getDefault()).contains(normalizedQuery)
-            matchesStatus && matchesQuery
+            // CHANGE: Orders — apply the GCash / Take Out toggles in
+            // addition to the existing status + search filters.
+            val matchesGcash = !filterGcashOnly || order.isGcash
+            val matchesTakeout = !filterTakeoutOnly || order.isTakeout
+            matchesStatus && matchesQuery && matchesGcash && matchesTakeout
         }
 
         val sortedOrders = when (orderSort) {
@@ -2272,18 +2399,14 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             .setTitle(getString(R.string.logout_confirm_title))
             .setMessage(getString(R.string.logout_confirm_message))
             .setPositiveButton(getString(R.string.logout)) { _, _ ->
+                LoginActivity.clearRememberedSession(this)
                 viewModel.clearOrder()
-                selectedOrderStatus = null
-                orderSearchQuery = ""
-                if (::orderManagementAdapter.isInitialized) {
-                    applyOrderFilters()
-                }
-                renderSection(Section.POS)
-                Snackbar.make(
-                    binding.root,
-                    getString(R.string.logout_success_message),
-                    Snackbar.LENGTH_SHORT
-                ).show()
+                startActivity(
+                    Intent(this, LoginActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                )
+                finish()
             }
             .setNegativeButton(android.R.string.cancel, null)
             .showStyledDialog(this)

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- UI CHANGE: PopupMenu shown when the kebab on each inventory row is tapped. -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_edit_ingredient"
+        android:title="Edit" />
+    <item
+        android:id="@+id/action_restock_ingredient"
+        android:title="Restock" />
+</menu>

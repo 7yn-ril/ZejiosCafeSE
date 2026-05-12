@@ -49,6 +49,11 @@ class InventoryFragment : Fragment() {
 
     private var selectedChipCategory = ALL_CATEGORY
 
+    // UI CHANGE: tracks the set of ingredient ids we've already alerted on
+    // this session so the low-stock Snackbar fires once per item, not on
+    // every list refresh. Cleared if the item recovers above the threshold.
+    private val notifiedLowStockIds = mutableSetOf<String>()
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -76,6 +81,9 @@ class InventoryFragment : Fragment() {
         viewModel.refreshInventoryIfStale()
     }
 
+    // UI CHANGE: Ingredients list is now a single-column tabular view to
+     // match the reference. Producible products keep the 3-column grid since
+     // that screen wasn't part of the redesign brief.
     private fun setupRecyclerView() {
         ingredientAdapter = IngredientAdapter(
             onEditClick = { showEditDialog(it) },
@@ -87,16 +95,24 @@ class InventoryFragment : Fragment() {
             onDeleteClick = { showSoftDeleteProductDialog(it) }
         )
 
-        val gridSpacingPx = (12 * resources.displayMetrics.density).toInt()
-        val gridSpan = 3
         binding.rvIngredients.apply {
             adapter = ingredientAdapter
-            layoutManager = GridLayoutManager(requireContext(), gridSpan)
+            layoutManager = LinearLayoutManager(requireContext())
+            // UI CHANGE: hairline divider between table rows.
             if (itemDecorationCount == 0) {
-                addItemDecoration(GridSpacingItemDecoration(gridSpan, gridSpacingPx))
+                val divider = androidx.recyclerview.widget.DividerItemDecoration(
+                    requireContext(),
+                    LinearLayoutManager.VERTICAL
+                )
+                ContextCompat.getDrawable(requireContext(), R.drawable.divider_inventory_row)?.let {
+                    divider.setDrawable(it)
+                }
+                addItemDecoration(divider)
             }
         }
 
+        val gridSpacingPx = (12 * resources.displayMetrics.density).toInt()
+        val gridSpan = 3
         binding.rvProducibleProducts.apply {
             adapter = producibleProductAdapter
             layoutManager = GridLayoutManager(requireContext(), gridSpan)
@@ -275,6 +291,10 @@ class InventoryFragment : Fragment() {
                 setupFilterChips()
             }
             renderCurrentMetrics()
+            // UI CHANGE: surface a Snackbar the first time a given ingredient
+            // crosses the ≤10-servings Low Stock threshold so staff get an
+            // explicit alert in addition to the red badge.
+            notifyLowStockIfNeeded(list)
         }
 
         viewModel.producibleProductList.observe(viewLifecycleOwner) { list ->
@@ -334,6 +354,8 @@ class InventoryFragment : Fragment() {
 
         binding.rvIngredients.visibility = if (isIngredientsMode) View.VISIBLE else View.GONE
         binding.rvProducibleProducts.visibility = if (isIngredientsMode) View.GONE else View.VISIBLE
+        // UI CHANGE: table header is only meaningful for the ingredient list.
+        binding.inventoryTableHeader.visibility = if (isIngredientsMode) View.VISIBLE else View.GONE
         binding.btnAddIngredient.visibility = View.VISIBLE
         binding.btnAddIngredient.setText(
             if (isIngredientsMode) R.string.inventory_add_ingredient
@@ -648,83 +670,170 @@ class InventoryFragment : Fragment() {
         }
     }
 
+    // UI CHANGE: Add Ingredient form rebuilt to match the spec — common
+    // fields are always visible; the Category dropdown drives whether the
+    // liquid (ML per bottle / ML per serving) or solid (Amount per serving)
+    // sub-fields appear. Liquid ML inputs are stored in the existing
+    // mlPerBottle/mlPerServing model fields (backend-only) so the inventory
+    // table can keep displaying everything in "piece".
     private fun showAddDialog() {
         val ctx = requireContext()
+        val scrollView = ScrollView(ctx)
         val container = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dpToPx(20), dpToPx(12), dpToPx(20), dpToPx(4))
         }
+        scrollView.addView(container)
 
-        val etName = createLabeledField(container, "Name", "")
+        // Always-visible fields — Product Name, Category, Price per Piece,
+        // Current Stock (pieces) — apply to every category.
+        val etName = createLabeledField(
+            container,
+            getString(R.string.inventory_field_product_name),
+            ""
+        )
         val categoryOptions = viewModel.getIngredientCategoriesForEditor()
+        val defaultIndex = categoryOptions.indexOf("Pantry").coerceAtLeast(0)
         val categorySpinner = createLabeledSpinner(
             container = container,
-            label = "Category",
+            label = getString(R.string.inventory_field_category),
             options = categoryOptions,
-            selectedIndex = categoryOptions.indexOf("Pantry").coerceAtLeast(0)
+            selectedIndex = defaultIndex
         )
-        val etUnit = createLabeledField(container, "Unit (e.g. kg, L, pcs)", "")
-        val etMinStock = createLabeledField(
+        val etPricePerPiece = createLabeledField(
             container,
-            "Minimum Stock",
+            getString(R.string.inventory_field_price_per_piece),
             "",
             android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
         )
-        val etCost = createLabeledField(
+        val etCurrentStockPieces = createLabeledField(
             container,
-            "Cost (PHP; ml = per serving)",
+            getString(R.string.inventory_field_current_stock_pieces),
             "",
             android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-        ).apply {
-            hint = "For ml: cost per serving; otherwise cost per unit"
+        )
+
+        // Conditional sub-section. Built once and toggled with VISIBLE/GONE
+        // so the user keeps any values they typed if they switch categories.
+        val solidSection = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
         }
-        val etMlPerServing = createLabeledField(
-            container,
-            "ML per Serving (liquids only)",
+        container.addView(solidSection)
+        val etAmountPerServing = createLabeledField(
+            solidSection,
+            getString(R.string.inventory_field_amount_per_serving),
             "",
             android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
         )
+
+        val liquidSection = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        container.addView(liquidSection)
         val etMlPerBottle = createLabeledField(
-            container,
-            "ML per Bottle (default size for restock)",
+            liquidSection,
+            getString(R.string.inventory_field_ml_per_bottle),
             "",
             android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
         )
+        val etMlPerServing = createLabeledField(
+            liquidSection,
+            getString(R.string.inventory_field_ml_per_serving),
+            "",
+            android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        )
+
+        fun applyCategoryVisibility() {
+            val selected = categoryOptions.getOrNull(categorySpinner.selectedItemPosition).orEmpty()
+            val liquid = isLiquidCategory(selected)
+            liquidSection.visibility = if (liquid) View.VISIBLE else View.GONE
+            solidSection.visibility = if (liquid) View.GONE else View.VISIBLE
+        }
+        applyCategoryVisibility()
+        categorySpinner.onItemSelectedListener =
+            object : android.widget.AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(
+                    parent: android.widget.AdapterView<*>?,
+                    view: View?,
+                    position: Int,
+                    id: Long
+                ) {
+                    applyCategoryVisibility()
+                }
+
+                override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
+            }
 
         AlertDialog.Builder(ctx)
             .setTitle("Add Ingredient")
-            .setView(container)
+            .setView(scrollView)
             .setPositiveButton("Add") { _, _ ->
-                val name = etName.text.toString()
-                if (name.isNotBlank()) {
-                    val unit = etUnit.text.toString().ifBlank { "pcs" }
-                    val mlPerServing = liquidValue(unit, etMlPerServing)
-                    val newIngredient = Ingredient(
-                        id = viewModel.generateId(),
-                        name = name,
-                        category = categoryOptions
-                            .getOrNull(categorySpinner.selectedItemPosition)
-                            ?: "Pantry",
-                        unit = unit,
-                        currentStock = 0.0,
-                        minimumStock = etMinStock.text.toString().toDoubleOrNull() ?: 1.0,
-                        costPerUnit = costPerUnitFromEditor(
-                            unit = unit,
-                            mlPerServing = mlPerServing,
-                            costInput = etCost.text.toString().toDoubleOrNull(),
-                            fallbackCostPerUnit = 0.0
-                        ),
-                        lastRestocked = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                            .format(Date()),
-                        mlPerServing = mlPerServing,
-                        mlPerBottle = liquidValue(unit, etMlPerBottle)
-                    )
-                    viewModel.addIngredient(newIngredient)
-                    setupFilterChips()
+                val name = etName.text.toString().trim()
+                if (name.isBlank()) return@setPositiveButton
+
+                val selectedCategory = categoryOptions
+                    .getOrNull(categorySpinner.selectedItemPosition) ?: "Pantry"
+                val isLiquid = isLiquidCategory(selectedCategory)
+                val pricePerPiece = etPricePerPiece.text.toString().toDoubleOrNull() ?: 0.0
+                val pieceCount = etCurrentStockPieces.text.toString().toDoubleOrNull() ?: 0.0
+
+                val mlPerServing = if (isLiquid) {
+                    etMlPerServing.text.toString().toDoubleOrNull()?.takeIf { it > 0.0 }
+                } else {
+                    etAmountPerServing.text.toString().toDoubleOrNull()?.takeIf { it > 0.0 }
                 }
+                val mlPerBottle = if (isLiquid) {
+                    etMlPerBottle.text.toString().toDoubleOrNull()?.takeIf { it > 0.0 }
+                } else {
+                    null
+                }
+
+                // Liquid stock is persisted in ml so the existing serving
+                // math keeps working; the table view never reads it back as
+                // ml. Solids stay in pieces.
+                val unit = if (isLiquid) "ml" else "pcs"
+                val storedStock = if (isLiquid && mlPerServing != null) {
+                    pieceCount * mlPerServing
+                } else {
+                    pieceCount
+                }
+                val storedCostPerUnit = if (isLiquid && mlPerServing != null && mlPerServing > 0.0) {
+                    pricePerPiece / mlPerServing
+                } else {
+                    pricePerPiece
+                }
+
+                val newIngredient = Ingredient(
+                    id = viewModel.generateId(),
+                    name = name,
+                    category = selectedCategory,
+                    unit = unit,
+                    currentStock = storedStock,
+                    minimumStock = 1.0,
+                    costPerUnit = storedCostPerUnit,
+                    lastRestocked = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                        .format(Date()),
+                    mlPerServing = mlPerServing,
+                    mlPerBottle = mlPerBottle
+                )
+                viewModel.addIngredient(newIngredient)
+                setupFilterChips()
             }
             .setNegativeButton("Cancel", null)
             .showStyledDialog(ctx)
+    }
+
+    // UI CHANGE: keyword-based mapping from the existing free-form category
+    // names to "this category is liquid-based". Used only by the form to
+    // decide which sub-fields appear; backend treats categories as plain
+    // strings so the data model is untouched.
+    private fun isLiquidCategory(category: String): Boolean {
+        if (category.isBlank()) return false
+        val liquidKeywords = listOf(
+            "beverage", "drink", "milk", "dairy", "syrup",
+            "sauce", "juice", "coffee", "tea", "water", "liquid"
+        )
+        return liquidKeywords.any { keyword -> category.contains(keyword, ignoreCase = true) }
     }
 
     private fun showSoftDeleteProductDialog(product: ProducibleProduct) {
@@ -1092,6 +1201,30 @@ class InventoryFragment : Fragment() {
         return String.format(Locale.getDefault(), "PHP %,.2f", value)
     }
 
+    // UI CHANGE: mirrors the badge rule in IngredientAdapter — anything with
+    // ≤10 servings remaining triggers the Low Stock alert. Liquid items use
+    // the backend-computed totalServings; everything else falls back to the
+    // raw piece count.
+    private fun notifyLowStockIfNeeded(list: List<Ingredient>) {
+        val lowStockItems = list.filter { ingredient ->
+            val pieces = ingredient.totalServings ?: ingredient.currentStock
+            pieces <= LOW_STOCK_THRESHOLD
+        }
+        val healthyIds = list.map(Ingredient::id).toSet() - lowStockItems.map(Ingredient::id).toSet()
+        notifiedLowStockIds.removeAll(healthyIds)
+
+        val freshlyLow = lowStockItems.filter { it.id !in notifiedLowStockIds }
+        if (freshlyLow.isEmpty()) return
+
+        val names = freshlyLow.joinToString(", ") { it.name }
+        Snackbar.make(
+            binding.root,
+            getString(R.string.inventory_low_stock_alert, names),
+            Snackbar.LENGTH_LONG
+        ).show()
+        notifiedLowStockIds.addAll(freshlyLow.map(Ingredient::id))
+    }
+
     /** Resolves a theme attribute to its color int value; returns 0 if not found. */
     private fun resolveThemeColor(attrRes: Int): Int {
         val typedValue = TypedValue()
@@ -1131,6 +1264,8 @@ class InventoryFragment : Fragment() {
     private companion object {
         const val ALL_CATEGORY = "All"
         const val INVENTORY_PAGE_SIZE = 8
+        // UI CHANGE: shared with IngredientAdapter — keep in sync.
+        const val LOW_STOCK_THRESHOLD = 10.0
     }
 
     private data class ProductIngredientRowHolder(

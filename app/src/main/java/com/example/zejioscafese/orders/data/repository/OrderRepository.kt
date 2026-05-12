@@ -24,6 +24,9 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
+// CHANGE: Orders — orderType added (dine_in | takeout | delivery).
+// Defaults to dine_in for backwards compatibility with any caller that
+// hasn't been updated yet.
 @Serializable
 data class CheckoutOrderPayload(
     val customerName: String? = null,
@@ -32,7 +35,8 @@ data class CheckoutOrderPayload(
     val total: Double,
     val paymentMethod: String,
     val status: String,
-    val items: List<CheckoutOrderLine>
+    val items: List<CheckoutOrderLine>,
+    val orderType: String = "dine_in"
 )
 
 @Serializable
@@ -94,6 +98,11 @@ class OrderRepository(
                 )
                 .decodeSingle<ProcessCheckoutRpcResultDto>()
 
+            // Best-effort: persist order_type on databases that have the
+            // column. The in-memory CafeOrder always carries the correct
+            // orderType so the UI (Take Out badge, filters) works either way.
+            tagOrderTypeBestEffort(rpcResult.orderId, payload.orderType)
+
             payload.toCafeOrder(rpcResult)
         }
     }
@@ -146,7 +155,12 @@ class OrderRepository(
                         .map(OrderItemRowDto::productVariantId)
                         .toSet(),
                     createdAtMillis = row.createdAt.toEpochMillis(),
-                    completedAtMillis = row.orderCompletedAt?.toEpochMillis()
+                    completedAtMillis = row.orderCompletedAt?.toEpochMillis(),
+                    // CHANGE: Orders — surface payment method + order type
+                    // so the list UI can render the Take Out badge and
+                    // apply the GCash / Take Out filters.
+                    paymentMethod = row.orderPaymentMethod.orEmpty().ifBlank { "cash" }.lowercase(Locale.US),
+                    orderType = row.orderType.orEmpty().ifBlank { "dine_in" }.lowercase(Locale.US)
                 )
             }
         }
@@ -259,6 +273,13 @@ class OrderRepository(
             ?: throw IllegalStateException("Supabase authentication did not return a staff session.")
     }
 
+    // CHANGE: Orders — main RPC stays on the original 6-arg signature so
+    // checkout keeps working on databases that have not yet applied
+    // database/add_takeout_support.sql. After the order is saved, we
+    // best-effort tag order_type via a follow-up update so the column
+    // gets populated on databases that DO have the new column. If the
+    // column is missing, the update fails silently — the order is
+    // already saved and the rest of the flow continues.
     private fun buildCheckoutRpcPayload(
         payload: CheckoutOrderPayload,
         suggestedOrderNumber: String?
@@ -269,6 +290,18 @@ class OrderRepository(
         put("p_status", payload.status.lowercase(Locale.US))
         put("p_tax", payload.tax)
         put("p_items", Json.encodeToJsonElement(ListSerializer(CheckoutOrderLine.serializer()), payload.items))
+    }
+
+    // Best-effort tag for order_type. Swallows any failure (e.g. column
+    // does not exist yet) so a missing migration does not block checkout.
+    private suspend fun tagOrderTypeBestEffort(orderId: String, orderType: String) {
+        runCatching {
+            supabaseClient
+                .from(ORDERS_TABLE)
+                .update({ set("order_type", orderType.lowercase(Locale.US)) }) {
+                    filter { eq("order_id", orderId) }
+                }
+        }
     }
 
     private fun CheckoutOrderPayload.toCafeOrder(
@@ -288,7 +321,12 @@ class OrderRepository(
             initials = customerName.toInitials(),
             orderedItems = orderedItems,
             orderedItemVariantIds = items.map(CheckoutOrderLine::productVariantId),
-            createdAtMillis = rpcResult.createdAt.toEpochMillis()
+            createdAtMillis = rpcResult.createdAt.toEpochMillis(),
+            // CHANGE: Orders — propagate the just-saved payment method and
+            // order type onto the in-memory CafeOrder so the list reflects
+            // them immediately without a refetch.
+            paymentMethod = paymentMethod.lowercase(Locale.US),
+            orderType = orderType.lowercase(Locale.US)
         )
     }
 
@@ -389,6 +427,8 @@ class OrderRepository(
         val orderTotal: Double
     )
 
+    // CHANGE: Orders — pull payment_method and order_type from Supabase.
+    // order_type was added by add_takeout_support.sql (defaults to 'dine_in').
     @Serializable
     private data class OrderRowDto(
         @SerialName("order_id")
@@ -401,6 +441,10 @@ class OrderRepository(
         val orderTotal: Double,
         @SerialName("order_status")
         val orderStatus: String,
+        @SerialName("order_payment_method")
+        val orderPaymentMethod: String? = null,
+        @SerialName("order_type")
+        val orderType: String? = null,
         @SerialName("order_completed_at")
         val orderCompletedAt: String? = null,
         @SerialName("created_at")
