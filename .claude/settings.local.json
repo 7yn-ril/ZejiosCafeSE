@@ -3,7 +3,11 @@
     "allow": [
       "PowerShell(.\\\\run_tablet.ps1 -SkipBuild 2>&1)",
       "Bash(tail -40 \"/tmp/zejios_emulator.log\")",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Lenovo-Pc\\\\OneDrive\\\\3rd Year \\(2nd Semester\\)\\\\CIT238 \\(Mobile Applications Development\\) - Christopher Mateo\\\\Final_Project\\\\ZejiosCafeSE\" -Recurse)",
+      "Bash(Select-Object FullName)",
+      "Bash(ConvertTo-Json -AsArray)",
+      "Bash(Out-String)"
     ]
   }
 }

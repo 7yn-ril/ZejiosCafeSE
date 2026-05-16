@@ -8,6 +8,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.example.zejioscafese.databinding.ActivityLoginBinding
 import com.google.android.material.snackbar.Snackbar
+import java.security.MessageDigest
+import java.util.Locale
 
 class LoginActivity : AppCompatActivity() {
 
@@ -57,7 +59,13 @@ class LoginActivity : AppCompatActivity() {
             return
         }
 
-        if (username == ADMIN_USERNAME && password == ADMIN_PASSWORD) {
+        if (!isCredentialConfigPresent()) {
+            binding.passwordInputLayout.error = getString(R.string.login_credentials_not_configured)
+            Snackbar.make(binding.root, R.string.login_credentials_not_configured, Snackbar.LENGTH_LONG).show()
+            return
+        }
+
+        if (isValidCredential(username, password)) {
             setRememberedSession(binding.checkboxRemember.isChecked)
             openMainActivity()
         } else {
@@ -65,6 +73,26 @@ class LoginActivity : AppCompatActivity() {
             binding.etLoginPassword.text?.clear()
             Snackbar.make(binding.root, R.string.login_invalid_credentials, Snackbar.LENGTH_SHORT).show()
         }
+    }
+
+    private fun isCredentialConfigPresent(): Boolean {
+        return BuildConfig.LOGIN_USERNAME.isNotBlank() && BuildConfig.LOGIN_PASSWORD_SHA256.isNotBlank()
+    }
+
+    private fun isValidCredential(username: String, password: String): Boolean {
+        val configuredUsername = BuildConfig.LOGIN_USERNAME.trim()
+        val configuredPasswordHash = BuildConfig.LOGIN_PASSWORD_SHA256.trim().lowercase(Locale.US)
+        val enteredPasswordHash = sha256(password)
+        return username == configuredUsername &&
+            MessageDigest.isEqual(
+                enteredPasswordHash.toByteArray(),
+                configuredPasswordHash.toByteArray()
+            )
+    }
+
+    private fun sha256(value: String): String {
+        val digest = MessageDigest.getInstance("SHA-256").digest(value.toByteArray())
+        return digest.joinToString("") { byte -> "%02x".format(byte) }
     }
 
     private fun openMainActivity() {
@@ -88,8 +116,6 @@ class LoginActivity : AppCompatActivity() {
     }
 
     companion object {
-        private const val ADMIN_USERNAME = "admin"
-        private const val ADMIN_PASSWORD = "admin123"
         private const val PREFS_NAME = "zejios_login"
         private const val KEY_REMEMBER_SESSION = "remember_session"
 

@@ -75,7 +75,14 @@ object RemoteImageLoader {
                 instanceFollowRedirects = true
                 doInput = true
             }
-            connection.inputStream.use(BitmapFactory::decodeStream)
+            try {
+                if (connection.responseCode !in 200..299) {
+                    return@runCatching null
+                }
+                connection.inputStream.use(BitmapFactory::decodeStream)
+            } finally {
+                connection.disconnect()
+            }
         }.getOrNull()
     }
 

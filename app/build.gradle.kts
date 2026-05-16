@@ -1,4 +1,5 @@
 import java.util.Properties
+import org.gradle.api.tasks.testing.Test
 
 plugins {
     alias(libs.plugins.android.application)
@@ -27,6 +28,13 @@ fun localProperty(name: String, defaultValue: String = ""): String {
     return defaultValue
 }
 
+fun buildConfigString(name: String, defaultValue: String = ""): String {
+    val value = localProperty(name, defaultValue)
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+    return "\"$value\""
+}
+
 android {
     namespace = "com.example.zejioscafese"
     compileSdk {
@@ -41,8 +49,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "SUPABASE_URL", "\"${localProperty("SUPABASE_URL")}\"")
-        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProperty("SUPABASE_ANON_KEY")}\"")
+        buildConfigField("String", "SUPABASE_URL", buildConfigString("SUPABASE_URL"))
+        buildConfigField("String", "SUPABASE_ANON_KEY", buildConfigString("SUPABASE_ANON_KEY"))
+        buildConfigField("String", "LOGIN_USERNAME", buildConfigString("LOGIN_USERNAME"))
+        buildConfigField("String", "LOGIN_PASSWORD_SHA256", buildConfigString("LOGIN_PASSWORD_SHA256"))
     }
 
     buildTypes {
@@ -67,6 +77,13 @@ android {
         compose = true
         viewBinding = true
     }
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
 }
 
 dependencies {
@@ -95,7 +112,14 @@ dependencies {
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
-    testImplementation(libs.junit)
+    testImplementation(platform("org.junit:junit-bom:5.10.3"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("org.junit.jupiter:junit-jupiter-params")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation("io.mockk:mockk:1.13.12")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    testImplementation("androidx.arch.core:core-testing:2.2.0")
+    testImplementation("org.robolectric:robolectric:4.13")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

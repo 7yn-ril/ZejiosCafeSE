@@ -51,6 +51,9 @@ import com.example.zejioscafese.dashboard.ui.DashboardAlertAdapter
 import com.example.zejioscafese.dashboard.ui.DashboardInsightAdapter
 import com.example.zejioscafese.dashboard.ui.DashboardTopItemAdapter
 import com.example.zejioscafese.databinding.ActivityMainBinding
+import com.example.zejioscafese.core.network.NetworkErrorFormatter
+import com.example.zejioscafese.orders.data.repository.CheckoutOrderLine
+import com.example.zejioscafese.orders.data.repository.CheckoutOrderPayload
 import com.example.zejioscafese.orders.data.repository.OrderRepository
 import com.example.zejioscafese.orders.model.CafeOrder
 import com.example.zejioscafese.orders.model.CafeOrderStatus
@@ -1345,7 +1348,12 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             )
 
             dialog.dismiss()
-            viewModel.checkout(customerName = customerNameInput.text?.toString())
+            viewModel.checkout(
+                customerName = customerNameInput.text?.toString(),
+                discountLabel = discount.label,
+                discountAmount = discount.amount,
+                finalTotal = finalTotal
+            )
         }
 
         dialog.show()
@@ -1533,7 +1541,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             R.string.showing_orders_range,
             start,
             toIndex,
-            orders.size
+            sortedOrders.size
         )
 
         binding.ordersContent.tvOrdersPageInfo.text = getString(
@@ -1736,34 +1744,72 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                     return@setOnClickListener
                 }
 
-                val itemsSummary = chosenProducts.joinToString(", ") { it.name }
                 val totalAmount = chosenProducts.sumOf { it.price }
+                val parsedStatus = parseOrderStatus(etStatus.text.toString())
+                val checkoutLines = try {
+                    chosenProducts.map { product ->
+                        CheckoutOrderLine(
+                            productVariantId = product.id,
+                            sourceProductId = product.sourceProductId
+                                ?: throw IllegalStateException("Missing product ID for ${product.name}. Refresh the menu and try again."),
+                            sourceProductName = product.sourceProductName ?: product.name,
+                            sourceVariantName = product.sourceVariantName ?: "Standard",
+                            unitPrice = product.price,
+                            quantity = 1
+                        )
+                    }
+                } catch (exception: Exception) {
+                    Snackbar.make(
+                        binding.root,
+                        exception.message ?: getString(R.string.order_create_failed, getString(R.string.try_again)),
+                        Snackbar.LENGTH_LONG
+                    ).show()
+                    return@setOnClickListener
+                }
 
-
-                val newOrder = CafeOrder(
-                    id = generateNextOrderId(),
-                    customerName = customerName,
-                    itemsSummary = itemsSummary,
-                    itemCount = chosenProducts.size,
-                    timeLabel = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date()),
-                    status = parseOrderStatus(etStatus.text.toString()),
-                    total = totalAmount,
-                    initials = extractInitials(customerName)
-                )
-
-                orders.add(0, newOrder)
-                selectedOrderStatus = null
-                orderSearchQuery = ""
-                binding.ordersContent.etOrderSearch.setText("")
-                applyOrderFilters()
-
-                Snackbar.make(
-                    binding.root,
-                    getString(R.string.order_created_message, newOrder.id),
-                    Snackbar.LENGTH_SHORT
-                ).show()
-
-                dialog.dismiss()
+                val createButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                createButton.isEnabled = false
+                lifecycleScope.launch {
+                    try {
+                        val savedOrder = orderRepository.saveCheckoutOrder(
+                            payload = CheckoutOrderPayload(
+                                customerName = customerName,
+                                subtotal = totalAmount,
+                                tax = 0.0,
+                                total = totalAmount,
+                                paymentMethod = (viewModel.selectedPaymentMethod.value ?: PosViewModel.PaymentMethod.CASH)
+                                    .name
+                                    .lowercase(Locale.US),
+                                status = parsedStatus.toDatabaseValue(),
+                                items = checkoutLines,
+                                orderType = (viewModel.selectedOrderType.value ?: PosViewModel.OrderType.DINE_IN).toDatabaseValue()
+                            ),
+                            suggestedOrderNumber = viewModel.orderNumber.value
+                        )
+                        addOrReplaceOrder(savedOrder, reveal = true)
+                        dashboardViewModel.refreshDashboard(force = true)
+                        viewModel.refreshMenu()
+                        Snackbar.make(
+                            binding.root,
+                            getString(R.string.order_created_message, savedOrder.id),
+                            Snackbar.LENGTH_SHORT
+                        ).show()
+                        dialog.dismiss()
+                    } catch (exception: Exception) {
+                        createButton.isEnabled = true
+                        Snackbar.make(
+                            binding.root,
+                            getString(
+                                R.string.order_create_failed,
+                                NetworkErrorFormatter.toUserMessage(
+                                    exception = exception,
+                                    fallbackMessage = getString(R.string.try_again)
+                                )
+                            ),
+                            Snackbar.LENGTH_LONG
+                        ).show()
+                    }
+                }
             }
         }
 
@@ -1806,6 +1852,22 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             normalized.startsWith("prep") -> CafeOrderStatus.PREPARING
             normalized.startsWith("comp") || normalized.startsWith("done") -> CafeOrderStatus.COMPLETED
             else -> CafeOrderStatus.PENDING
+        }
+    }
+
+    private fun CafeOrderStatus.toDatabaseValue(): String {
+        return when (this) {
+            CafeOrderStatus.PENDING -> "pending"
+            CafeOrderStatus.PREPARING -> "preparing"
+            CafeOrderStatus.COMPLETED -> "completed"
+        }
+    }
+
+    private fun PosViewModel.OrderType.toDatabaseValue(): String {
+        return when (this) {
+            PosViewModel.OrderType.DINE_IN -> "dine_in"
+            PosViewModel.OrderType.TAKE_AWAY -> "takeout"
+            PosViewModel.OrderType.DELIVERY -> "delivery"
         }
     }
 
@@ -2487,7 +2549,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 }
 
                 if (isEditMode) {
-                    val staffCard = card!!
+                    val staffCard = card ?: return@setOnClickListener
                     staffCard.nameView.text = name
 
                     val enteredId = etEmployeeId.text.toString().trim()

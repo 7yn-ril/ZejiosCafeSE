@@ -25,7 +25,8 @@ class MenuBrowseDialogFragment : DialogFragment() {
     private val viewModel: PosViewModel by activityViewModels()
 
     private var _binding: DialogMenuBrowseBinding? = null
-    private val binding get() = _binding!!
+    private val binding: DialogMenuBrowseBinding
+        get() = requireNotNull(_binding) { "Menu browse binding is only valid between onCreateView and onDestroyView." }
 
     private lateinit var pickerAdapter: CategoryPickerAdapter
 

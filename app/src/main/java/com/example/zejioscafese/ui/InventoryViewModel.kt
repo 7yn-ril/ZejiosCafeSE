@@ -85,6 +85,7 @@ class InventoryViewModel(
     private var sortMode = SortMode.NAME
     private var refreshJob: Job? = null
     private var lastSuccessfulRefreshAt: Long = 0L
+    private var categoryOrderRanks: Map<String, Int> = emptyMap()
 
     enum class SortMode { NAME, STOCK_LEVEL, VALUE }
     enum class ScreenMode { INGREDIENTS, PRODUCTION }
@@ -203,6 +204,11 @@ class InventoryViewModel(
     }
 
     fun restockIngredient(id: String, quantity: Double) {
+        if (quantity <= 0.0) {
+            _inventoryError.value = RESTOCK_QUANTITY_ERROR
+            return
+        }
+
         val index = allIngredients.indexOfFirst { it.id == id }
         if (index == -1) return
 
@@ -299,7 +305,10 @@ class InventoryViewModel(
         return listOf(ALL_CATEGORY) + categories
             .filter(String::isNotBlank)
             .distinct()
-            .sorted()
+            .sortedWith(
+                compareByDescending<String> { categoryOrderRanks[it] ?: 0 }
+                    .thenBy { it }
+            )
     }
 
     fun getIngredientOptionsForEditor(): List<Ingredient> {
@@ -336,14 +345,19 @@ class InventoryViewModel(
             val recipeLinksDeferred = async {
                 runCatching { inventoryRepository.fetchProductRecipeLinks() }.getOrDefault(emptyList())
             }
+            val variantCountsDeferred = async {
+                runCatching { inventoryRepository.fetchOrderVariantCounts() }.getOrDefault(emptyMap())
+            }
 
             val ingredients = ingredientsDeferred.await().distinctBy(Ingredient::id)
             val ingredientDirectory = ingredients.associateBy(Ingredient::id)
             val recipeLinks = recipeLinksDeferred.await()
+            val producibleProducts = producibleDeferred.await().distinctBy(ProducibleProduct::id)
+            val variantCounts = variantCountsDeferred.await()
 
             InventorySnapshot(
                 ingredients = ingredients,
-                producibleProducts = producibleDeferred.await().distinctBy(ProducibleProduct::id),
+                producibleProducts = producibleProducts,
                 productCategories = categoriesDeferred.await().distinctBy(ProductCategoryOption::id),
                 productRecipes = recipeLinks
                     .groupBy { it.productVariantId }
@@ -358,7 +372,8 @@ class InventoryViewModel(
                                 )
                             }
                         }.sortedBy { it.ingredientName.lowercase(Locale.getDefault()) }
-                    }
+                    },
+                variantOrderCounts = variantCounts
             )
         }
 
@@ -373,6 +388,12 @@ class InventoryViewModel(
 
         productRecipeMap.clear()
         productRecipeMap.putAll(snapshot.productRecipes)
+
+        val variantIdToCategory = allProducibleProducts.associate { it.id to it.category }
+        categoryOrderRanks = snapshot.variantOrderCounts.entries
+            .groupBy({ variantIdToCategory[it.key].orEmpty() }, { it.value })
+            .mapValues { (_, counts) -> counts.sum() }
+            .filterKeys { it.isNotBlank() }
 
         if (selectedCategory != ALL_CATEGORY && selectedCategory !in getCategories()) {
             selectedCategory = ALL_CATEGORY
@@ -519,6 +540,7 @@ class InventoryViewModel(
         const val INGREDIENT_ID_PREFIX = "ING-"
         const val INVENTORY_PAGE_SIZE = 8
         const val INVENTORY_REFRESH_INTERVAL_MS = 60_000L
+        const val RESTOCK_QUANTITY_ERROR = "Restock quantity must be greater than zero."
         val DEFAULT_INGREDIENT_CATEGORIES = listOf(
             "Beverages",
             "Dairy",
@@ -536,6 +558,7 @@ class InventoryViewModel(
         val ingredients: List<Ingredient>,
         val producibleProducts: List<ProducibleProduct>,
         val productCategories: List<ProductCategoryOption>,
-        val productRecipes: Map<String, List<ProductRecipeIngredient>>
+        val productRecipes: Map<String, List<ProductRecipeIngredient>>,
+        val variantOrderCounts: Map<String, Int> = emptyMap()
     )
 }

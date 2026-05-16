@@ -82,7 +82,6 @@ object ProductImageResolver {
         "vietnamesecoffee" to "VietnameseCoffee.png",
         "whippedcream" to "WhippedCream.png",
         "whitemocha" to "WhiteMocha.jpeg",
-        "whitemochafrappucinno" to "WhiteMochaFrappucinno.png",
         "whitemochafrappuccino" to "WhiteMochaFrappucinno.png",
         "wintermelonmilktea" to "WintermelonMilktea.png",
         "yakult" to "Yakult.png",
@@ -97,7 +96,7 @@ object ProductImageResolver {
     private fun normalize(value: String?): String {
         return value
             .orEmpty()
-            .lowercase()
+            .lowercase(java.util.Locale.US)
             .replace(Regex("[^a-z0-9]"), "")
     }
 }

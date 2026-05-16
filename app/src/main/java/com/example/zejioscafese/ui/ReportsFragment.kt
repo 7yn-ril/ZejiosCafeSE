@@ -27,7 +27,8 @@ import java.util.Locale
 class ReportsFragment : Fragment() {
 
     private var _binding: FragmentReportsBinding? = null
-    private val binding get() = _binding!!
+    private val binding: FragmentReportsBinding
+        get() = requireNotNull(_binding) { "Reports view binding is only valid between onCreateView and onDestroyView." }
     private val viewModel: ReportsViewModel by activityViewModels()
 
     private val categoryColors by lazy {
@@ -266,7 +267,7 @@ class ReportsFragment : Fragment() {
             return
         }
 
-        val maxRevenue = categories.maxOfOrNull { it.totalRevenue } ?: 1.0
+        val maxRevenue = (categories.maxOfOrNull { it.totalRevenue } ?: 0.0).coerceAtLeast(1.0)
 
         categories.forEachIndexed { index, record ->
             val rowLayout = LinearLayout(ctx).apply {
@@ -305,7 +306,7 @@ class ReportsFragment : Fragment() {
             }
 
             val barFill = View(ctx).apply {
-                val ratio = record.totalRevenue / maxRevenue
+                val ratio = (record.totalRevenue / maxRevenue).coerceIn(0.0, 1.0)
                 layoutParams = FrameLayout.LayoutParams(0, FrameLayout.LayoutParams.MATCH_PARENT)
                 setBackgroundResource(R.drawable.bg_stock_bar_fill)
                 val color = categoryColors[record.categoryName]
@@ -340,7 +341,7 @@ class ReportsFragment : Fragment() {
             return
         }
 
-        val maxRevenue = products.maxOfOrNull { it.totalRevenue } ?: 1.0
+        val maxRevenue = (products.maxOfOrNull { it.totalRevenue } ?: 0.0).coerceAtLeast(1.0)
 
         products.forEachIndexed { index, record ->
             val rowLayout = LinearLayout(ctx).apply {
@@ -385,7 +386,7 @@ class ReportsFragment : Fragment() {
             }
 
             val barFill = View(ctx).apply {
-                val ratio = record.totalRevenue / maxRevenue
+                val ratio = (record.totalRevenue / maxRevenue).coerceIn(0.0, 1.0)
                 layoutParams = FrameLayout.LayoutParams(0, FrameLayout.LayoutParams.MATCH_PARENT)
                 setBackgroundResource(R.drawable.bg_stock_bar_fill)
                 val color = fallbackCategoryPalette[index % fallbackCategoryPalette.size]

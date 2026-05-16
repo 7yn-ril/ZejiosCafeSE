@@ -130,8 +130,15 @@ class IngredientAdapter(
         }
 
         private fun formatPieces(value: Double): String {
-            val rounded = value.toLong()
-            return itemView.context.getString(R.string.inventory_value_pieces, rounded)
+            val rounded = value.coerceAtLeast(0.0)
+            val displayValue = if (rounded % 1.0 == 0.0) {
+                rounded.toLong().toString()
+            } else {
+                String.format(Locale.getDefault(), "%.1f", rounded)
+                    .trimEnd('0')
+                    .trimEnd('.')
+            }
+            return itemView.context.getString(R.string.inventory_value_pieces, displayValue)
         }
 
         private companion object {

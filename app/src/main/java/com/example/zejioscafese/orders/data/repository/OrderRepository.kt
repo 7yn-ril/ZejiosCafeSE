@@ -33,6 +33,8 @@ data class CheckoutOrderPayload(
     val subtotal: Double,
     val tax: Double,
     val total: Double,
+    val discountLabel: String? = null,
+    val discountAmount: Double = 0.0,
     val paymentMethod: String,
     val status: String,
     val items: List<CheckoutOrderLine>,
@@ -71,7 +73,10 @@ class OrderRepository(
                         .decodeSingle<NextOrderNumberRpcDto>()
                         .nextOrderNumber
                 }
-            } catch (_: Exception) {
+            } catch (exception: Exception) {
+                if (!exception.isOrderNumberPeekUnavailable()) {
+                    throw exception
+                }
                 formatOrderNumber(DEFAULT_ORDER_COUNTER)
             }
         }
@@ -81,29 +86,27 @@ class OrderRepository(
         payload: CheckoutOrderPayload,
         suggestedOrderNumber: String? = null
     ): CafeOrder {
-        require(payload.items.isNotEmpty()) {
-            "Add at least one item before saving an order."
-        }
+        validateCheckoutPayload(payload)
 
         return withContext(Dispatchers.IO) {
-            ensureAuthenticatedUserId()
+            SupabaseSessionHelper.withJwtRetry(supabaseClient) {
+                ensureAuthenticatedUserId()
 
-            val rpcResult = supabaseClient.postgrest
-                .rpc(
-                    PROCESS_CHECKOUT_RPC,
-                    buildCheckoutRpcPayload(
-                        payload = payload,
-                        suggestedOrderNumber = suggestedOrderNumber
+                val rpcResult = supabaseClient.postgrest
+                    .rpc(
+                        PROCESS_CHECKOUT_RPC,
+                        buildCheckoutRpcPayload(
+                            payload = payload,
+                            suggestedOrderNumber = suggestedOrderNumber
+                        )
                     )
-                )
-                .decodeSingle<ProcessCheckoutRpcResultDto>()
+                    .decodeSingle<ProcessCheckoutRpcResultDto>()
 
-            // Best-effort: persist order_type on databases that have the
-            // column. The in-memory CafeOrder always carries the correct
-            // orderType so the UI (Take Out badge, filters) works either way.
-            tagOrderTypeBestEffort(rpcResult.orderId, payload.orderType)
+                applyCheckoutTotals(rpcResult.orderId, payload)
+                tagOrderTypeBestEffort(rpcResult.orderId, payload.orderType)
 
-            payload.toCafeOrder(rpcResult)
+                payload.toCafeOrder(rpcResult)
+            }
         }
     }
 
@@ -273,6 +276,44 @@ class OrderRepository(
             ?: throw IllegalStateException("Supabase authentication did not return a staff session.")
     }
 
+    private fun validateCheckoutPayload(payload: CheckoutOrderPayload) {
+        require(payload.items.isNotEmpty()) {
+            "Add at least one item before saving an order."
+        }
+        require(payload.subtotal >= 0.0 && payload.tax >= 0.0 && payload.total >= 0.0) {
+            "Checkout totals cannot be negative."
+        }
+        require(payload.discountAmount >= 0.0) {
+            "Discount cannot be negative."
+        }
+        require(payload.discountAmount <= payload.subtotal + payload.tax) {
+            "Discount cannot exceed the order total."
+        }
+        require(payload.paymentMethod.trim().lowercase(Locale.US) in VALID_PAYMENT_METHODS) {
+            "Unsupported payment method: ${payload.paymentMethod}."
+        }
+        require(payload.status.trim().lowercase(Locale.US) in VALID_ORDER_STATUSES) {
+            "Unsupported order status: ${payload.status}."
+        }
+        require(payload.orderType.trim().lowercase(Locale.US) in VALID_ORDER_TYPES) {
+            "Unsupported order type: ${payload.orderType}."
+        }
+        payload.items.forEach { item ->
+            require(item.productVariantId.isNotBlank()) {
+                "Checkout contains an item without a product variant id."
+            }
+            require(item.sourceProductId.isNotBlank()) {
+                "Checkout contains an item without a product id."
+            }
+            require(item.unitPrice >= 0.0) {
+                "Checkout item price cannot be negative."
+            }
+            require(item.quantity > 0) {
+                "Checkout item quantity must be greater than zero."
+            }
+        }
+    }
+
     // CHANGE: Orders — main RPC stays on the original 6-arg signature so
     // checkout keeps working on databases that have not yet applied
     // database/add_takeout_support.sql. After the order is saved, we
@@ -286,10 +327,24 @@ class OrderRepository(
     ) = buildJsonObject {
         putNullableText("p_customer_name", payload.customerName?.trim()?.takeIf(String::isNotBlank))
         putNullableText("p_requested_order_number", suggestedOrderNumber)
-        put("p_payment_method", payload.paymentMethod.lowercase(Locale.US))
-        put("p_status", payload.status.lowercase(Locale.US))
+        put("p_payment_method", payload.paymentMethod.trim().lowercase(Locale.US))
+        put("p_status", payload.status.trim().lowercase(Locale.US))
         put("p_tax", payload.tax)
         put("p_items", Json.encodeToJsonElement(ListSerializer(CheckoutOrderLine.serializer()), payload.items))
+    }
+
+    private suspend fun applyCheckoutTotals(orderId: String, payload: CheckoutOrderPayload) {
+        supabaseClient
+            .from(ORDERS_TABLE)
+            .update(
+                {
+                    set("order_subtotal", payload.subtotal)
+                    set("order_tax", payload.tax)
+                    set("order_total", payload.total)
+                }
+            ) {
+                filter { eq("order_id", orderId) }
+            }
     }
 
     // Best-effort tag for order_type. Swallows any failure (e.g. column
@@ -317,7 +372,7 @@ class OrderRepository(
             itemCount = items.sumOf(CheckoutOrderLine::quantity),
             timeLabel = rpcResult.createdAt.toTimeLabel(),
             status = status.toCafeOrderStatus(),
-            total = rpcResult.orderTotal,
+            total = total,
             initials = customerName.toInitials(),
             orderedItems = orderedItems,
             orderedItemVariantIds = items.map(CheckoutOrderLine::productVariantId),
@@ -325,9 +380,30 @@ class OrderRepository(
             // CHANGE: Orders — propagate the just-saved payment method and
             // order type onto the in-memory CafeOrder so the list reflects
             // them immediately without a refetch.
-            paymentMethod = paymentMethod.lowercase(Locale.US),
-            orderType = orderType.lowercase(Locale.US)
+            paymentMethod = paymentMethod.trim().lowercase(Locale.US),
+            orderType = orderType.trim().lowercase(Locale.US)
         )
+    }
+
+    private fun Throwable.isOrderNumberPeekUnavailable(): Boolean {
+        var current: Throwable? = this
+        var depth = 0
+        while (current != null && depth < MAX_CAUSE_DEPTH) {
+            val message = current.message.orEmpty()
+            if (
+                message.contains(PEEK_NEXT_ORDER_RPC, ignoreCase = true) &&
+                (
+                    message.contains("not found", ignoreCase = true) ||
+                        message.contains("does not exist", ignoreCase = true) ||
+                        message.contains("PGRST202", ignoreCase = true)
+                    )
+            ) {
+                return true
+            }
+            current = current.cause
+            depth += 1
+        }
+        return false
     }
 
     private fun CheckoutOrderLine.toDisplayLabel(): String {
@@ -366,7 +442,8 @@ class OrderRepository(
         return when (trim().lowercase(Locale.US)) {
             "pending" -> CafeOrderStatus.PENDING
             "preparing" -> CafeOrderStatus.PREPARING
-            else -> CafeOrderStatus.COMPLETED
+            "completed" -> CafeOrderStatus.COMPLETED
+            else -> CafeOrderStatus.PENDING
         }
     }
 
@@ -486,12 +563,16 @@ class OrderRepository(
         const val EMPTY_ORDER_SUMMARY = "No items"
         const val ORDERS_TABLE = "orders"
         const val ORDER_ITEMS_TABLE = "order_items"
-        val ORDER_NUMBER_TEMPLATE = "#POS-%04d"
+        const val ORDER_NUMBER_TEMPLATE = "#POS-%04d"
         val TIME_FORMATTER: DateTimeFormatter =
             DateTimeFormatter.ofPattern("hh:mm a", Locale.getDefault())
         const val PEEK_NEXT_ORDER_RPC = "peek_next_pos_order_number"
         const val PROCESS_CHECKOUT_RPC = "process_checkout_order"
         const val COMPLETE_ORDER_RPC = "complete_order"
+        const val MAX_CAUSE_DEPTH = 5
+        val VALID_PAYMENT_METHODS = setOf("cash", "gcash", "maya")
+        val VALID_ORDER_STATUSES = setOf("pending", "preparing", "completed")
+        val VALID_ORDER_TYPES = setOf("dine_in", "takeout", "delivery")
     }
 }
 

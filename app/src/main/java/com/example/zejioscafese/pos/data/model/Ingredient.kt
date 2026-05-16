@@ -24,13 +24,15 @@ data class Ingredient(
     // Total servings the current stock can cover. Returns null when
     // mlPerServing isn't configured or the ingredient isn't liquid.
     val totalServings: Double?
-        get() = if (isLiquid && (mlPerServing ?: 0.0) > 0.0) {
-            currentStock / mlPerServing!!
-        } else null
+        get() {
+            val servingSize = mlPerServing?.takeIf { it > 0.0 } ?: return null
+            return if (isLiquid) currentStock / servingSize else null
+        }
 
     // PHP cost of a single serving (cost per ml × ml per serving).
     val costPerServing: Double?
-        get() = if (isLiquid && (mlPerServing ?: 0.0) > 0.0) {
-            costPerUnit * mlPerServing!!
-        } else null
+        get() {
+            val servingSize = mlPerServing?.takeIf { it > 0.0 } ?: return null
+            return if (isLiquid) costPerUnit * servingSize else null
+        }
 }

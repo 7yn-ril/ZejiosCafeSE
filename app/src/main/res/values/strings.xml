@@ -13,6 +13,7 @@
     <string name="login_username_required">Username is required.</string>
     <string name="login_password_required">Password is required.</string>
     <string name="login_invalid_credentials">Invalid username or password.</string>
+    <string name="login_credentials_not_configured">Login credentials are not configured for this build.</string>
     <string name="login_logo_description">Zejios Cafe logo</string>
 
     <string name="dashboard">Dashboard</string>
@@ -45,7 +46,7 @@
     <!-- UI CHANGE: badge / piece-only labels for the restyled inventory list. -->
     <string name="inventory_status_in_stock">•&#160;In&#160;Stock</string>
     <string name="inventory_status_low_stock">•&#160;Low&#160;Stock</string>
-    <string name="inventory_value_pieces">%1$d piece</string>
+    <string name="inventory_value_pieces">%1$s piece</string>
     <string name="inventory_low_stock_alert">Low stock warning: %1$s</string>
     <!-- UI CHANGE: labels surfaced in the restyled Add Ingredient form. -->
     <string name="inventory_field_price_per_piece">Price per Piece (PHP)</string>
@@ -53,6 +54,7 @@
     <string name="inventory_field_amount_per_serving">Amount per Serving</string>
     <string name="inventory_field_ml_per_bottle">ML per Bottle / Container</string>
     <string name="inventory_field_ml_per_serving">ML per Serving</string>
+    <string name="inventory_field_required">Required</string>
     <!-- CHANGE: Payment — confirmation screen label for GCash transactions. -->
     <string name="receipt_paid_via_gcash">Paid via GCash</string>
     <!-- CHANGE: Orders — Take Out badge + filter labels. -->
@@ -219,6 +221,8 @@
     <string name="order_field_status">Status (Pending, Preparing, Completed)</string>
     <string name="order_default_item_summary">Custom order</string>
     <string name="order_created_message">Created order %1$s</string>
+    <string name="order_create_failed">Could not create order: %1$s</string>
+    <string name="try_again">Please try again.</string>
     <string name="order_select_products">Select Products</string>
     <string name="order_select_products_count">Select Products (%1$d)</string>
     <string name="order_no_products_selected">No products selected yet.</string>

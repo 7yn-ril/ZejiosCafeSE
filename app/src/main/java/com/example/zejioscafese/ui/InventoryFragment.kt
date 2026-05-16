@@ -3,7 +3,6 @@ package com.example.zejioscafese.ui
 import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.os.Bundle
-import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -41,7 +40,8 @@ import java.util.Locale
 class InventoryFragment : Fragment() {
 
     private var _binding: FragmentInventoryBinding? = null
-    private val binding get() = _binding!!
+    private val binding: FragmentInventoryBinding
+        get() = requireNotNull(_binding) { "Inventory view binding is only valid between onCreateView and onDestroyView." }
     private val viewModel: InventoryViewModel by activityViewModels()
 
     private lateinit var ingredientAdapter: IngredientAdapter
@@ -663,8 +663,9 @@ class InventoryFragment : Fragment() {
         fallbackCostPerUnit: Double
     ): Double {
         val cost = costInput ?: return fallbackCostPerUnit
-        return if (unit.trim().equals("ml", ignoreCase = true) && (mlPerServing ?: 0.0) > 0.0) {
-            cost / mlPerServing!!
+        val servingSize = mlPerServing?.takeIf { it > 0.0 }
+        return if (unit.trim().equals("ml", ignoreCase = true) && servingSize != null) {
+            cost / servingSize
         } else {
             cost
         }
@@ -767,60 +768,66 @@ class InventoryFragment : Fragment() {
         AlertDialog.Builder(ctx)
             .setTitle("Add Ingredient")
             .setView(scrollView)
-            .setPositiveButton("Add") { _, _ ->
-                val name = etName.text.toString().trim()
-                if (name.isBlank()) return@setPositiveButton
-
-                val selectedCategory = categoryOptions
-                    .getOrNull(categorySpinner.selectedItemPosition) ?: "Pantry"
-                val isLiquid = isLiquidCategory(selectedCategory)
-                val pricePerPiece = etPricePerPiece.text.toString().toDoubleOrNull() ?: 0.0
-                val pieceCount = etCurrentStockPieces.text.toString().toDoubleOrNull() ?: 0.0
-
-                val mlPerServing = if (isLiquid) {
-                    etMlPerServing.text.toString().toDoubleOrNull()?.takeIf { it > 0.0 }
-                } else {
-                    etAmountPerServing.text.toString().toDoubleOrNull()?.takeIf { it > 0.0 }
-                }
-                val mlPerBottle = if (isLiquid) {
-                    etMlPerBottle.text.toString().toDoubleOrNull()?.takeIf { it > 0.0 }
-                } else {
-                    null
-                }
-
-                // Liquid stock is persisted in ml so the existing serving
-                // math keeps working; the table view never reads it back as
-                // ml. Solids stay in pieces.
-                val unit = if (isLiquid) "ml" else "pcs"
-                val storedStock = if (isLiquid && mlPerServing != null) {
-                    pieceCount * mlPerServing
-                } else {
-                    pieceCount
-                }
-                val storedCostPerUnit = if (isLiquid && mlPerServing != null && mlPerServing > 0.0) {
-                    pricePerPiece / mlPerServing
-                } else {
-                    pricePerPiece
-                }
-
-                val newIngredient = Ingredient(
-                    id = viewModel.generateId(),
-                    name = name,
-                    category = selectedCategory,
-                    unit = unit,
-                    currentStock = storedStock,
-                    minimumStock = 1.0,
-                    costPerUnit = storedCostPerUnit,
-                    lastRestocked = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                        .format(Date()),
-                    mlPerServing = mlPerServing,
-                    mlPerBottle = mlPerBottle
-                )
-                viewModel.addIngredient(newIngredient)
-                setupFilterChips()
-            }
+            .setPositiveButton("Add", null)
             .setNegativeButton("Cancel", null)
-            .showStyledDialog(ctx)
+            .showStyledDialog(ctx) { dialog ->
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                    val name = etName.text.toString().trim()
+                    if (name.isBlank()) {
+                        etName.error = getString(R.string.inventory_field_required)
+                        return@setOnClickListener
+                    }
+
+                    val selectedCategory = categoryOptions
+                        .getOrNull(categorySpinner.selectedItemPosition) ?: "Pantry"
+                    val isLiquid = isLiquidCategory(selectedCategory)
+                    val pricePerPiece = etPricePerPiece.text.toString().toDoubleOrNull() ?: 0.0
+                    val pieceCount = etCurrentStockPieces.text.toString().toDoubleOrNull() ?: 0.0
+
+                    val mlPerServing = if (isLiquid) {
+                        etMlPerServing.text.toString().toDoubleOrNull()?.takeIf { it > 0.0 }
+                    } else {
+                        etAmountPerServing.text.toString().toDoubleOrNull()?.takeIf { it > 0.0 }
+                    }
+                    val mlPerBottle = if (isLiquid) {
+                        etMlPerBottle.text.toString().toDoubleOrNull()?.takeIf { it > 0.0 }
+                    } else {
+                        null
+                    }
+
+                    // Liquid stock is persisted in ml so the existing serving
+                    // math keeps working; the table view never reads it back as
+                    // ml. Solids stay in pieces.
+                    val unit = if (isLiquid) "ml" else "pcs"
+                    val storedStock = if (isLiquid && mlPerServing != null) {
+                        pieceCount * mlPerServing
+                    } else {
+                        pieceCount
+                    }
+                    val storedCostPerUnit = if (isLiquid && mlPerServing != null && mlPerServing > 0.0) {
+                        pricePerPiece / mlPerServing
+                    } else {
+                        pricePerPiece
+                    }
+
+                    val newIngredient = Ingredient(
+                        id = viewModel.generateId(),
+                        name = name,
+                        category = selectedCategory,
+                        unit = unit,
+                        currentStock = storedStock,
+                        minimumStock = 1.0,
+                        costPerUnit = storedCostPerUnit,
+                        lastRestocked = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                            .format(Date()),
+                        mlPerServing = mlPerServing,
+                        mlPerBottle = mlPerBottle
+                    )
+                    viewModel.addIngredient(newIngredient)
+                    setupFilterChips()
+                    dialog.dismiss()
+                }
+            }
     }
 
     // UI CHANGE: keyword-based mapping from the existing free-form category
@@ -1223,13 +1230,6 @@ class InventoryFragment : Fragment() {
             Snackbar.LENGTH_LONG
         ).show()
         notifiedLowStockIds.addAll(freshlyLow.map(Ingredient::id))
-    }
-
-    /** Resolves a theme attribute to its color int value; returns 0 if not found. */
-    private fun resolveThemeColor(attrRes: Int): Int {
-        val typedValue = TypedValue()
-        val resolved = requireContext().theme.resolveAttribute(attrRes, typedValue, true)
-        return if (resolved) typedValue.data else 0
     }
 
     private fun dpToPx(dp: Int): Int {

@@ -377,8 +377,7 @@ class ReportsRepository(
             DateTimeFormatter.ofPattern("ha", Locale.getDefault())
         val DAILY_LABEL_FORMATTER: DateTimeFormatter =
             DateTimeFormatter.ofPattern("MMM d", Locale.getDefault())
-        val WEEKLY_LABEL_FORMATTER: DateTimeFormatter =
-            DateTimeFormatter.ofPattern("MMM d", Locale.getDefault())
+        val WEEKLY_LABEL_FORMATTER = DAILY_LABEL_FORMATTER
         val MONTHLY_LABEL_FORMATTER: DateTimeFormatter =
             DateTimeFormatter.ofPattern("MMM", Locale.getDefault())
         val TRANSACTION_DATE_FORMATTER: DateTimeFormatter =

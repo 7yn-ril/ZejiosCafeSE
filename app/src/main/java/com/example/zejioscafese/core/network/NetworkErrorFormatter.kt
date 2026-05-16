@@ -16,13 +16,11 @@ object NetworkErrorFormatter {
             }
 
             isHostResolutionFailure(exception) -> {
-                "The emulator or device cannot reach the internet right now. " +
-                    "Restart it and try again. If you are using the tablet emulator, run .\\run_tablet.ps1 -ColdBoot."
+                "No internet connection. Check your network settings and try again."
             }
 
             isTimeoutFailure(exception) -> {
-                "The request to Supabase timed out. The emulator or device may have lost internet or DNS. " +
-                    "Restart it and try again."
+                "The request timed out. Check your internet connection and try again."
             }
 
             else -> exception.message?.takeIf(String::isNotBlank) ?: fallbackMessage

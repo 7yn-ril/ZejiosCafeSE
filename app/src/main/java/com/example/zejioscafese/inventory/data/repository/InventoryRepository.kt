@@ -15,6 +15,8 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -26,138 +28,158 @@ class InventoryRepository(
         get() = clientProvider()
 
     suspend fun fetchIngredients(): List<Ingredient> {
-        return SupabaseSessionHelper.withJwtRetry(supabaseClient) {
-            supabaseClient
-                .from(INGREDIENTS_TABLE)
-                .select {
-                    order(column = "ingredient_name", order = Order.ASCENDING)
-                }
-                .decodeList<IngredientDto>()
-                .map(IngredientDto::toIngredient)
+        return withContext(Dispatchers.IO) {
+            SupabaseSessionHelper.withJwtRetry(supabaseClient) {
+                supabaseClient
+                    .from(INGREDIENTS_TABLE)
+                    .select {
+                        order(column = "ingredient_name", order = Order.ASCENDING)
+                    }
+                    .decodeList<IngredientDto>()
+                    .map(IngredientDto::toIngredient)
+            }
         }
     }
 
     suspend fun fetchProducibleProducts(): List<ProducibleProduct> {
-        return SupabaseSessionHelper.withJwtRetry(supabaseClient) {
-            supabaseClient
-                .from(PRODUCIBLE_PRODUCTS_VIEW)
-                .select {
-                    order(column = "category_name", order = Order.ASCENDING)
-                    order(column = "product_name", order = Order.ASCENDING)
-                    order(column = "variant_name", order = Order.ASCENDING)
-                }
-                .decodeList<ProducibleProductDto>()
-                .asSequence()
-                .filter { it.productIsActive && it.variantIsActive }
-                .map(ProducibleProductDto::toProducibleProduct)
-                .toList()
+        return withContext(Dispatchers.IO) {
+            SupabaseSessionHelper.withJwtRetry(supabaseClient) {
+                supabaseClient
+                    .from(PRODUCIBLE_PRODUCTS_VIEW)
+                    .select {
+                        order(column = "category_name", order = Order.ASCENDING)
+                        order(column = "product_name", order = Order.ASCENDING)
+                        order(column = "variant_name", order = Order.ASCENDING)
+                    }
+                    .decodeList<ProducibleProductDto>()
+                    .asSequence()
+                    .filter { it.productIsActive && it.variantIsActive }
+                    .map(ProducibleProductDto::toProducibleProduct)
+                    .toList()
+            }
         }
     }
 
     suspend fun fetchProductCategories(): List<ProductCategoryOption> {
-        return SupabaseSessionHelper.withJwtRetry(supabaseClient) {
-            supabaseClient
-                .from(CATEGORIES_TABLE)
-                .select {
-                    order(column = "category_display_order", order = Order.ASCENDING)
-                }
-                .decodeList<ProductCategoryDto>()
-                .asSequence()
-                .filter { it.categoryIsActive }
-                .map(ProductCategoryDto::toCategoryOption)
-                .toList()
+        return withContext(Dispatchers.IO) {
+            SupabaseSessionHelper.withJwtRetry(supabaseClient) {
+                supabaseClient
+                    .from(CATEGORIES_TABLE)
+                    .select {
+                        order(column = "category_display_order", order = Order.ASCENDING)
+                    }
+                    .decodeList<ProductCategoryDto>()
+                    .asSequence()
+                    .filter { it.categoryIsActive }
+                    .map(ProductCategoryDto::toCategoryOption)
+                    .toList()
+            }
+        }
+    }
+
+    suspend fun fetchOrderVariantCounts(): Map<String, Int> {
+        return withContext(Dispatchers.IO) {
+            SupabaseSessionHelper.withJwtRetry(supabaseClient) {
+                supabaseClient
+                    .from(ORDER_ITEMS_TABLE)
+                    .select()
+                    .decodeList<OrderItemVariantDto>()
+                    .filter { !it.productVariantId.isNullOrBlank() }
+                    .groupBy { it.productVariantId!! }
+                    .mapValues { (_, items) -> items.sumOf { it.quantity } }
+            }
         }
     }
 
     suspend fun fetchProductRecipeLinks(): List<ProductRecipeLinkDto> {
-        return SupabaseSessionHelper.withJwtRetry(supabaseClient) {
-            supabaseClient
-                .from(VARIANT_INGREDIENTS_TABLE)
-                .select {
-                    order(column = "product_variant_id", order = Order.ASCENDING)
-                    order(column = "variant_ingredient_id", order = Order.ASCENDING)
-                }
-                .decodeList<ProductRecipeLinkDto>()
+        return withContext(Dispatchers.IO) {
+            SupabaseSessionHelper.withJwtRetry(supabaseClient) {
+                supabaseClient
+                    .from(VARIANT_INGREDIENTS_TABLE)
+                    .select {
+                        order(column = "product_variant_id", order = Order.ASCENDING)
+                        order(column = "variant_ingredient_id", order = Order.ASCENDING)
+                    }
+                    .decodeList<ProductRecipeLinkDto>()
+            }
         }
     }
 
     suspend fun addIngredient(ingredient: Ingredient) {
         ensureAuthenticatedSession()
-
-        supabaseClient
-            .from(INGREDIENTS_TABLE)
-            .insert(
-                IngredientInsertDto(
-                    ingredientId = ingredient.id,
-                    ingredientName = ingredient.name,
-                    ingredientCategory = ingredient.category,
-                    ingredientUnit = ingredient.unit,
-                    ingredientCurrentStock = ingredient.currentStock,
-                    ingredientMinimumStock = ingredient.minimumStock,
-                    ingredientCostPerUnit = ingredient.costPerUnit,
-                    ingredientLastRestockedAt = currentTimestamp(),
-                    ingredientMlPerServing = ingredient.mlPerServing,
-                    ingredientMlPerBottle = ingredient.mlPerBottle
+        withContext(Dispatchers.IO) {
+            supabaseClient
+                .from(INGREDIENTS_TABLE)
+                .insert(
+                    IngredientInsertDto(
+                        ingredientId = ingredient.id,
+                        ingredientName = ingredient.name,
+                        ingredientCategory = ingredient.category,
+                        ingredientUnit = ingredient.unit,
+                        ingredientCurrentStock = ingredient.currentStock,
+                        ingredientMinimumStock = ingredient.minimumStock,
+                        ingredientCostPerUnit = ingredient.costPerUnit,
+                        ingredientLastRestockedAt = currentTimestamp(),
+                        ingredientMlPerServing = ingredient.mlPerServing,
+                        ingredientMlPerBottle = ingredient.mlPerBottle
+                    )
                 )
-            )
+        }
     }
 
     suspend fun updateIngredient(ingredient: Ingredient) {
         ensureAuthenticatedSession()
-
-        supabaseClient
-            .from(INGREDIENTS_TABLE)
-            .update(
-                {
-                    set("ingredient_name", ingredient.name)
-                    set("ingredient_category", ingredient.category)
-                    set("ingredient_unit", ingredient.unit)
-                    set("ingredient_current_stock", ingredient.currentStock)
-                    set("ingredient_minimum_stock", ingredient.minimumStock)
-                    set("ingredient_cost_per_unit", ingredient.costPerUnit)
-                    if (ingredient.isLiquid) {
-                        ingredient.mlPerServing?.let {
-                            set("ingredient_ml_per_serving", it)
-                        }
-                        ingredient.mlPerBottle?.let {
-                            set("ingredient_ml_per_bottle", it)
+        withContext(Dispatchers.IO) {
+            supabaseClient
+                .from(INGREDIENTS_TABLE)
+                .update(
+                    {
+                        set("ingredient_name", ingredient.name)
+                        set("ingredient_category", ingredient.category)
+                        set("ingredient_unit", ingredient.unit)
+                        set("ingredient_current_stock", ingredient.currentStock)
+                        set("ingredient_minimum_stock", ingredient.minimumStock)
+                        set("ingredient_cost_per_unit", ingredient.costPerUnit)
+                        if (ingredient.isLiquid) {
+                            set("ingredient_ml_per_serving", ingredient.mlPerServing)
+                            set("ingredient_ml_per_bottle", ingredient.mlPerBottle)
+                        } else {
+                            set("ingredient_ml_per_serving", null as Double?)
+                            set("ingredient_ml_per_bottle", null as Double?)
                         }
                     }
+                ) {
+                    filter {
+                        eq("ingredient_id", ingredient.id)
+                    }
                 }
-            ) {
-                filter {
-                    eq("ingredient_id", ingredient.id)
-                }
-            }
+        }
     }
 
     suspend fun restockIngredient(ingredientId: String, updatedStock: Double) {
         ensureAuthenticatedSession()
-
-        supabaseClient
-            .from(INGREDIENTS_TABLE)
-            .update(
-                {
-                    set("ingredient_current_stock", updatedStock)
-                    set("ingredient_last_restocked_at", currentTimestamp())
+        withContext(Dispatchers.IO) {
+            supabaseClient
+                .from(INGREDIENTS_TABLE)
+                .update(
+                    {
+                        set("ingredient_current_stock", updatedStock)
+                        set("ingredient_last_restocked_at", currentTimestamp())
+                    }
+                ) {
+                    filter {
+                        eq("ingredient_id", ingredientId)
+                    }
                 }
-            ) {
-                filter {
-                    eq("ingredient_id", ingredientId)
-                }
-            }
+        }
     }
 
     suspend fun addProduct(draft: ProductEditorDraft) {
         ensureAuthenticatedSession()
-
+        withContext(Dispatchers.IO) {
         val normalizedProductName = draft.productName.trim()
         val normalizedVariantName = draft.variantName.trim()
-        val ingredientRows = draft.ingredients.map {
-            it.copy(
-                requiredQuantity = it.requiredQuantity
-            )
-        }
+        val ingredientRows = draft.ingredients
 
         val existingProducts = fetchProductRows()
         val matchingProduct = existingProducts.firstOrNull {
@@ -228,94 +250,97 @@ class InventoryRepository(
             productVariantId = variantId,
             ingredients = ingredientRows
         )
+        } // end withContext
     }
 
     suspend fun updateProduct(draft: ProductEditorDraft) {
         ensureAuthenticatedSession()
-
-        val productId = requireNotNull(draft.productId) { "Missing product id for update." }
-        val productVariantId = requireNotNull(draft.productVariantId) {
-            "Missing product variant id for update."
-        }
-
-        val normalizedProductName = draft.productName.trim()
-        val normalizedVariantName = draft.variantName.trim()
-
-        supabaseClient
-            .from(PRODUCTS_TABLE)
-            .update(
-                {
-                    set("category_id", draft.categoryId)
-                    set("product_name", normalizedProductName)
-                    set("product_is_active", true)
-                }
-            ) {
-                filter {
-                    eq("product_id", productId)
-                }
+        withContext(Dispatchers.IO) {
+            val productId = requireNotNull(draft.productId) { "Missing product id for update." }
+            val productVariantId = requireNotNull(draft.productVariantId) {
+                "Missing product variant id for update."
             }
 
-        supabaseClient
-            .from(PRODUCT_VARIANTS_TABLE)
-            .update(
-                {
-                    set("variant_name", normalizedVariantName)
-                    set("variant_price", draft.price)
-                    set("variant_track_inventory", draft.ingredients.isNotEmpty())
-                    set("variant_is_active", true)
-                    if (draft.ingredients.isEmpty()) {
-                        set("variant_manual_stock_left", 0)
-                    }
-                }
-            ) {
-                filter {
-                    eq("product_variant_id", productVariantId)
-                }
-            }
+            val normalizedProductName = draft.productName.trim()
+            val normalizedVariantName = draft.variantName.trim()
 
-        replaceVariantIngredients(
-            productVariantId = productVariantId,
-            ingredients = draft.ingredients
-        )
-    }
-
-    suspend fun softDeleteProduct(product: ProducibleProduct) {
-        ensureAuthenticatedSession()
-
-        supabaseClient
-            .from(PRODUCT_VARIANTS_TABLE)
-            .update(
-                {
-                    set("variant_is_active", false)
-                }
-            ) {
-                filter {
-                    eq("product_variant_id", product.id)
-                }
-            }
-
-        val remainingActiveVariants = supabaseClient
-            .from(PRODUCT_VARIANTS_TABLE)
-            .select {
-                filter {
-                    eq("product_id", product.productId)
-                    eq("variant_is_active", true)
-                }
-            }
-            .decodeList<VariantRowDto>()
-
-        if (remainingActiveVariants.isEmpty()) {
             supabaseClient
                 .from(PRODUCTS_TABLE)
                 .update(
                     {
-                        set("product_is_active", false)
+                        set("category_id", draft.categoryId)
+                        set("product_name", normalizedProductName)
+                        set("product_is_active", true)
                     }
                 ) {
                     filter {
-                        eq("product_id", product.productId)
+                        eq("product_id", productId)
                     }
                 }
+
+            supabaseClient
+                .from(PRODUCT_VARIANTS_TABLE)
+                .update(
+                    {
+                        set("variant_name", normalizedVariantName)
+                        set("variant_price", draft.price)
+                        set("variant_track_inventory", draft.ingredients.isNotEmpty())
+                        set("variant_is_active", true)
+                        if (draft.ingredients.isEmpty()) {
+                            set("variant_manual_stock_left", 0)
+                        }
+                    }
+                ) {
+                    filter {
+                        eq("product_variant_id", productVariantId)
+                    }
+                }
+
+            replaceVariantIngredients(
+                productVariantId = productVariantId,
+                ingredients = draft.ingredients
+            )
+        }
+    }
+
+    suspend fun softDeleteProduct(product: ProducibleProduct) {
+        ensureAuthenticatedSession()
+        withContext(Dispatchers.IO) {
+            supabaseClient
+                .from(PRODUCT_VARIANTS_TABLE)
+                .update(
+                    {
+                        set("variant_is_active", false)
+                    }
+                ) {
+                    filter {
+                        eq("product_variant_id", product.id)
+                    }
+                }
+
+            val remainingActiveVariants = supabaseClient
+                .from(PRODUCT_VARIANTS_TABLE)
+                .select {
+                    filter {
+                        eq("product_id", product.productId)
+                        eq("variant_is_active", true)
+                    }
+                }
+                .decodeList<VariantRowDto>()
+
+            if (remainingActiveVariants.isEmpty()) {
+                supabaseClient
+                    .from(PRODUCTS_TABLE)
+                    .update(
+                        {
+                            set("product_is_active", false)
+                        }
+                    ) {
+                        filter {
+                            eq("product_id", product.productId)
+                        }
+                    }
+            }
         }
     }
 
@@ -517,9 +542,18 @@ class InventoryRepository(
         val variantDisplayOrder: Int = 0
     )
 
+    @Serializable
+    private data class OrderItemVariantDto(
+        @SerialName("product_variant_id")
+        val productVariantId: String? = null,
+        @SerialName("order_item_quantity")
+        val quantity: Int = 1
+    )
+
     private companion object {
         const val CATEGORIES_TABLE = "categories"
         const val INGREDIENTS_TABLE = "ingredients"
+        const val ORDER_ITEMS_TABLE = "order_items"
         const val PRODUCTS_TABLE = "products"
         const val PRODUCT_VARIANTS_TABLE = "product_variants"
         const val PRODUCIBLE_PRODUCTS_VIEW = "product_variant_stock_view"

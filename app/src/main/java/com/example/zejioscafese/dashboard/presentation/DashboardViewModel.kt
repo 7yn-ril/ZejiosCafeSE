@@ -60,7 +60,7 @@ class DashboardViewModel(
     }
 
     fun startAutoRefresh() {
-        refreshDashboard(showLoading = _dashboardSnapshot.value == null)
+        refreshDashboard(showLoading = lastSuccessfulRefreshAt == 0L)
 
         if (autoRefreshJob?.isActive == true) {
             return

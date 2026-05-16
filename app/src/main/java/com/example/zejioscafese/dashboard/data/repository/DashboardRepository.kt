@@ -135,7 +135,7 @@ class DashboardRepository(
         val pendingOrders = activeOrders.count { it.status == STATUS_PENDING }
         val preparingOrders = activeOrders.count { it.status == STATUS_PREPARING }
 
-        val alerts = lowStockIngredients.take(MAX_ALERT_COUNT).map { ingredient ->
+        val alerts = lowStockIngredients.map { ingredient ->
             val isCritical = ingredient.currentStock <= ingredient.minimumStock * CRITICAL_THRESHOLD_RATIO
             DashboardAlert(
                 title = "Low stock: ${ingredient.ingredientName}",
@@ -456,8 +456,9 @@ class DashboardRepository(
         startDate: LocalDate,
         endDate: LocalDate
     ): List<DashboardChartPoint> {
-        return (0L..6L).map { dayOffset ->
-            val date = startDate.plusDays(dayOffset)
+        return generateSequence(startDate) { current ->
+            current.plusDays(1).takeIf { !it.isAfter(endDate) }
+        }.map { date ->
             DashboardChartPoint(
                 label = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
                 sales = completedOrders
@@ -465,7 +466,7 @@ class DashboardRepository(
                     .sumOf(OrderRecord::total)
                     .toFloat()
             )
-        }
+        }.toList()
     }
 
     private fun buildWeeklyChart(

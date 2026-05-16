@@ -190,13 +190,23 @@ class PosViewModel(
         _selectedOrderType.value = type
     }
 
-    fun checkout(customerName: String? = null) {
+    fun checkout(
+        customerName: String? = null,
+        discountLabel: String? = null,
+        discountAmount: Double = 0.0,
+        finalTotal: Double? = null
+    ) {
         val itemsToCheckout = _orderItems.value.orEmpty()
         if (itemsToCheckout.isEmpty() || _isCheckoutInProgress.value == true) {
             return
         }
 
         val currentOrderNumber = _orderNumber.value ?: formatOrderNumber(orderCounter)
+        val subtotal = _subtotal.value ?: 0.0
+        val tax = _tax.value ?: 0.0
+        val cartTotal = _total.value ?: subtotal
+        val boundedDiscount = discountAmount.coerceIn(0.0, cartTotal)
+        val savedTotal = finalTotal?.coerceIn(0.0, cartTotal) ?: (cartTotal - boundedDiscount)
 
         viewModelScope.launch {
             _isCheckoutInProgress.value = true
@@ -209,9 +219,11 @@ class PosViewModel(
                 val savedOrder = orderRepository.saveCheckoutOrder(
                     payload = CheckoutOrderPayload(
                         customerName = customerName?.trim()?.takeIf(String::isNotBlank),
-                        subtotal = _subtotal.value ?: 0.0,
-                        tax = _tax.value ?: 0.0,
-                        total = _total.value ?: 0.0,
+                        subtotal = subtotal,
+                        tax = tax,
+                        total = savedTotal.roundToTwoDecimals(),
+                        discountLabel = discountLabel?.trim()?.takeIf(String::isNotBlank),
+                        discountAmount = boundedDiscount.roundToTwoDecimals(),
                         paymentMethod = (_selectedPaymentMethod.value ?: PaymentMethod.CASH).name.lowercase(Locale.US),
                         status = "preparing",
                         items = buildCheckoutLines(itemsToCheckout),
@@ -388,11 +400,16 @@ class PosViewModel(
     }
 
     private fun updateQuantity(product: Product, delta: Int) {
+        val stockLimit = product.stockLeft.coerceAtLeast(0)
+        if (stockLimit == 0 && delta > 0) {
+            return
+        }
+
         val updatedQuantity = (orderQuantitiesStore[product.id] ?: 0) + delta
         if (updatedQuantity <= 0) {
             orderQuantitiesStore.remove(product.id)
         } else {
-            orderQuantitiesStore[product.id] = updatedQuantity
+            orderQuantitiesStore[product.id] = updatedQuantity.coerceAtMost(stockLimit)
         }
         syncOrderState()
     }
@@ -400,8 +417,18 @@ class PosViewModel(
     private fun syncOrderState() {
         val items = orderQuantitiesStore.mapNotNull { (productId, quantity) ->
             allProducts.firstOrNull { it.id == productId }?.let { product ->
-                OrderItem(product = product, quantity = quantity)
+                val boundedQuantity = quantity.coerceIn(0, product.stockLeft.coerceAtLeast(0))
+                if (boundedQuantity <= 0) {
+                    null
+                } else {
+                    OrderItem(product = product, quantity = boundedQuantity)
+                }
             }
+        }
+
+        orderQuantitiesStore.clear()
+        items.forEach { item ->
+            orderQuantitiesStore[item.product.id] = item.quantity
         }
 
         _orderQuantities.value = LinkedHashMap(orderQuantitiesStore)
@@ -459,6 +486,7 @@ class PosViewModel(
         const val TAG = "PosViewModel"
         val ORDER_NUMBER_REGEX = Regex("^#POS-(\\d+)$")
         const val ORDER_NUMBER_TEMPLATE = "#POS-%04d"
+
         const val POS_PAGE_SIZE = 12
     }
 }
