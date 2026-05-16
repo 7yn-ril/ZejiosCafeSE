@@ -7,3 +7,8 @@ sdk.dir=C\:\\Users\\YOUR_USERNAME\\AppData\\Local\\Android\\Sdk
 ## Supabase project config
 SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_OR_PUBLISHABLE_KEY
+
+## Optional app login config
+## LOGIN_PASSWORD_SHA256 must be lowercase hex SHA-256 of your plain password.
+LOGIN_USERNAME=admin
+LOGIN_PASSWORD_SHA256=240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9

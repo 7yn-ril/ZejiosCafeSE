@@ -34,6 +34,15 @@ SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_OR_PUBLISHABLE_KEY
 
 You can also provide `SUPABASE_URL` and `SUPABASE_ANON_KEY` through project `gradle.properties` or environment variables if preferred.
 
+Login credentials can also be configured per machine using:
+
+```properties
+LOGIN_USERNAME=your_username
+LOGIN_PASSWORD_SHA256=your_password_sha256_hex
+```
+
+Login credentials are required. If omitted, the app will show a login configuration error.
+
 ## Run
 
 ```powershell

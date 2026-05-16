@@ -37,6 +37,13 @@ param(
     [switch]$UseSnapshot
 )
 
+# Accept a common GNU-style invocation ("--coolboot") used in some shells.
+if ($AvdName -eq "--coolboot") {
+    $ColdBoot = $true
+    $AvdName = "Pixel_Tablet"
+    Write-Host "Detected '--coolboot'. Interpreting it as -ColdBoot." -ForegroundColor DarkGray
+}
+
 $ErrorActionPreference = "Stop"
 $appPackage   = "com.example.zejioscafese"
 $mainActivity = "$appPackage/.LoginActivity"
