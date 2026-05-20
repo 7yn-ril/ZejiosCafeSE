@@ -71,8 +71,16 @@ data class DashboardRecentOrder(
     val orderNumber: String,
     val customerName: String,
     val itemsPreview: String,
+    val items: List<DashboardRecentOrderItem>,
     val total: Double,
     val status: String
+)
+
+data class DashboardRecentOrderItem(
+    val productName: String,
+    val variantName: String,
+    val quantity: Int,
+    val lineTotal: Double
 )
 
 data class DashboardInsight(
@@ -110,5 +118,6 @@ enum class DashboardPeriod(
     HOURLY(R.string.hourly),
     DAILY(R.string.daily),
     WEEKLY(R.string.weekly),
-    MONTHLY(R.string.monthly)
+    MONTHLY(R.string.monthly),
+    YEARLY(R.string.yearly)
 }

@@ -3,6 +3,7 @@ package com.example.zejioscafese.orders.data.repository
 import com.example.zejioscafese.core.supabase.SupabaseProvider
 import com.example.zejioscafese.core.supabase.SupabaseSessionHelper
 import com.example.zejioscafese.orders.model.CafeOrder
+import com.example.zejioscafese.orders.model.CafeOrderLine
 import com.example.zejioscafese.orders.model.CafeOrderStatus
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
@@ -137,6 +138,10 @@ class OrderRepository(
             orderRows.map { row ->
                 val orderItemRows = itemsByOrderId[row.orderId].orEmpty()
                 val orderedItems = orderItemRows.map { it.toDisplayLabel() }
+                val lineItems = orderItemRows.map { it.toCafeOrderLine() }
+                val subtotal = row.orderSubtotal ?: lineItems.sumOf(CafeOrderLine::lineTotal)
+                val tax = row.orderTax ?: 0.0
+                val inferredDiscount = (subtotal + tax - row.orderTotal).coerceAtLeast(0.0)
                 val customerName = row.orderCustomerName
                     ?.trim()
                     ?.takeIf(String::isNotBlank)
@@ -163,7 +168,12 @@ class OrderRepository(
                     // so the list UI can render the Take Out badge and
                     // apply the GCash / Take Out filters.
                     paymentMethod = row.orderPaymentMethod.orEmpty().ifBlank { "cash" }.lowercase(Locale.US),
-                    orderType = row.orderType.orEmpty().ifBlank { "dine_in" }.lowercase(Locale.US)
+                    orderType = row.orderType.orEmpty().ifBlank { "dine_in" }.lowercase(Locale.US),
+                    subtotal = subtotal,
+                    tax = tax,
+                    lineItems = lineItems,
+                    discountLabel = if (inferredDiscount > 0.0) "Discount" else null,
+                    discountAmount = inferredDiscount
                 )
             }
         }
@@ -364,6 +374,15 @@ class OrderRepository(
     ): CafeOrder {
         val customerName = customerName?.trim()?.takeIf(String::isNotBlank) ?: DEFAULT_CUSTOMER_NAME
         val orderedItems = items.map { it.toDisplayLabel() }
+        val lineItems = items.map { item ->
+            CafeOrderLine(
+                productName = item.sourceProductName,
+                variantName = item.sourceVariantName,
+                quantity = item.quantity,
+                unitPrice = item.unitPrice,
+                lineTotal = item.unitPrice * item.quantity
+            )
+        }
 
         return CafeOrder(
             id = rpcResult.orderNumber,
@@ -381,7 +400,12 @@ class OrderRepository(
             // order type onto the in-memory CafeOrder so the list reflects
             // them immediately without a refetch.
             paymentMethod = paymentMethod.trim().lowercase(Locale.US),
-            orderType = orderType.trim().lowercase(Locale.US)
+            orderType = orderType.trim().lowercase(Locale.US),
+            subtotal = subtotal,
+            tax = tax,
+            lineItems = lineItems,
+            discountLabel = discountLabel,
+            discountAmount = discountAmount
         )
     }
 
@@ -430,6 +454,17 @@ class OrderRepository(
         }
     }
 
+    private fun OrderItemRowDto.toCafeOrderLine(): CafeOrderLine {
+        val lineTotal = orderItemLineTotal ?: (orderItemUnitPrice * orderItemQuantity)
+        return CafeOrderLine(
+            productName = orderItemProductName,
+            variantName = orderItemVariantName,
+            quantity = orderItemQuantity,
+            unitPrice = orderItemUnitPrice,
+            lineTotal = lineTotal
+        )
+    }
+
     private fun formatProductDisplayName(productName: String, variantName: String): String {
         return when {
             variantName.equals("standard", ignoreCase = true) -> productName
@@ -443,6 +478,7 @@ class OrderRepository(
             "pending" -> CafeOrderStatus.PENDING
             "preparing" -> CafeOrderStatus.PREPARING
             "completed" -> CafeOrderStatus.COMPLETED
+            "cancelled", "canceled", "void", "voided" -> CafeOrderStatus.CANCELLED
             else -> CafeOrderStatus.PENDING
         }
     }
@@ -452,6 +488,7 @@ class OrderRepository(
             CafeOrderStatus.PENDING -> "pending"
             CafeOrderStatus.PREPARING -> "preparing"
             CafeOrderStatus.COMPLETED -> "completed"
+            CafeOrderStatus.CANCELLED -> "cancelled"
         }
     }
 
@@ -514,6 +551,10 @@ class OrderRepository(
         val orderNumber: String,
         @SerialName("order_customer_name")
         val orderCustomerName: String? = null,
+        @SerialName("order_subtotal")
+        val orderSubtotal: Double? = null,
+        @SerialName("order_tax")
+        val orderTax: Double? = null,
         @SerialName("order_total")
         val orderTotal: Double,
         @SerialName("order_status")
@@ -538,8 +579,12 @@ class OrderRepository(
         val orderItemProductName: String,
         @SerialName("order_item_variant_name")
         val orderItemVariantName: String,
+        @SerialName("order_item_unit_price")
+        val orderItemUnitPrice: Double = 0.0,
         @SerialName("order_item_quantity")
         val orderItemQuantity: Int,
+        @SerialName("order_item_line_total")
+        val orderItemLineTotal: Double? = null,
         @SerialName("order_item_is_completed")
         val orderItemIsCompleted: Boolean = false
     )

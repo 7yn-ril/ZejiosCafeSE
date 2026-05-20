@@ -12,6 +12,7 @@ import com.example.zejioscafese.orders.data.repository.OrderRepository
 import com.example.zejioscafese.orders.model.CafeOrder
 import com.example.zejioscafese.pos.data.model.OrderItem
 import com.example.zejioscafese.pos.data.model.Product
+import com.example.zejioscafese.pos.data.model.ProductGroup
 import com.example.zejioscafese.pos.data.repository.CategoryRepository
 import com.example.zejioscafese.pos.data.repository.ProductRepository
 import java.util.Locale
@@ -56,6 +57,7 @@ class PosViewModel(
 
     private var allProducts: List<Product> = emptyList()
     private var filteredProducts: List<Product> = emptyList()
+    private var filteredGroups: List<ProductGroup> = emptyList()
     private var currentProductPageIndex: Int = 0
 
     private val _categories = MutableLiveData(listOf(CategoryRepository.ALL_CATEGORY))
@@ -71,6 +73,9 @@ class PosViewModel(
 
     private val _products = MutableLiveData<List<Product>>(emptyList())
     val products: LiveData<List<Product>> = _products
+
+    private val _productGroups = MutableLiveData<List<ProductGroup>>(emptyList())
+    val productGroups: LiveData<List<ProductGroup>> = _productGroups
 
     private val _productPaginationState = MutableLiveData(
         PaginationState(
@@ -359,11 +364,15 @@ class PosViewModel(
             categoryMatch && queryMatch
         }
 
-        filteredProducts = when (_selectedSortOption.value ?: SortOption.NAME_ASC) {
-            SortOption.NAME_ASC -> filtered.sortedBy { it.name.lowercase(Locale.getDefault()) }
-            SortOption.NAME_DESC -> filtered.sortedByDescending { it.name.lowercase(Locale.getDefault()) }
-            SortOption.PRICE_ASC -> filtered.sortedBy { it.price }
-            SortOption.PRICE_DESC -> filtered.sortedByDescending { it.price }
+        filteredProducts = filtered
+
+        filteredGroups = groupProducts(filtered).let { groups ->
+            when (_selectedSortOption.value ?: SortOption.NAME_ASC) {
+                SortOption.NAME_ASC -> groups.sortedBy { it.displayName.lowercase(Locale.getDefault()) }
+                SortOption.NAME_DESC -> groups.sortedByDescending { it.displayName.lowercase(Locale.getDefault()) }
+                SortOption.PRICE_ASC -> groups.sortedBy { it.minPrice }
+                SortOption.PRICE_DESC -> groups.sortedByDescending { it.maxPrice }
+            }
         }
 
         if (resetPage) {
@@ -373,8 +382,28 @@ class PosViewModel(
         publishProductPage()
     }
 
+    private fun groupProducts(products: List<Product>): List<ProductGroup> {
+        val groupedMap = LinkedHashMap<String, MutableList<Product>>()
+        products.forEach { product ->
+            val key = product.sourceProductId ?: product.id
+            groupedMap.getOrPut(key) { mutableListOf() }.add(product)
+        }
+        return groupedMap.map { (groupId, variants) ->
+            val sortedVariants = variants.sortedBy { it.price }
+            val first = sortedVariants.first()
+            ProductGroup(
+                groupId = groupId,
+                displayName = first.sourceProductName ?: first.name,
+                category = first.category,
+                variants = sortedVariants,
+                imageUrl = first.imageUrl,
+                imageResId = first.imageResId
+            )
+        }
+    }
+
     private fun updateProductPage(targetPageIndex: Int) {
-        val totalPages = filteredProducts.pageCount(POS_PAGE_SIZE)
+        val totalPages = filteredGroups.pageCount(POS_PAGE_SIZE)
         if (totalPages <= 1) return
 
         val boundedIndex = targetPageIndex.coerceIn(0, totalPages - 1)
@@ -385,17 +414,18 @@ class PosViewModel(
     }
 
     private fun publishProductPage() {
-        val totalPages = filteredProducts.pageCount(POS_PAGE_SIZE)
+        val totalPages = filteredGroups.pageCount(POS_PAGE_SIZE)
         currentProductPageIndex = currentProductPageIndex.coerceIn(0, totalPages - 1)
 
         val fromIndex = currentProductPageIndex * POS_PAGE_SIZE
-        val pagedProducts = filteredProducts.drop(fromIndex).take(POS_PAGE_SIZE)
+        val pagedGroups = filteredGroups.drop(fromIndex).take(POS_PAGE_SIZE)
 
-        _products.value = pagedProducts
+        _productGroups.value = pagedGroups
+        _products.value = pagedGroups.flatMap { it.variants }
         _productPaginationState.value = PaginationState(
             currentPage = currentProductPageIndex + 1,
             totalPages = totalPages,
-            totalItems = filteredProducts.size
+            totalItems = filteredGroups.size
         )
     }
 

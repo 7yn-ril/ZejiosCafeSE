@@ -11,9 +11,7 @@ import com.example.zejioscafese.pos.data.local.ProductImageResolver
 object DashboardSampleData {
 
     val insights = listOf(
-        DashboardInsight("Peak Hours", "2PM - 5PM", "Orders jump 28% during the afternoon rush."),
         DashboardInsight("Best Category", "Drinks", "Coffee and frappe items drive most repeat purchases."),
-        DashboardInsight("Average Order", "PHP 146", "Strong add-on behavior from pastry bundles."),
         DashboardInsight("Best Channel", "Dine-in", "Most profitable channel based on today's ticket mix.")
     )
 
@@ -35,12 +33,6 @@ object DashboardSampleData {
             orders = 21,
             revenue = 4935.0,
             imageUrl = ProductImageResolver.resolve("Chicken Poppers").orEmpty()
-        ),
-        DashboardTopItem(
-            name = "Beefy Nachos Solo",
-            orders = 29,
-            revenue = 2755.0,
-            imageUrl = ProductImageResolver.resolve("Beefy Nachos Solo").orEmpty()
         )
     )
 
@@ -81,6 +73,13 @@ object DashboardSampleData {
                 DashboardChartPoint("Feb", 262f),
                 DashboardChartPoint("Mar", 279f),
                 DashboardChartPoint("Apr", 301f)
+            )
+            DashboardPeriod.YEARLY -> listOf(
+                DashboardChartPoint("2022", 2100f),
+                DashboardChartPoint("2023", 2480f),
+                DashboardChartPoint("2024", 2790f),
+                DashboardChartPoint("2025", 3150f),
+                DashboardChartPoint("2026", 3380f)
             )
         }
     }

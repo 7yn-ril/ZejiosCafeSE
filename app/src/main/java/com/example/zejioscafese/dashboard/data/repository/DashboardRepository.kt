@@ -10,6 +10,7 @@ import com.example.zejioscafese.dashboard.model.DashboardInsight
 import com.example.zejioscafese.dashboard.model.DashboardMetric
 import com.example.zejioscafese.dashboard.model.DashboardPeriod
 import com.example.zejioscafese.dashboard.model.DashboardRecentOrder
+import com.example.zejioscafese.dashboard.model.DashboardRecentOrderItem
 import com.example.zejioscafese.dashboard.model.DashboardSnapshot
 import com.example.zejioscafese.dashboard.model.DashboardTopItem
 import com.example.zejioscafese.pos.data.local.ProductImageResolver
@@ -55,12 +56,12 @@ class DashboardRepository(
         val today = now.atZoneSameInstant(zoneId).toLocalDate()
         val yesterday = today.minusDays(1)
         val monthStart = today.withDayOfMonth(1)
-        val lastThirtyDaysStart = today.minusDays(29)
         val lastSevenDaysStart = today.minusDays(6)
         val lastEightWeeksStart = today
             .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
             .minusWeeks(7)
         val lastTwelveMonthsStart = today.withDayOfMonth(1).minusMonths(11)
+        val lastFiveYearsStart = today.withDayOfYear(1).minusYears(4)
 
         val rawData = coroutineScope {
             val ordersDeferred = async {
@@ -94,7 +95,6 @@ class DashboardRepository(
         val todayCompleted = completedOrders.filter { it.localDate == today }
         val yesterdayCompleted = completedOrders.filter { it.localDate == yesterday }
         val monthCompleted = completedOrders.filter { !it.localDate.isBefore(monthStart) }
-        val lastThirtyDaysCompleted = completedOrders.filter { !it.localDate.isBefore(lastThirtyDaysStart) }
 
         val todayOrderIds = todayCompleted.map(OrderRecord::id).toHashSet()
         val yesterdayOrderIds = yesterdayCompleted.map(OrderRecord::id).toHashSet()
@@ -177,39 +177,14 @@ class DashboardRepository(
             .mapValues { (_, rows) -> rows.sumOf(OrderItemRowDto::lineTotal) }
 
         val bestCategory = categoryRevenue.maxByOrNull(Map.Entry<String, Double>::value)
-        val peakHour = lastThirtyDaysCompleted
-            .groupingBy { it.createdAt.hour }
-            .eachCount()
-            .maxByOrNull(Map.Entry<Int, Int>::value)
-
         val topSeller = topItems.firstOrNull()
-        val averageOrderValue = if (monthCompleted.isNotEmpty()) {
-            monthCompleted.sumOf(OrderRecord::total) / monthCompleted.size
-        } else {
-            0.0
-        }
 
         val insights = listOf(
-            DashboardInsight(
-                title = "Peak Hours",
-                value = peakHour?.key?.let(::formatHourRange) ?: "No data yet",
-                supportingText = peakHour?.value?.let { "$it completed orders hit that hour in the last 30 days." }
-                    ?: "Complete a few orders to reveal customer traffic patterns."
-            ),
             DashboardInsight(
                 title = "Best Category",
                 value = bestCategory?.key ?: "No sales yet",
                 supportingText = bestCategory?.value?.let { "${formatCurrency(it)} in revenue this month." }
                     ?: "Sales by category will appear once completed orders come in."
-            ),
-            DashboardInsight(
-                title = "Average Order",
-                value = formatCurrency(averageOrderValue),
-                supportingText = if (monthCompleted.isEmpty()) {
-                    "No completed orders recorded this month yet."
-                } else {
-                    "${monthCompleted.size} completed orders recorded this month."
-                }
             ),
             DashboardInsight(
                 title = "Top Seller",
@@ -223,7 +198,8 @@ class DashboardRepository(
             DashboardPeriod.HOURLY to buildHourlyChart(todayCompleted),
             DashboardPeriod.DAILY to buildDailyChart(completedOrders, lastSevenDaysStart, today),
             DashboardPeriod.WEEKLY to buildWeeklyChart(completedOrders, lastEightWeeksStart, today),
-            DashboardPeriod.MONTHLY to buildMonthlyChart(completedOrders, lastTwelveMonthsStart, today)
+            DashboardPeriod.MONTHLY to buildMonthlyChart(completedOrders, lastTwelveMonthsStart, today),
+            DashboardPeriod.YEARLY to buildYearlyChart(completedOrders, lastFiveYearsStart, today)
         )
 
         val itemsByOrderId = rawData.orderItems.groupBy(OrderItemRowDto::orderId)
@@ -236,6 +212,14 @@ class DashboardRepository(
                     orderNumber = record.orderNumber,
                     customerName = record.customerName,
                     itemsPreview = buildRecentItemsPreview(items),
+                    items = items.map { row ->
+                        DashboardRecentOrderItem(
+                            productName = row.productName,
+                            variantName = row.variantName,
+                            quantity = row.quantity,
+                            lineTotal = row.lineTotal
+                        )
+                    },
                     total = record.total,
                     status = formatStatusLabel(record.status)
                 )
@@ -509,6 +493,22 @@ class DashboardRepository(
         }.toList()
     }
 
+    private fun buildYearlyChart(
+        completedOrders: List<OrderRecord>,
+        startDate: LocalDate,
+        endDate: LocalDate
+    ): List<DashboardChartPoint> {
+        return (startDate.year..endDate.year).map { year ->
+            DashboardChartPoint(
+                label = year.toString(),
+                sales = completedOrders
+                    .filter { it.localDate.year == year }
+                    .sumOf(OrderRecord::total)
+                    .toFloat()
+            )
+        }
+    }
+
     private fun formatCurrency(amount: Double): String {
         return String.format(Locale.US, "PHP %,.2f", amount.coerceAtLeast(0.0))
     }
@@ -525,12 +525,6 @@ class DashboardRepository(
         return LocalTime.of(hour, 0)
             .format(CHART_HOUR_FORMATTER)
             .uppercase(Locale.getDefault())
-    }
-
-    private fun formatHourRange(hour: Int): String {
-        val start = LocalTime.of(hour, 0).format(INSIGHT_HOUR_FORMATTER)
-        val end = LocalTime.of((hour + 1) % 24, 0).format(INSIGHT_HOUR_FORMATTER)
-        return "$start - $end"
     }
 
     private fun stockRatio(ingredient: IngredientRowDto): Double {
@@ -636,7 +630,7 @@ class DashboardRepository(
         const val UNCATEGORIZED = "Uncategorized"
 
         const val MAX_ALERT_COUNT = 3
-        const val MAX_TOP_ITEMS = 4
+        const val MAX_TOP_ITEMS = 3
         const val MAX_RECENT_ORDERS = 10
         const val CRITICAL_THRESHOLD_RATIO = 0.5
         const val DEFAULT_CUSTOMER_NAME = "Walk-in"
@@ -648,7 +642,5 @@ class DashboardRepository(
             DateTimeFormatter.ofPattern("MMM d", Locale.getDefault())
         val MONTH_LABEL_FORMATTER: DateTimeFormatter =
             DateTimeFormatter.ofPattern("MMM", Locale.getDefault())
-        val INSIGHT_HOUR_FORMATTER: DateTimeFormatter =
-            DateTimeFormatter.ofPattern("h a", Locale.getDefault())
     }
 }

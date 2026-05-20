@@ -154,11 +154,10 @@ class InventoryFragment : Fragment() {
     }
 
     private fun setupBottomNavigation() {
+        binding.inventoryModeToggle.visibility = View.GONE
+        viewModel.setScreenMode(InventoryViewModel.ScreenMode.INGREDIENTS)
         binding.tabIngredients.setOnClickListener {
             viewModel.setScreenMode(InventoryViewModel.ScreenMode.INGREDIENTS)
-        }
-        binding.tabCanProduce.setOnClickListener {
-            viewModel.setScreenMode(InventoryViewModel.ScreenMode.PRODUCTION)
         }
         applyModeToggleVisuals(InventoryViewModel.ScreenMode.INGREDIENTS)
     }
@@ -267,10 +266,7 @@ class InventoryFragment : Fragment() {
 
     private fun setupAddButton() {
         binding.btnAddIngredient.setOnClickListener {
-            when (viewModel.screenMode.value ?: InventoryViewModel.ScreenMode.INGREDIENTS) {
-                InventoryViewModel.ScreenMode.INGREDIENTS -> showAddDialog()
-                InventoryViewModel.ScreenMode.PRODUCTION -> showProductDialog()
-            }
+            showAddDialog()
         }
     }
 
@@ -350,7 +346,7 @@ class InventoryFragment : Fragment() {
     }
 
     private fun renderInventoryMode(mode: InventoryViewModel.ScreenMode) {
-        val isIngredientsMode = mode == InventoryViewModel.ScreenMode.INGREDIENTS
+        val isIngredientsMode = true
 
         binding.rvIngredients.visibility = if (isIngredientsMode) View.VISIBLE else View.GONE
         binding.rvProducibleProducts.visibility = if (isIngredientsMode) View.GONE else View.VISIBLE
@@ -403,7 +399,7 @@ class InventoryFragment : Fragment() {
             else R.string.inventory_metric_sales_value_subtitle
         )
 
-        applyModeToggleVisuals(mode)
+        applyModeToggleVisuals(InventoryViewModel.ScreenMode.INGREDIENTS)
     }
 
     private fun renderPagination(state: InventoryViewModel.PaginationState) {
@@ -419,25 +415,12 @@ class InventoryFragment : Fragment() {
     }
 
     private fun renderCurrentMetrics() {
-        when (viewModel.screenMode.value ?: InventoryViewModel.ScreenMode.INGREDIENTS) {
-            InventoryViewModel.ScreenMode.INGREDIENTS -> {
-                binding.tvTotalIngredients.text =
-                    (viewModel.totalIngredientCount.value ?: 0).toString()
-                binding.tvLowStockCount.text =
-                    (viewModel.lowStockIngredients.value?.size ?: 0).toString()
-                binding.tvInventoryValue.text =
-                    formatCurrency(viewModel.totalInventoryValue.value ?: 0.0)
-            }
-
-            InventoryViewModel.ScreenMode.PRODUCTION -> {
-                binding.tvTotalIngredients.text =
-                    (viewModel.totalProducibleProductCount.value ?: 0).toString()
-                binding.tvLowStockCount.text =
-                    (viewModel.outOfStockProducts.value?.size ?: 0).toString()
-                binding.tvInventoryValue.text =
-                    formatCurrency(viewModel.averageProduciblePrice.value ?: 0.0)
-            }
-        }
+        binding.tvTotalIngredients.text =
+            (viewModel.totalIngredientCount.value ?: 0).toString()
+        binding.tvLowStockCount.text =
+            (viewModel.lowStockIngredients.value?.size ?: 0).toString()
+        binding.tvInventoryValue.text =
+            formatCurrency(viewModel.totalInventoryValue.value ?: 0.0)
     }
 
     private fun showRestockDialog(ingredient: Ingredient) {

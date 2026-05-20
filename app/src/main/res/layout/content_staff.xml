@@ -26,235 +26,99 @@
         android:padding="22dp">
 
         <!-- ─────────────────────────────────────────────────────
-             Section A — KPI metric tiles
-             Four equal-weighted tiles summarising team status.
+             Section A — Team banner (Total Staff hero card)
              ───────────────────────────────────────────────────── -->
-        <LinearLayout
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:baselineAligned="false"
-            android:orientation="horizontal">
+            app:cardBackgroundColor="@color/pos_surface"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="2dp"
+            app:strokeColor="@color/pos_border"
+            app:strokeWidth="1dp">
 
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="0dp"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                app:cardBackgroundColor="@color/pos_surface"
-                app:cardCornerRadius="18dp"
-                app:cardElevation="2dp"
-                app:strokeColor="@color/pos_border"
-                app:strokeWidth="1dp">
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="20dp"
+                android:paddingTop="18dp"
+                android:paddingEnd="20dp"
+                android:paddingBottom="18dp">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    app:cardBackgroundColor="@color/pos_success_soft"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp">
+
+                    <ImageView
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@string/total_staff"
+                        android:src="@drawable/ic_staff_24"
+                        app:tint="@color/pos_secondary" />
+                </com.google.android.material.card.MaterialCardView>
 
                 <LinearLayout
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <com.google.android.material.card.MaterialCardView
-                        android:layout_width="46dp"
-                        android:layout_height="46dp"
-                        app:cardBackgroundColor="@color/pos_success_soft"
-                        app:cardCornerRadius="12dp"
-                        app:cardElevation="0dp">
-
-                        <ImageView
-                            android:layout_width="22dp"
-                            android:layout_height="22dp"
-                            android:layout_gravity="center"
-                            android:contentDescription="@string/total_staff"
-                            android:src="@drawable/ic_staff_24"
-                            app:tint="@color/pos_secondary" />
-                    </com.google.android.material.card.MaterialCardView>
-
-                    <TextView
-                        android:id="@+id/tvStaffMetricTotal"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
-                        android:text="@string/staff_metric_total_value"
-                        android:textColor="@color/pos_text_primary"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
+                    android:layout_marginStart="16dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
                         android:text="@string/total_staff"
-                        android:textColor="@color/pos_text_secondary"
-                        android:textSize="12sp" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
+                        android:textColor="@color/pos_text_secondary" />
 
-            <Space
-                android:layout_width="@dimen/content_inline_gap"
-                android:layout_height="1dp" />
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                app:cardBackgroundColor="@color/pos_surface"
-                app:cardCornerRadius="18dp"
-                app:cardElevation="2dp"
-                app:strokeColor="@color/pos_border"
-                app:strokeWidth="1dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <com.google.android.material.card.MaterialCardView
-                        android:layout_width="46dp"
-                        android:layout_height="46dp"
-                        app:cardBackgroundColor="@color/pos_info_soft"
-                        app:cardCornerRadius="12dp"
-                        app:cardElevation="0dp">
-
-                        <ImageView
-                            android:layout_width="22dp"
-                            android:layout_height="22dp"
-                            android:layout_gravity="center"
-                            android:contentDescription="@string/active_today"
-                            android:src="@drawable/ic_staff_24"
-                            app:tint="@color/pos_info" />
-                    </com.google.android.material.card.MaterialCardView>
-
-                    <TextView
-                        android:id="@+id/tvStaffMetricActive"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
-                        android:text="@string/staff_metric_active_value"
-                        android:textColor="@color/pos_text_primary"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
-
-                    <TextView
+                    <LinearLayout
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="@string/active_today"
-                        android:textColor="@color/pos_text_secondary"
-                        android:textSize="12sp" />
+                        android:baselineAligned="true"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/tvStaffMetricTotal"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/staff_metric_total_value"
+                            android:textColor="@color/pos_text_primary"
+                            android:textSize="28sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="bottom"
+                            android:layout_marginStart="6dp"
+                            android:layout_marginBottom="4dp"
+                            android:text="@string/staff_banner_members_label"
+                            android:textColor="@color/pos_text_secondary"
+                            android:textSize="13sp" />
+                    </LinearLayout>
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
 
-            <Space
-                android:layout_width="@dimen/content_inline_gap"
-                android:layout_height="1dp" />
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                app:cardBackgroundColor="@color/pos_surface"
-                app:cardCornerRadius="18dp"
-                app:cardElevation="2dp"
-                app:strokeColor="@color/pos_border"
-                app:strokeWidth="1dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <TextView
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <com.google.android.material.card.MaterialCardView
-                        android:layout_width="46dp"
-                        android:layout_height="46dp"
-                        app:cardBackgroundColor="@color/pos_warning_soft"
-                        app:cardCornerRadius="12dp"
-                        app:cardElevation="0dp">
-
-                        <ImageView
-                            android:layout_width="22dp"
-                            android:layout_height="22dp"
-                            android:layout_gravity="center"
-                            android:contentDescription="@string/on_break"
-                            android:src="@drawable/ic_clock_24"
-                            app:tint="@color/pos_warning" />
-                    </com.google.android.material.card.MaterialCardView>
-
-                    <TextView
-                        android:id="@+id/tvStaffMetricBreak"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
-                        android:text="@string/staff_metric_break_value"
-                        android:textColor="@color/pos_text_primary"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="@string/on_break"
-                        android:textColor="@color/pos_text_secondary"
-                        android:textSize="12sp" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <Space
-                android:layout_width="@dimen/content_inline_gap"
-                android:layout_height="1dp" />
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                app:cardBackgroundColor="@color/pos_surface"
-                app:cardCornerRadius="18dp"
-                app:cardElevation="2dp"
-                app:strokeColor="@color/pos_border"
-                app:strokeWidth="1dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <com.google.android.material.card.MaterialCardView
-                        android:layout_width="46dp"
-                        android:layout_height="46dp"
-                        app:cardBackgroundColor="@color/pos_critical_soft"
-                        app:cardCornerRadius="12dp"
-                        app:cardElevation="0dp">
-
-                        <ImageView
-                            android:layout_width="22dp"
-                            android:layout_height="22dp"
-                            android:layout_gravity="center"
-                            android:contentDescription="@string/off_duty"
-                            android:src="@drawable/ic_warning_24"
-                            app:tint="@color/pos_badge" />
-                    </com.google.android.material.card.MaterialCardView>
-
-                    <TextView
-                        android:id="@+id/tvStaffMetricOff"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
-                        android:text="@string/staff_metric_off_value"
-                        android:textColor="@color/pos_text_primary"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="@string/off_duty"
-                        android:textColor="@color/pos_text_secondary"
-                        android:textSize="12sp" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-        </LinearLayout>
+                    android:background="@drawable/bg_hint_chip"
+                    android:paddingStart="12dp"
+                    android:paddingTop="6dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="6dp"
+                    android:text="@string/staff_banner_roster_label"
+                    android:textColor="@color/pos_secondary"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <!-- ─────────────────────────────────────────────────────
              Section B — Action bar (search + filters + Add Staff)
@@ -322,31 +186,6 @@
                 app:strokeWidth="1dp" />
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnStaffStatusFilter"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="wrap_content"
-                android:layout_height="@dimen/search_height"
-                android:layout_marginStart="10dp"
-                android:ellipsize="end"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:maxLines="1"
-                android:minWidth="134dp"
-                android:text="@string/all_status"
-                android:textAllCaps="false"
-                android:textColor="@color/pos_primary"
-                android:textSize="12sp"
-                app:backgroundTint="@color/white"
-                app:cornerRadius="18dp"
-                app:icon="@drawable/ic_expand_more_24"
-                app:iconGravity="textEnd"
-                app:iconPadding="6dp"
-                app:iconSize="16dp"
-                app:iconTint="@color/pos_primary"
-                app:strokeColor="@color/pos_primary"
-                app:strokeWidth="1dp" />
-
-            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnAddStaff"
                 style="@style/Widget.Material3.Button"
                 android:layout_width="wrap_content"
@@ -370,535 +209,27 @@
 
         <!-- ─────────────────────────────────────────────────────
              Section C — Staff card grid
-             Three equal-weighted columns side by side. No horizontal
-             scrolling — every card is fully visible. Add more rows by
-             stacking another LinearLayout below if the team grows.
+             Cards are added dynamically by MainActivity.addStaffCard().
+             The GridLayout wraps cards into rows of three.
              ───────────────────────────────────────────────────── -->
+        <TextView
+            android:id="@+id/tvStaffEmptyState"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/content_section_gap"
+            android:gravity="center"
+            android:paddingTop="32dp"
+            android:paddingBottom="32dp"
+            android:text="@string/staff_empty_state"
+            android:textColor="@color/pos_text_secondary"
+            android:textSize="14sp"
+            android:visibility="visible" />
+
         <LinearLayout
             android:id="@+id/staffCardsContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/content_section_gap"
-            android:baselineAligned="false"
-            android:orientation="horizontal">
-
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardStaffOne"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                app:cardBackgroundColor="@color/pos_surface"
-                app:cardCornerRadius="20dp"
-                app:cardElevation="2dp"
-                app:strokeColor="@color/pos_border"
-                app:strokeWidth="1dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="18dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <com.google.android.material.card.MaterialCardView
-                            android:layout_width="58dp"
-                            android:layout_height="58dp"
-                            app:cardBackgroundColor="@color/pos_success_soft"
-                            app:cardCornerRadius="14dp"
-                            app:cardElevation="0dp">
-
-                            <ImageView
-                                android:layout_width="26dp"
-                                android:layout_height="26dp"
-                                android:layout_gravity="center"
-                                android:contentDescription="@string/staff_member_avatar"
-                                android:src="@drawable/ic_staff_24"
-                                app:tint="@color/pos_secondary" />
-                        </com.google.android.material.card.MaterialCardView>
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="12dp"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:id="@+id/tvStaffNameOne"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:ellipsize="end"
-                                android:maxLines="1"
-                                android:text="@string/staff_member_name_one"
-                                android:textAppearance="@style/TextAppearance.ZejiosCafe.Headline"
-                                android:textColor="@color/pos_text_primary" />
-
-                            <TextView
-                                android:id="@+id/tvStaffIdOne"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="2dp"
-                                android:ellipsize="end"
-                                android:maxLines="1"
-                                android:text="@string/staff_member_id_one"
-                                android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
-                                android:textColor="@color/pos_text_secondary" />
-                        </LinearLayout>
-
-                        <TextView
-                            android:id="@+id/tvStaffStatusOne"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_stock_badge"
-                            android:paddingStart="12dp"
-                            android:paddingTop="5dp"
-                            android:paddingEnd="12dp"
-                            android:paddingBottom="5dp"
-                            android:text="@string/staff_status_active"
-                            android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
-                            android:textColor="@color/white" />
-                    </LinearLayout>
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:layout_marginTop="14dp"
-                        android:background="@color/pos_border" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:id="@+id/tvStaffRoleOne"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_hint_chip"
-                            android:paddingStart="10dp"
-                            android:paddingTop="5dp"
-                            android:paddingEnd="10dp"
-                            android:paddingBottom="5dp"
-                            android:text="@string/staff_role_manager"
-                            android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
-                            android:textColor="@color/pos_secondary" />
-
-                        <ImageView
-                            android:layout_width="14dp"
-                            android:layout_height="14dp"
-                            android:layout_marginStart="10dp"
-                            android:contentDescription="@string/shift_time"
-                            android:src="@drawable/ic_clock_24"
-                            app:tint="@color/pos_text_secondary" />
-
-                        <TextView
-                            android:id="@+id/tvStaffShiftOne"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="6dp"
-                            android:layout_weight="1"
-                            android:ellipsize="end"
-                            android:maxLines="1"
-                            android:text="@string/staff_shift_one"
-                            android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
-                            android:textColor="@color/pos_text_secondary" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
-                        android:orientation="horizontal">
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnEditStaffOne"
-                            style="@style/Widget.Material3.Button"
-                            android:layout_width="0dp"
-                            android:layout_height="42dp"
-                            android:layout_weight="1"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            android:text="@string/edit"
-                            android:textAllCaps="false"
-                            app:backgroundTint="@color/pos_secondary"
-                            app:cornerRadius="12dp"
-                            app:icon="@drawable/ic_edit_18"
-                            app:iconPadding="6dp"
-                            app:iconTint="@color/white" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnStaffActionsOne"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
-                            android:layout_width="44dp"
-                            android:layout_height="42dp"
-                            android:layout_marginStart="8dp"
-                            android:contentDescription="@string/order_actions"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            app:backgroundTint="@color/pos_surface_soft"
-                            app:cornerRadius="12dp"
-                            app:icon="@drawable/ic_more_vert_24"
-                            app:iconTint="@color/pos_text_secondary"
-                            app:strokeColor="@color/pos_border"
-                            app:strokeWidth="1dp" />
-                    </LinearLayout>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <Space
-                android:layout_width="@dimen/content_inline_gap"
-                android:layout_height="1dp" />
-
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardStaffTwo"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                app:cardBackgroundColor="@color/pos_surface"
-                app:cardCornerRadius="20dp"
-                app:cardElevation="2dp"
-                app:strokeColor="@color/pos_border"
-                app:strokeWidth="1dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="18dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <com.google.android.material.card.MaterialCardView
-                            android:layout_width="58dp"
-                            android:layout_height="58dp"
-                            app:cardBackgroundColor="@color/pos_info_soft"
-                            app:cardCornerRadius="14dp"
-                            app:cardElevation="0dp">
-
-                            <ImageView
-                                android:layout_width="26dp"
-                                android:layout_height="26dp"
-                                android:layout_gravity="center"
-                                android:contentDescription="@string/staff_member_avatar"
-                                android:src="@drawable/ic_staff_24"
-                                app:tint="@color/pos_info" />
-                        </com.google.android.material.card.MaterialCardView>
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="12dp"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:id="@+id/tvStaffNameTwo"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:ellipsize="end"
-                                android:maxLines="1"
-                                android:text="@string/staff_member_name_two"
-                                android:textAppearance="@style/TextAppearance.ZejiosCafe.Headline"
-                                android:textColor="@color/pos_text_primary" />
-
-                            <TextView
-                                android:id="@+id/tvStaffIdTwo"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="2dp"
-                                android:ellipsize="end"
-                                android:maxLines="1"
-                                android:text="@string/staff_member_id_two"
-                                android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
-                                android:textColor="@color/pos_text_secondary" />
-                        </LinearLayout>
-
-                        <TextView
-                            android:id="@+id/tvStaffStatusTwo"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_stock_badge"
-                            android:paddingStart="12dp"
-                            android:paddingTop="5dp"
-                            android:paddingEnd="12dp"
-                            android:paddingBottom="5dp"
-                            android:text="@string/staff_status_active"
-                            android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
-                            android:textColor="@color/white" />
-                    </LinearLayout>
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:layout_marginTop="14dp"
-                        android:background="@color/pos_border" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:id="@+id/tvStaffRoleTwo"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_hint_chip"
-                            android:paddingStart="10dp"
-                            android:paddingTop="5dp"
-                            android:paddingEnd="10dp"
-                            android:paddingBottom="5dp"
-                            android:text="@string/staff_role_barista"
-                            android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
-                            android:textColor="@color/pos_secondary" />
-
-                        <ImageView
-                            android:layout_width="14dp"
-                            android:layout_height="14dp"
-                            android:layout_marginStart="10dp"
-                            android:contentDescription="@string/shift_time"
-                            android:src="@drawable/ic_clock_24"
-                            app:tint="@color/pos_text_secondary" />
-
-                        <TextView
-                            android:id="@+id/tvStaffShiftTwo"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="6dp"
-                            android:layout_weight="1"
-                            android:ellipsize="end"
-                            android:maxLines="1"
-                            android:text="@string/staff_shift_two"
-                            android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
-                            android:textColor="@color/pos_text_secondary" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
-                        android:orientation="horizontal">
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnEditStaffTwo"
-                            style="@style/Widget.Material3.Button"
-                            android:layout_width="0dp"
-                            android:layout_height="42dp"
-                            android:layout_weight="1"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            android:text="@string/edit"
-                            android:textAllCaps="false"
-                            app:backgroundTint="@color/pos_secondary"
-                            app:cornerRadius="12dp"
-                            app:icon="@drawable/ic_edit_18"
-                            app:iconPadding="6dp"
-                            app:iconTint="@color/white" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnStaffActionsTwo"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
-                            android:layout_width="44dp"
-                            android:layout_height="42dp"
-                            android:layout_marginStart="8dp"
-                            android:contentDescription="@string/order_actions"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            app:backgroundTint="@color/pos_surface_soft"
-                            app:cornerRadius="12dp"
-                            app:icon="@drawable/ic_more_vert_24"
-                            app:iconTint="@color/pos_text_secondary"
-                            app:strokeColor="@color/pos_border"
-                            app:strokeWidth="1dp" />
-                    </LinearLayout>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <Space
-                android:layout_width="@dimen/content_inline_gap"
-                android:layout_height="1dp" />
-
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardStaffThree"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                app:cardBackgroundColor="@color/pos_surface"
-                app:cardCornerRadius="20dp"
-                app:cardElevation="2dp"
-                app:strokeColor="@color/pos_border"
-                app:strokeWidth="1dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="18dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <com.google.android.material.card.MaterialCardView
-                            android:layout_width="58dp"
-                            android:layout_height="58dp"
-                            app:cardBackgroundColor="@color/pos_warning_soft"
-                            app:cardCornerRadius="14dp"
-                            app:cardElevation="0dp">
-
-                            <ImageView
-                                android:layout_width="26dp"
-                                android:layout_height="26dp"
-                                android:layout_gravity="center"
-                                android:contentDescription="@string/staff_member_avatar"
-                                android:src="@drawable/ic_staff_24"
-                                app:tint="@color/pos_warning" />
-                        </com.google.android.material.card.MaterialCardView>
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="12dp"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:id="@+id/tvStaffNameThree"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:ellipsize="end"
-                                android:maxLines="1"
-                                android:text="@string/staff_member_name_three"
-                                android:textAppearance="@style/TextAppearance.ZejiosCafe.Headline"
-                                android:textColor="@color/pos_text_primary" />
-
-                            <TextView
-                                android:id="@+id/tvStaffIdThree"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="2dp"
-                                android:ellipsize="end"
-                                android:maxLines="1"
-                                android:text="@string/staff_member_id_three"
-                                android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
-                                android:textColor="@color/pos_text_secondary" />
-                        </LinearLayout>
-
-                        <TextView
-                            android:id="@+id/tvStaffStatusThree"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_stock_badge"
-                            android:paddingStart="12dp"
-                            android:paddingTop="5dp"
-                            android:paddingEnd="12dp"
-                            android:paddingBottom="5dp"
-                            android:text="@string/staff_status_active"
-                            android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
-                            android:textColor="@color/white" />
-                    </LinearLayout>
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:layout_marginTop="14dp"
-                        android:background="@color/pos_border" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:id="@+id/tvStaffRoleThree"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:background="@drawable/bg_hint_chip"
-                            android:paddingStart="10dp"
-                            android:paddingTop="5dp"
-                            android:paddingEnd="10dp"
-                            android:paddingBottom="5dp"
-                            android:text="@string/staff_role_cashier"
-                            android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
-                            android:textColor="@color/pos_secondary" />
-
-                        <ImageView
-                            android:layout_width="14dp"
-                            android:layout_height="14dp"
-                            android:layout_marginStart="10dp"
-                            android:contentDescription="@string/shift_time"
-                            android:src="@drawable/ic_clock_24"
-                            app:tint="@color/pos_text_secondary" />
-
-                        <TextView
-                            android:id="@+id/tvStaffShiftThree"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="6dp"
-                            android:layout_weight="1"
-                            android:ellipsize="end"
-                            android:maxLines="1"
-                            android:text="@string/staff_shift_three"
-                            android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
-                            android:textColor="@color/pos_text_secondary" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
-                        android:orientation="horizontal">
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnEditStaffThree"
-                            style="@style/Widget.Material3.Button"
-                            android:layout_width="0dp"
-                            android:layout_height="42dp"
-                            android:layout_weight="1"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            android:text="@string/edit"
-                            android:textAllCaps="false"
-                            app:backgroundTint="@color/pos_secondary"
-                            app:cornerRadius="12dp"
-                            app:icon="@drawable/ic_edit_18"
-                            app:iconPadding="6dp"
-                            app:iconTint="@color/white" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnStaffActionsThree"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
-                            android:layout_width="44dp"
-                            android:layout_height="42dp"
-                            android:layout_marginStart="8dp"
-                            android:contentDescription="@string/order_actions"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            app:backgroundTint="@color/pos_surface_soft"
-                            app:cornerRadius="12dp"
-                            app:icon="@drawable/ic_more_vert_24"
-                            app:iconTint="@color/pos_text_secondary"
-                            app:strokeColor="@color/pos_border"
-                            app:strokeWidth="1dp" />
-                    </LinearLayout>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-        </LinearLayout>
+            android:orientation="vertical" />
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

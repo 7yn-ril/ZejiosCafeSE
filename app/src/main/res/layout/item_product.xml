@@ -189,9 +189,20 @@
                 android:id="@+id/tvQuantityBadge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:background="@drawable/bg_quantity_badge"
+                android:paddingStart="8dp"
+                android:paddingTop="3dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="3dp"
+                android:textColor="@color/white"
+                android:textSize="9sp"
+                android:textStyle="bold"
                 android:visibility="gone"
+                app:layout_constraintBottom_toBottomOf="@id/tvProductPrice"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/tvProductPrice" />
+                app:layout_constraintTop_toTopOf="@id/tvProductPrice"
+                tools:text="2 in cart"
+                tools:visibility="visible" />
         </androidx.constraintlayout.widget.ConstraintLayout>
     </com.google.android.material.card.MaterialCardView>
 </FrameLayout>

@@ -46,7 +46,8 @@
             android:background="@drawable/bg_inventory_mode_toggle"
             android:baselineAligned="false"
             android:orientation="horizontal"
-            android:padding="6dp">
+            android:padding="6dp"
+            android:visibility="gone">
 
             <LinearLayout
                 android:id="@+id/tabIngredients"
@@ -116,7 +117,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/content_section_gap"
+            android:layout_marginTop="0dp"
             android:baselineAligned="false"
             android:orientation="horizontal">
 

@@ -56,6 +56,7 @@ import com.example.zejioscafese.orders.data.repository.CheckoutOrderLine
 import com.example.zejioscafese.orders.data.repository.CheckoutOrderPayload
 import com.example.zejioscafese.orders.data.repository.OrderRepository
 import com.example.zejioscafese.orders.model.CafeOrder
+import com.example.zejioscafese.orders.model.CafeOrderLine
 import com.example.zejioscafese.orders.model.CafeOrderStatus
 import com.example.zejioscafese.orders.ui.OrderManagementAdapter
 import com.example.zejioscafese.pos.data.model.Product
@@ -120,8 +121,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val nameView: TextView,
         val idView: TextView,
         val roleView: TextView,
-        val shiftView: TextView,
-        val statusView: TextView,
         val editButton: MaterialButton,
         val actionsButton: MaterialButton
     )
@@ -152,18 +151,11 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val discountAmount: Double = 0.0
     )
 
-    // CHANGE: Payment — configurable discount constants used by the
-    // structured percentage selector. Update the percentages here if the
-    // legal rate changes; never inline the magic number elsewhere.
-    private object DiscountPresets {
-        const val PWD_PERCENT = 20.0
-        const val SENIOR_PERCENT = 20.0
-    }
-
-    private enum class PercentDiscountPreset(val label: String, val percent: Double?) {
-        PWD("PWD Discount", DiscountPresets.PWD_PERCENT),
-        SENIOR("Senior Citizen Discount", DiscountPresets.SENIOR_PERCENT),
-        EVENT("Event Discount", null) // null percent → user enters custom value
+    private enum class PercentDiscountPreset(val label: String, val percent: Double) {
+        NONE("None", 0.0),
+        TEN("10%", 10.0),
+        TWENTY("20%", 20.0),
+        FIFTY("50%", 50.0)
     }
 
     private data class ResolvedDiscount(
@@ -204,7 +196,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private enum class OrderSort { DEFAULT, TOTAL_DESC, TOTAL_ASC, ITEMS_DESC }
     private val staffCards = mutableListOf<StaffCardViews>()
     private var selectedStaffRole: String? = null
-    private var selectedStaffStatus: String? = null
     private var staffSearchQuery: String = ""
     private var hasCheckoutItems: Boolean = false
     private var isCheckoutSaving: Boolean = false
@@ -319,7 +310,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         updatePosCategoryStripPadding(expanded = false)
 
         productAdapter = ProductAdapter(
-            onCardClick = ::handleProductCardClick,
+            onGroupClick = ::handleProductGroupClick,
             onIncrease = { product -> viewModel.increaseProduct(product) },
             onDecrease = { product -> handleProductDecrease(product) }
         )
@@ -429,6 +420,12 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             applyOrderFilters()
         }
 
+        binding.ordersContent.chipCancelledOrders.setOnClickListener {
+            selectedOrderStatus = CafeOrderStatus.CANCELLED
+            ordersPage = 0
+            applyOrderFilters()
+        }
+
         binding.ordersContent.btnOrdersFilter.setOnClickListener { anchor ->
             showOrdersFilterMenu(anchor)
         }
@@ -464,17 +461,21 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             CafeOrderStatus.PREPARING -> {
                 popup.menu.add(0, 3, 1, getString(R.string.order_action_mark_completed))
             }
-            CafeOrderStatus.COMPLETED -> Unit
+            CafeOrderStatus.COMPLETED,
+            CafeOrderStatus.CANCELLED -> Unit
         }
         popup.menu.add(0, 4, 3, getString(R.string.order_action_print_receipt))
-        popup.menu.add(0, 5, 4, getString(R.string.order_action_cancel))
+        // Cancelling a cancelled order is a no-op — keep the action hidden.
+        if (order.status != CafeOrderStatus.CANCELLED) {
+            popup.menu.add(0, 5, 4, getString(R.string.order_action_cancel))
+        }
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 1 -> showOrderItemsDialog(order)
                 2 -> updateOrderStatus(order, CafeOrderStatus.PREPARING)
                 3 -> handleCompleteOrderAction(order)
                 4 -> showOrderReceiptPreview(order)
-                5 -> showRemoveOrderDialog(order)
+                5 -> showCancelOrderDialog(order)
             }
             true
         }
@@ -520,7 +521,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 val items = updated.orderedItems.ifEmpty { listOf(updated.itemsSummary) }
                 orderItemCompletion[updated.id] = items.indices.toMutableSet()
             }
-            CafeOrderStatus.PENDING -> orderItemCompletion.remove(updated.id)
+            CafeOrderStatus.PENDING,
+            CafeOrderStatus.CANCELLED -> orderItemCompletion.remove(updated.id)
             CafeOrderStatus.PREPARING -> Unit
         }
 
@@ -535,6 +537,9 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                     orderToKeepVisible = updated
                 )
                 dashboardViewModel.refreshDashboard(force = true)
+                if (newStatus == CafeOrderStatus.COMPLETED) {
+                    viewModel.refreshMenu()
+                }
                 Snackbar.make(
                     binding.root,
                     getString(
@@ -569,66 +574,82 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         }
     }
 
-    private fun showRemoveOrderDialog(order: CafeOrder) {
-        MaterialAlertDialogBuilder(this)
+    private fun showCancelOrderDialog(order: CafeOrder) {
+        AlertDialog.Builder(this)
             .setTitle(getString(R.string.order_cancel_dialog_title))
             .setMessage(getString(R.string.order_cancel_dialog_message, order.id, order.customerName))
             .setPositiveButton(getString(R.string.order_cancel_dialog_confirm)) { _, _ ->
-                val removedIndex = orders.indexOfFirst { it.id == order.id }
-                val removedCompletion = orderItemCompletion[order.id]?.toMutableSet()
-                orders.removeAll { it.id == order.id }
-                orderItemCompletion.remove(order.id)
-                applyOrderFilters()
-
-                lifecycleScope.launch {
-                    try {
-                        orderRepository.deleteOrder(order.id)
-                        loadOrdersFromSupabase(showError = true, force = true)
-                        dashboardViewModel.refreshDashboard(force = true)
-                        Snackbar.make(
-                            binding.root,
-                            getString(R.string.order_removed_message, order.id),
-                            Snackbar.LENGTH_SHORT
-                        ).show()
-                    } catch (exception: Exception) {
-                        if (orders.none { it.id == order.id }) {
-                            val insertIndex = removedIndex.coerceIn(0, orders.size)
-                            orders.add(insertIndex, order)
-                        }
-                        if (removedCompletion != null) {
-                            orderItemCompletion[order.id] = removedCompletion
-                        }
-                        applyOrderFilters()
-                        Snackbar.make(
-                            binding.root,
-                            getString(
-                                R.string.order_remove_failed,
-                                exception.message ?: "Please try again."
-                            ),
-                            Snackbar.LENGTH_LONG
-                        ).show()
-                    }
-                }
+                cancelOrder(order)
             }
-            .setNegativeButton(android.R.string.cancel, null)
+            .setNegativeButton(getString(R.string.order_cancel_dialog_dismiss), null)
             .showStyledDialog(this)
     }
 
-    private fun showOrderReceiptPreview(order: CafeOrder) {
-        val receiptMessage = buildString {
-            appendLine(getString(R.string.receipt_order_label) + ": " + order.id)
-            appendLine(getString(R.string.customer_label) + ": " + order.customerName)
-            appendLine(getString(R.string.items_label) + ": " + order.itemCount)
-            appendLine(getString(R.string.status_label) + ": " + formatOrderStatus(order.status))
-            appendLine(getString(R.string.total_label) + ": " + formatCurrency(order.total))
-            append(getString(R.string.time_label) + ": " + order.timeLabel)
-        }
+    private fun cancelOrder(order: CafeOrder) {
+        val index = orders.indexOfFirst { it.id == order.id }
+        if (index == -1) return
 
-        MaterialAlertDialogBuilder(this)
-            .setTitle(getString(R.string.order_receipt_preview_title))
-            .setMessage(receiptMessage)
-            .setPositiveButton(getString(R.string.receipt_done), null)
-            .showStyledDialog(this)
+        val previous = orders[index]
+        val previousCompletion = orderItemCompletion[order.id]?.toMutableSet()
+        val updated = previous.copy(
+            status = CafeOrderStatus.CANCELLED,
+            completedItemVariantIds = emptySet(),
+            completedAtMillis = null
+        )
+        orders[index] = updated
+        orderItemCompletion.remove(order.id)
+        applyOrderFilters()
+
+        lifecycleScope.launch {
+            try {
+                orderRepository.updateOrderStatus(order.id, CafeOrderStatus.CANCELLED)
+                loadOrdersFromSupabase(
+                    showError = true,
+                    force = true,
+                    orderToKeepVisible = updated
+                )
+                dashboardViewModel.refreshDashboard(force = true)
+                Snackbar.make(
+                    binding.root,
+                    getString(R.string.order_cancelled_message, order.id),
+                    Snackbar.LENGTH_SHORT
+                ).show()
+            } catch (exception: Exception) {
+                val rollbackIndex = orders.indexOfFirst { it.id == previous.id }
+                if (rollbackIndex >= 0) {
+                    orders[rollbackIndex] = previous
+                } else {
+                    orders.add(previous)
+                }
+                if (previousCompletion != null) {
+                    orderItemCompletion[order.id] = previousCompletion
+                }
+                applyOrderFilters()
+                Snackbar.make(
+                    binding.root,
+                    getString(
+                        R.string.order_cancel_failed,
+                        exception.message ?: "Please try again."
+                    ),
+                    Snackbar.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+
+    private fun showOrderReceiptPreview(order: CafeOrder) {
+        val subtotal = if (order.subtotal > 0.0) order.subtotal else order.total + order.discountAmount
+        val receipt = PendingCheckoutReceipt(
+            customerName = order.customerName,
+            cashReceived = order.total,
+            subtotal = subtotal,
+            total = order.total,
+            lines = order.toReceiptLines(),
+            discountLabel = order.discountLabel,
+            discountAmount = order.discountAmount
+        )
+
+        showReceiptDialog(order, receipt)
     }
 
     private fun formatOrderStatus(status: CafeOrderStatus): String {
@@ -636,6 +657,55 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             CafeOrderStatus.PENDING -> getString(R.string.pending)
             CafeOrderStatus.PREPARING -> getString(R.string.preparing)
             CafeOrderStatus.COMPLETED -> getString(R.string.completed)
+            CafeOrderStatus.CANCELLED -> getString(R.string.cancelled)
+        }
+    }
+
+    private fun CafeOrder.toReceiptLines(): List<ReceiptLine> {
+        if (lineItems.isNotEmpty()) {
+            return lineItems.map { line ->
+                ReceiptLine(
+                    label = formatReceiptProductName(line),
+                    quantity = line.quantity,
+                    lineTotal = line.lineTotal
+                )
+            }
+        }
+
+        val labels = orderedItems.ifEmpty { listOf(itemsSummary) }.filter(String::isNotBlank)
+        if (labels.isEmpty()) {
+            return emptyList()
+        }
+        val fallbackLineTotal = if (labels.size > 1) total / labels.size else total
+        return labels.map { label ->
+            ReceiptLine(
+                label = label,
+                quantity = 1,
+                lineTotal = fallbackLineTotal
+            )
+        }
+    }
+
+    private fun formatReceiptProductName(line: CafeOrderLine): String {
+        val isPlainVariant = line.variantName.isBlank() ||
+            line.variantName.equals("standard", ignoreCase = true) ||
+            line.variantName.equals("combo", ignoreCase = true)
+        return if (isPlainVariant) line.productName else "${line.productName} (${line.variantName})"
+    }
+
+    private fun formatOrderType(orderType: String): String {
+        return when (orderType.trim().lowercase(Locale.US)) {
+            "takeout", "take_away", "take away" -> getString(R.string.take_away)
+            "delivery" -> getString(R.string.delivery)
+            else -> getString(R.string.dine_in)
+        }
+    }
+
+    private fun formatPaymentMethod(paymentMethod: String): String {
+        return when (paymentMethod.trim().lowercase(Locale.US)) {
+            "gcash" -> getString(R.string.receipt_paid_via_gcash)
+            "maya" -> getString(R.string.maya)
+            else -> getString(R.string.cash)
         }
     }
 
@@ -728,12 +798,99 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         }
     }
 
-    private fun handleProductCardClick(product: Product) {
-        viewModel.increaseProduct(product)
+    private fun handleProductGroupClick(group: com.example.zejioscafese.pos.data.model.ProductGroup) {
         if (currentSection != Section.POS) {
             renderSection(Section.POS)
         }
-        setCheckoutExpanded(expanded = true, animate = true)
+        val singleVariant = group.singleVariant
+        if (singleVariant != null) {
+            viewModel.increaseProduct(singleVariant)
+            setCheckoutExpanded(expanded = true, animate = true)
+        } else {
+            showSizePickerDialog(group)
+        }
+    }
+
+    private fun showSizePickerDialog(group: com.example.zejioscafese.pos.data.model.ProductGroup) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_size_picker, null, false)
+        val tvName = dialogView.findViewById<TextView>(R.id.tvSizePickerProductName)
+        val ivImage = dialogView.findViewById<com.google.android.material.imageview.ShapeableImageView>(
+            R.id.ivSizePickerImage
+        )
+        val container = dialogView.findViewById<LinearLayout>(R.id.sizePickerVariantsContainer)
+
+        tvName.text = group.displayName
+        com.example.zejioscafese.pos.ui.RemoteImageLoader.load(ivImage, group.imageUrl, group.imageResId)
+
+        fun renderVariants() {
+            container.removeAllViews()
+            val quantities = viewModel.orderQuantities.value.orEmpty()
+            group.variants.forEach { variant ->
+                val row = layoutInflater.inflate(
+                    R.layout.item_size_picker_variant,
+                    container,
+                    false
+                )
+                val tvVariantName = row.findViewById<TextView>(R.id.tvSizePickerVariantName)
+                val tvPrice = row.findViewById<TextView>(R.id.tvSizePickerVariantPrice)
+                val tvStock = row.findViewById<TextView>(R.id.tvSizePickerVariantStock)
+                val btnAdd = row.findViewById<MaterialButton>(R.id.btnSizePickerAdd)
+                val stepper = row.findViewById<LinearLayout>(R.id.sizePickerStepper)
+                val btnDec = row.findViewById<MaterialButton>(R.id.btnSizePickerDecrease)
+                val btnInc = row.findViewById<MaterialButton>(R.id.btnSizePickerIncrease)
+                val tvQty = row.findViewById<TextView>(R.id.tvSizePickerQuantity)
+
+                val variantDisplay = variant.sourceVariantName?.takeIf { it.isNotBlank() }
+                    ?: variant.name
+                tvVariantName.text = variantDisplay
+                tvPrice.text = getString(R.string.currency_format, variant.price)
+
+                val isOut = variant.stockLeft <= 0
+                tvStock.text = if (isOut) {
+                    getString(R.string.size_picker_out_of_stock)
+                } else {
+                    getString(R.string.stock_left_format, variant.stockLeft)
+                }
+
+                val qty = quantities[variant.id] ?: 0
+                val inCart = qty > 0
+                btnAdd.visibility = if (inCart) View.GONE else View.VISIBLE
+                stepper.visibility = if (inCart) View.VISIBLE else View.GONE
+                tvQty.text = qty.toString()
+
+                btnAdd.isEnabled = !isOut
+                btnInc.isEnabled = qty < variant.stockLeft
+
+                btnAdd.setOnClickListener {
+                    viewModel.increaseProduct(variant)
+                    renderVariants()
+                }
+                btnInc.setOnClickListener {
+                    viewModel.increaseProduct(variant)
+                    renderVariants()
+                }
+                btnDec.setOnClickListener {
+                    if (qty <= 1) {
+                        viewModel.removeProduct(variant.id)
+                    } else {
+                        viewModel.decreaseProduct(variant)
+                    }
+                    renderVariants()
+                }
+
+                container.addView(row)
+            }
+        }
+
+        renderVariants()
+
+        AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setPositiveButton(getString(R.string.size_picker_done)) { d, _ ->
+                d.dismiss()
+                setCheckoutExpanded(expanded = true, animate = true)
+            }
+            .showStyledDialog(this)
     }
 
     private fun handleProductDecrease(product: Product) {
@@ -1054,21 +1211,11 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             )
         }
 
-        // Summary: subtotal and total
         content.addView(createSectionLabel(getString(R.string.subtotal)))
         content.addView(
             createDialogText(
                 text = formatCurrency(subtotal),
                 textSizeSp = 16f
-            )
-        )
-        content.addView(createSectionLabel(getString(R.string.total)))
-        content.addView(
-            createDialogText(
-                text = formatCurrency(total),
-                textSizeSp = 18f,
-                typeface = Typeface.DEFAULT_BOLD,
-                textColorRes = R.color.pos_primary
             )
         )
 
@@ -1110,62 +1257,52 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         content.addView(createSectionLabel(getString(R.string.order_field_customer_name)))
         content.addView(customerNameInput)
 
-        // CHANGE: Payment — discount UX restructured. Pesos still uses
-        // the free input; Percentage now drives a preset dropdown
-        // (PWD / Senior auto-deduct from constants; Event takes a custom
-        // %). The free-input percentage toggle is gone.
         content.addView(createSectionLabel(getString(R.string.discount)))
-        val discountTypeGroup = RadioGroup(this).apply {
+        val presetEntries = PercentDiscountPreset.values()
+        val discountPercentGroup = RadioGroup(this).apply {
             orientation = RadioGroup.HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { topMargin = 6.dp(); bottomMargin = 8.dp() }
         }
-        val rbDiscountPesos = RadioButton(this).apply {
-            id = View.generateViewId()
-            text = "₱ Pesos"
-            isChecked = true
-            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
-            textSize = 13f
+        val discountButtons = presetEntries.associateWith { preset ->
+            RadioButton(this).apply {
+                id = View.generateViewId()
+                text = preset.label
+                isChecked = preset == PercentDiscountPreset.NONE
+                setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
+                textSize = 13f
+                layoutParams = RadioGroup.LayoutParams(
+                    0,
+                    RadioGroup.LayoutParams.WRAP_CONTENT,
+                    1f
+                )
+            }
         }
-        val rbDiscountPercent = RadioButton(this).apply {
-            id = View.generateViewId()
-            text = "% Percentage"
-            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
-            textSize = 13f
+        presetEntries.forEach { preset ->
+            discountPercentGroup.addView(discountButtons.getValue(preset))
         }
-        discountTypeGroup.addView(rbDiscountPesos)
-        discountTypeGroup.addView(rbDiscountPercent)
-        content.addView(discountTypeGroup)
+        discountPercentGroup.check(discountButtons.getValue(PercentDiscountPreset.NONE).id)
+        content.addView(discountPercentGroup)
 
-        // Preset percentage dropdown — only visible while % Percentage is
-        // the selected discount type.
-        val presetEntries = PercentDiscountPreset.values()
-        val presetLabels = presetEntries.map { preset ->
-            val percent = preset.percent
-            if (percent != null) "${preset.label} (${formatPercentLabel(percent)})"
-            else "${preset.label} (custom %)"
-        }
-        val presetSpinner = android.widget.Spinner(this).apply {
-            adapter = android.widget.ArrayAdapter(
-                this@MainActivity,
-                android.R.layout.simple_spinner_item,
-                presetLabels
-            ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
-            visibility = View.GONE
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = 4.dp(); bottomMargin = 6.dp() }
-        }
-        content.addView(presetSpinner)
-
-        val discountInput = createDialogInput(
-            hint = "0",
-            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+        val discountSummaryView = createDialogText(
+            text = "",
+            textSizeSp = 13f,
+            textColorRes = R.color.pos_secondary,
+            topMarginDp = 2
         )
-        content.addView(discountInput)
+        discountSummaryView.visibility = View.GONE
+        content.addView(discountSummaryView)
+
+        content.addView(createSectionLabel(getString(R.string.total)))
+        val checkoutTotalView = createDialogText(
+            text = formatCurrency(total),
+            textSizeSp = 18f,
+            typeface = Typeface.DEFAULT_BOLD,
+            textColorRes = R.color.pos_primary
+        )
+        content.addView(checkoutTotalView)
 
         val paymentInput = createDialogInput(
             hint = getString(R.string.checkout_cash_received_hint),
@@ -1239,56 +1376,33 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             .setView(mainContainer)
             .create()
 
-        // CHANGE: Payment — single source of truth for discount math.
-        // Pesos branch unchanged; Percentage branch now consults the
-        // selected preset (PWD/Senior pull from constants; Event reads
-        // the input as a custom %).
         fun resolveDiscount(): ResolvedDiscount {
-            val isPercentage = rbDiscountPercent.isChecked
-            if (!isPercentage) {
-                val pesos = discountInput.text?.toString().orEmpty().toDoubleOrNull() ?: 0.0
-                return if (pesos > 0) {
-                    ResolvedDiscount(label = "Discount", amount = pesos.coerceAtMost(total))
-                } else ResolvedDiscount(null, 0.0)
-            }
-            val preset = presetEntries.getOrNull(presetSpinner.selectedItemPosition) ?: return ResolvedDiscount(null, 0.0)
-            val percent = preset.percent
-                ?: discountInput.text?.toString().orEmpty().toDoubleOrNull() ?: 0.0
+            val checkedPreset = presetEntries.firstOrNull { preset ->
+                discountButtons[preset]?.id == discountPercentGroup.checkedRadioButtonId
+            } ?: PercentDiscountPreset.NONE
+            val percent = checkedPreset.percent
             if (percent <= 0.0) return ResolvedDiscount(null, 0.0)
             val amount = (total * percent / 100).coerceAtMost(total)
             return ResolvedDiscount(
-                label = "${preset.label} (-${formatPercentLabel(percent)})",
+                label = "Discount (${formatPercentLabel(percent)})",
                 amount = amount
             )
         }
 
-        fun applyDiscountVisibility() {
-            val isPercentage = rbDiscountPercent.isChecked
-            presetSpinner.visibility = if (isPercentage) View.VISIBLE else View.GONE
-
-            val showInput = if (isPercentage) {
-                val preset = presetEntries.getOrNull(presetSpinner.selectedItemPosition)
-                preset?.percent == null // Event = custom % needs the input
-            } else true // Pesos always uses the input
-
-            discountInput.visibility = if (showInput) View.VISIBLE else View.GONE
-            discountInput.hint = when {
-                !isPercentage -> "0"
-                else -> "Custom %"
-            }
-            if (!showInput) {
-                // Auto-presets ignore any leftover typed value so the
-                // computed deduction always matches the constant.
-                discountInput.setText("")
-            }
-        }
-
         fun refreshPaymentState() {
-            val finalTotal = total - resolveDiscount().amount
+            val discount = resolveDiscount()
+            val finalTotal = total - discount.amount
             val cashReceived = paymentInput.text?.toString().orEmpty().toCashAmount()
             val change = cashReceived?.minus(finalTotal)
             val isValid = cashReceived != null && change != null && change >= 0
 
+            checkoutTotalView.text = formatCurrency(finalTotal)
+            discountSummaryView.visibility = if (discount.amount > 0) View.VISIBLE else View.GONE
+            discountSummaryView.text = if (discount.amount > 0) {
+                "${discount.label}: -${formatCurrency(discount.amount)}"
+            } else {
+                ""
+            }
             confirmButton.isEnabled = isValid && !isCheckoutSaving
             paymentHelper.text = when {
                 cashReceived == null -> getString(R.string.checkout_change_due_pending)
@@ -1297,19 +1411,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             }
         }
 
-        applyDiscountVisibility()
-        discountInput.doAfterTextChanged { refreshPaymentState() }
-        rbDiscountPesos.setOnCheckedChangeListener { _, _ ->
-            applyDiscountVisibility(); refreshPaymentState()
-        }
-        rbDiscountPercent.setOnCheckedChangeListener { _, _ ->
-            applyDiscountVisibility(); refreshPaymentState()
-        }
-        presetSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-                applyDiscountVisibility(); refreshPaymentState()
-            }
-            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
+        discountButtons.values.forEach { button ->
+            button.setOnCheckedChangeListener { _, _ -> refreshPaymentState() }
         }
         paymentInput.doAfterTextChanged { refreshPaymentState() }
         refreshPaymentState()
@@ -1368,19 +1471,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         receiptBinding.tvReceiptOrderId.text = order.id
         receiptBinding.tvReceiptTime.text = order.timeLabel
         receiptBinding.tvReceiptCustomer.text = customerName
-        receiptBinding.tvReceiptOrderType.text = when (viewModel.selectedOrderType.value ?: PosViewModel.OrderType.DINE_IN) {
-            PosViewModel.OrderType.DINE_IN -> getString(R.string.dine_in)
-            PosViewModel.OrderType.TAKE_AWAY -> getString(R.string.take_away)
-            PosViewModel.OrderType.DELIVERY -> getString(R.string.delivery)
-        }
-        // CHANGE: Payment — GCash now reads "Paid via GCash" on the
-        // confirmation screen. Card option is no longer offered, but the
-        // MAYA branch stays as a defensive fallback for legacy orders.
-        receiptBinding.tvReceiptPayment.text = when (viewModel.selectedPaymentMethod.value ?: PosViewModel.PaymentMethod.CASH) {
-            PosViewModel.PaymentMethod.CASH -> getString(R.string.cash)
-            PosViewModel.PaymentMethod.GCASH -> getString(R.string.receipt_paid_via_gcash)
-            PosViewModel.PaymentMethod.MAYA -> getString(R.string.maya)
-        }
+        receiptBinding.tvReceiptOrderType.text = formatOrderType(order.orderType)
+        receiptBinding.tvReceiptPayment.text = formatPaymentMethod(order.paymentMethod)
         receiptBinding.tvReceiptSubtotal.text = formatCurrency(receipt.subtotal)
         // CHANGE: Payment — surface the resolved discount on the receipt
         // when one was applied; otherwise the row stays collapsed.
@@ -1396,35 +1488,47 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         receiptBinding.tvReceiptChange.text = formatCurrency(change)
 
         receiptBinding.receiptItemsContainer.removeAllViews()
-        receipt.lines.forEach { line ->
+        receipt.lines.forEachIndexed { index, line ->
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply { topMargin = 6.dp() }
+                ).apply { topMargin = if (index == 0) 6.dp() else 4.dp() }
             }
             val nameView = TextView(this).apply {
-                text = "${line.quantity} x ${line.label}"
+                text = line.label
                 setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
-                textSize = 13f
+                textSize = 12f
+                setTypeface(typeface, Typeface.NORMAL)
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            }
+            val qtyView = TextView(this).apply {
+                text = "×${line.quantity}"
+                gravity = Gravity.CENTER
+                setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_secondary))
+                textSize = 11f
+                layoutParams = LinearLayout.LayoutParams(36.dp(), LinearLayout.LayoutParams.WRAP_CONTENT)
             }
             val priceView = TextView(this).apply {
                 text = formatCurrency(line.lineTotal)
                 setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
-                textSize = 13f
-                setTypeface(Typeface.DEFAULT_BOLD)
+                textSize = 12f
+                setTypeface(typeface, Typeface.BOLD)
+                gravity = Gravity.END
+                layoutParams = LinearLayout.LayoutParams(90.dp(), LinearLayout.LayoutParams.WRAP_CONTENT)
             }
             row.addView(nameView)
+            row.addView(qtyView)
             row.addView(priceView)
             receiptBinding.receiptItemsContainer.addView(row)
         }
 
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setView(receiptBinding.root)
             .setPositiveButton(R.string.receipt_done, null)
-            .show()
+            .showStyledDialog(this)
     }
 
     private fun createSectionLabel(text: String): TextView {
@@ -1572,6 +1676,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             orders.count { it.status == CafeOrderStatus.PREPARING }.toString()
         binding.ordersContent.tvCompletedOrdersCount.text =
             orders.count { it.status == CafeOrderStatus.COMPLETED }.toString()
+        binding.ordersContent.tvCancelledOrdersCount.text =
+            orders.count { it.status == CafeOrderStatus.CANCELLED }.toString()
     }
 
     private fun updateOrderStatusChipStyles() {
@@ -1600,6 +1706,15 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             countView = binding.ordersContent.tvCompletedOrdersCount,
             selected = selectedOrderStatus == CafeOrderStatus.COMPLETED,
             accentTextColorRes = R.color.pos_secondary
+        )
+
+        setOrderChipState(
+            chip = binding.ordersContent.chipCancelledOrders,
+            iconView = binding.ordersContent.ivCancelledOrdersIcon,
+            labelView = binding.ordersContent.tvCancelledOrdersLabel,
+            countView = binding.ordersContent.tvCancelledOrdersCount,
+            selected = selectedOrderStatus == CafeOrderStatus.CANCELLED,
+            accentTextColorRes = R.color.pos_badge
         )
     }
 
@@ -1851,6 +1966,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         return when {
             normalized.startsWith("prep") -> CafeOrderStatus.PREPARING
             normalized.startsWith("comp") || normalized.startsWith("done") -> CafeOrderStatus.COMPLETED
+            normalized.startsWith("cancel") || normalized.startsWith("void") -> CafeOrderStatus.CANCELLED
             else -> CafeOrderStatus.PENDING
         }
     }
@@ -1860,6 +1976,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             CafeOrderStatus.PENDING -> "pending"
             CafeOrderStatus.PREPARING -> "preparing"
             CafeOrderStatus.COMPLETED -> "completed"
+            CafeOrderStatus.CANCELLED -> "cancelled"
         }
     }
 
@@ -1929,7 +2046,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
             row.addView(buildRecentOrderCell(order.orderNumber, weight = 1f, R.color.pos_text_primary, bold = true))
             row.addView(buildRecentOrderCell(order.customerName, weight = 1f, R.color.pos_text_primary))
-            row.addView(buildRecentOrderCell(order.itemsPreview, weight = 0.7f, R.color.pos_text_secondary))
+            row.addView(buildRecentOrderItemsCell(order))
             row.addView(buildRecentOrderCell(formatCurrency(order.total), weight = 0.8f, R.color.pos_text_primary, bold = true))
             val statusColor = when (order.status.lowercase(Locale.US)) {
                 "completed" -> R.color.pos_secondary
@@ -1973,6 +2090,165 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             ellipsize = android.text.TextUtils.TruncateAt.END
             if (bold) setTypeface(typeface, Typeface.BOLD)
         }
+    }
+
+    private fun buildRecentOrderItemsCell(order: DashboardRecentOrder): TextView {
+        val label = when {
+            order.items.isEmpty() -> order.itemsPreview
+            order.items.size == 1 -> {
+                val item = order.items.first()
+                val qtyText = if (item.quantity > 1) "${item.quantity}× " else ""
+                "$qtyText${formatRecentItemName(item)}"
+            }
+            else -> getString(R.string.dashboard_recent_order_items_link, order.items.size)
+        }
+        val isInteractive = order.items.isNotEmpty()
+        return TextView(this).apply {
+            text = label
+            textSize = 13f
+            setTextColor(
+                ContextCompat.getColor(
+                    this@MainActivity,
+                    if (isInteractive) R.color.pos_primary else R.color.pos_text_secondary
+                )
+            )
+            if (isInteractive) {
+                setTypeface(typeface, Typeface.BOLD)
+                paintFlags = paintFlags or android.graphics.Paint.UNDERLINE_TEXT_FLAG
+                isClickable = true
+                isFocusable = true
+                setOnClickListener { showRecentOrderItemsDialog(order) }
+                val outValue = android.util.TypedValue()
+                context.theme.resolveAttribute(
+                    android.R.attr.selectableItemBackgroundBorderless,
+                    outValue,
+                    true
+                )
+                setBackgroundResource(outValue.resourceId)
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                0.7f
+            )
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }
+    }
+
+    private fun formatRecentItemName(item: com.example.zejioscafese.dashboard.model.DashboardRecentOrderItem): String {
+        val isPlainVariant = item.variantName.isBlank() ||
+            item.variantName.equals("standard", ignoreCase = true) ||
+            item.variantName.equals("combo", ignoreCase = true)
+        return if (isPlainVariant) item.productName else "${item.productName} (${item.variantName})"
+    }
+
+    private fun showRecentOrderItemsDialog(order: DashboardRecentOrder) {
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dpToPx(24), dpToPx(12), dpToPx(24), dpToPx(4))
+        }
+
+        if (order.customerName.isNotBlank()) {
+            val customerView = TextView(this).apply {
+                text = getString(R.string.dashboard_recent_order_items_customer, order.customerName)
+                textSize = 13f
+                setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_secondary))
+                setPadding(0, 0, 0, dpToPx(12))
+            }
+            container.addView(customerView)
+        }
+
+        order.items.forEachIndexed { index, item ->
+            if (index > 0) {
+                val divider = View(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        1.dp()
+                    )
+                    setBackgroundColor(ContextCompat.getColor(this@MainActivity, R.color.pos_border))
+                }
+                container.addView(divider)
+            }
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dpToPx(10), 0, dpToPx(10))
+            }
+            val qtyChip = TextView(this).apply {
+                text = getString(R.string.dashboard_recent_order_qty_chip, item.quantity)
+                textSize = 12f
+                setTypeface(typeface, Typeface.BOLD)
+                setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_secondary))
+                setBackgroundResource(R.drawable.bg_hint_chip)
+                setPadding(dpToPx(10), dpToPx(4), dpToPx(10), dpToPx(4))
+                minWidth = dpToPx(44)
+                gravity = Gravity.CENTER
+            }
+            row.addView(qtyChip)
+
+            val nameView = TextView(this).apply {
+                text = formatRecentItemName(item)
+                textSize = 14f
+                setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
+                layoutParams = LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1f
+                ).apply { marginStart = dpToPx(12) }
+            }
+            row.addView(nameView)
+
+            val priceView = TextView(this).apply {
+                text = formatCurrency(item.lineTotal)
+                textSize = 14f
+                setTypeface(typeface, Typeface.BOLD)
+                setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
+            }
+            row.addView(priceView)
+
+            container.addView(row)
+        }
+
+        val totalDivider = View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                1.dp()
+            ).apply { topMargin = dpToPx(6) }
+            setBackgroundColor(ContextCompat.getColor(this@MainActivity, R.color.pos_border))
+        }
+        container.addView(totalDivider)
+
+        val totalRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dpToPx(12), 0, dpToPx(4))
+        }
+        val totalLabel = TextView(this).apply {
+            text = getString(R.string.total_label)
+            textSize = 14f
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_secondary))
+            layoutParams = LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f
+            )
+        }
+        val totalValue = TextView(this).apply {
+            text = formatCurrency(order.total)
+            textSize = 16f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_primary))
+        }
+        totalRow.addView(totalLabel)
+        totalRow.addView(totalValue)
+        container.addView(totalRow)
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.dashboard_recent_order_items_title, order.orderNumber))
+            .setView(container)
+            .setPositiveButton(android.R.string.ok, null)
+            .showStyledDialog(this)
     }
 
     private fun bindDashboardFocus(alerts: List<com.example.zejioscafese.dashboard.model.DashboardAlert>) {
@@ -2211,6 +2487,75 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 renderSection(section)
             }
         }
+
+        binding.dashboardContent.root.findViewById<View>(R.id.cardMetricLowStock)?.setOnClickListener {
+            showDashboardLowStockDialog()
+        }
+    }
+
+    private fun showDashboardLowStockDialog() {
+        val alerts = dashboardSnapshot.alerts
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(24.dp(), 12.dp(), 24.dp(), 4.dp())
+        }
+
+        if (alerts.isEmpty()) {
+            container.addView(
+                createDialogText(
+                    text = getString(R.string.dashboard_low_stock_empty),
+                    textSizeSp = 14f,
+                    textColorRes = R.color.pos_text_secondary
+                )
+            )
+        } else {
+            alerts.forEachIndexed { index, alert ->
+                if (index > 0) {
+                    container.addView(View(this).apply {
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            1.dp()
+                        ).apply { topMargin = 10.dp(); bottomMargin = 10.dp() }
+                        setBackgroundColor(ContextCompat.getColor(this@MainActivity, R.color.pos_border))
+                    })
+                }
+
+                val titleColor = if (alert.level == AlertLevel.CRITICAL) {
+                    R.color.stock_critical
+                } else {
+                    R.color.pos_warning
+                }
+                container.addView(
+                    createDialogText(
+                        text = alert.title,
+                        textSizeSp = 14f,
+                        typeface = Typeface.DEFAULT_BOLD,
+                        textColorRes = titleColor
+                    )
+                )
+                container.addView(
+                    createDialogText(
+                        text = alert.detail,
+                        textSizeSp = 13f,
+                        textColorRes = R.color.pos_text_secondary,
+                        topMarginDp = 4
+                    )
+                )
+            }
+        }
+
+        val builder = MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.dashboard_low_stock_dialog_title))
+            .setView(ScrollView(this).apply { addView(container) })
+            .setNegativeButton(android.R.string.ok, null)
+
+        if (alerts.isNotEmpty()) {
+            builder.setPositiveButton(getString(R.string.dashboard_low_stock_open_inventory)) { _, _ ->
+                renderSection(Section.INVENTORY)
+            }
+        }
+
+        builder.showStyledDialog(this)
     }
 
     private fun setupInteractions() {
@@ -2268,42 +2613,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             showStaffDialog(card = null)
         }
 
-        val initialStaffCards = listOf(
-            StaffCardViews(
-                rootView = binding.staffContent.cardStaffOne,
-                nameView = binding.staffContent.tvStaffNameOne,
-                idView = binding.staffContent.tvStaffIdOne,
-                roleView = binding.staffContent.tvStaffRoleOne,
-                shiftView = binding.staffContent.tvStaffShiftOne,
-                statusView = binding.staffContent.tvStaffStatusOne,
-                editButton = binding.staffContent.btnEditStaffOne,
-                actionsButton = binding.staffContent.btnStaffActionsOne
-            ),
-            StaffCardViews(
-                rootView = binding.staffContent.cardStaffTwo,
-                nameView = binding.staffContent.tvStaffNameTwo,
-                idView = binding.staffContent.tvStaffIdTwo,
-                roleView = binding.staffContent.tvStaffRoleTwo,
-                shiftView = binding.staffContent.tvStaffShiftTwo,
-                statusView = binding.staffContent.tvStaffStatusTwo,
-                editButton = binding.staffContent.btnEditStaffTwo,
-                actionsButton = binding.staffContent.btnStaffActionsTwo
-            ),
-            StaffCardViews(
-                rootView = binding.staffContent.cardStaffThree,
-                nameView = binding.staffContent.tvStaffNameThree,
-                idView = binding.staffContent.tvStaffIdThree,
-                roleView = binding.staffContent.tvStaffRoleThree,
-                shiftView = binding.staffContent.tvStaffShiftThree,
-                statusView = binding.staffContent.tvStaffStatusThree,
-                editButton = binding.staffContent.btnEditStaffThree,
-                actionsButton = binding.staffContent.btnStaffActionsThree
-            )
-        )
-
         staffCards.clear()
-        staffCards.addAll(initialStaffCards)
-        staffCards.forEach(::bindStaffCardInteractions)
+        binding.staffContent.staffCardsContainer.removeAllViews()
 
         binding.staffContent.etStaffSearch.doAfterTextChanged { text ->
             staffSearchQuery = text?.toString().orEmpty()
@@ -2312,10 +2623,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
         binding.staffContent.btnStaffRoleFilter.setOnClickListener { anchor ->
             showStaffRoleFilterMenu(anchor)
-        }
-
-        binding.staffContent.btnStaffStatusFilter.setOnClickListener { anchor ->
-            showStaffStatusFilterMenu(anchor)
         }
 
         refreshStaffUi()
@@ -2494,78 +2801,85 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
     private fun showStaffDialog(card: StaffCardViews?) {
         val isEditMode = card != null
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dpToPx(20), dpToPx(12), dpToPx(20), dpToPx(4))
+        val dialogView = layoutInflater.inflate(R.layout.dialog_staff_form, null, false)
+
+        val tvTitle = dialogView.findViewById<TextView>(R.id.tvStaffDialogTitle)
+        val tvSubtitle = dialogView.findViewById<TextView>(R.id.tvStaffDialogSubtitle)
+        val tvInitials = dialogView.findViewById<TextView>(R.id.tvStaffDialogInitials)
+        val tvEmployeeId = dialogView.findViewById<TextView>(R.id.tvStaffDialogEmployeeId)
+        val tilName = dialogView.findViewById<com.google.android.material.textfield.TextInputLayout>(
+            R.id.tilStaffDialogName
+        )
+        val etName = dialogView.findViewById<com.google.android.material.textfield.TextInputEditText>(
+            R.id.etStaffDialogName
+        )
+        val actvRole = dialogView.findViewById<com.google.android.material.textfield.MaterialAutoCompleteTextView>(
+            R.id.actvStaffDialogRole
+        )
+
+        tvTitle.setText(if (isEditMode) R.string.staff_dialog_edit_title else R.string.staff_dialog_add_title)
+        tvSubtitle.setText(if (isEditMode) R.string.staff_dialog_edit_subtitle else R.string.staff_dialog_add_subtitle)
+
+        val initialName = card?.nameView?.text?.toString().orEmpty()
+        etName.setText(initialName)
+        tvInitials.text = staffInitialsFromName(initialName)
+        etName.doAfterTextChanged { text ->
+            tvInitials.text = staffInitialsFromName(text?.toString().orEmpty())
+            if (!text.isNullOrBlank()) tilName.error = null
         }
 
-        val etName = createStaffLabeledField(
-            container,
-            getString(R.string.staff_field_full_name),
-            card?.nameView?.text?.toString().orEmpty()
-        )
-        val etEmployeeId = createStaffLabeledField(
-            container,
-            getString(R.string.staff_field_employee_id),
+        val autoEmployeeId = if (isEditMode) {
             card?.idView?.text?.toString()?.removePrefix("ID:")?.trim().orEmpty()
+        } else {
+            generateNextStaffEmployeeId()
+        }
+        tvEmployeeId.text = autoEmployeeId
+
+        val roleOptions = listOf(
+            getString(R.string.staff_role_manager),
+            getString(R.string.staff_role_barista),
+            getString(R.string.staff_role_cashier)
         )
-        val etRole = createStaffLabeledField(
-            container,
-            getString(R.string.staff_field_role),
-            card?.roleView?.text?.toString().orEmpty()
+        val roleAdapter = android.widget.ArrayAdapter(
+            this,
+            android.R.layout.simple_list_item_1,
+            roleOptions
         )
-        val etShift = createStaffLabeledField(
-            container,
-            getString(R.string.staff_field_shift),
-            card?.shiftView?.text?.toString().orEmpty()
-        )
-        val etStatus = createStaffLabeledField(
-            container,
-            getString(R.string.staff_field_status),
-            card?.statusView?.text?.toString().orEmpty()
-        )
+        actvRole.setAdapter(roleAdapter)
+        val currentRole = card?.roleView?.text?.toString()?.trim()
+        val initialRole = roleOptions.firstOrNull { it.equals(currentRole, ignoreCase = true) }
+            ?: roleOptions.first()
+        actvRole.setText(initialRole, false)
 
         val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle(
-                getString(
-                    if (isEditMode) R.string.staff_dialog_edit_title else R.string.staff_dialog_add_title
-                )
-            )
-            .setView(container)
+            .setView(dialogView)
             .setPositiveButton(
                 getString(
                     if (isEditMode) R.string.staff_dialog_save_action else R.string.staff_dialog_add_action
-                )
-            , null)
+                ),
+                null
+            )
             .setNegativeButton(android.R.string.cancel, null)
             .create()
 
         dialog.setOnShowListener {
+            dialog.applyZejiosCafeButtonStyling(this)
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val name = etName.text.toString().trim()
                 if (name.isBlank()) {
-                    etName.error = getString(R.string.staff_name_required)
+                    tilName.error = getString(R.string.staff_name_required)
                     return@setOnClickListener
                 }
+
+                val selectedRole = actvRole.text?.toString()?.trim()
+                    ?.takeIf { it.isNotBlank() && roleOptions.any { opt -> opt.equals(it, ignoreCase = true) } }
+                    ?: roleOptions.first()
 
                 if (isEditMode) {
                     val staffCard = card ?: return@setOnClickListener
                     staffCard.nameView.text = name
-
-                    val enteredId = etEmployeeId.text.toString().trim()
-                    if (enteredId.isNotBlank()) {
-                        staffCard.idView.text = getString(
-                            R.string.staff_id_format,
-                            normalizeStaffEmployeeId(enteredId)
-                        )
-                    }
-
-                    staffCard.roleView.text = etRole.text.toString().trim().ifBlank { staffCard.roleView.text.toString() }
-                    staffCard.shiftView.text = etShift.text.toString().trim().ifBlank { staffCard.shiftView.text.toString() }
-                    staffCard.statusView.text = normalizeStaffStatus(
-                        etStatus.text.toString().trim().ifBlank { staffCard.statusView.text.toString() }
-                    )
-                    updateStaffCardVisuals(staffCard)
+                    staffCard.roleView.text = selectedRole
+                    updateStaffCardAvatar(staffCard)
 
                     Snackbar.make(
                         binding.root,
@@ -2573,21 +2887,11 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                         Snackbar.LENGTH_SHORT
                     ).show()
                 } else {
-                    val newEmployeeId = normalizeStaffEmployeeId(
-                        etEmployeeId.text.toString().trim().ifBlank { generateNextStaffEmployeeId() }
-                    )
-                    val role = etRole.text.toString().trim().ifBlank { getString(R.string.staff_role_barista) }
-                    val shift = etShift.text.toString().trim().ifBlank { getString(R.string.staff_shift_three) }
-                    val status = normalizeStaffStatus(
-                        etStatus.text.toString().trim().ifBlank { getString(R.string.staff_status_active) }
-                    )
-
+                    val newEmployeeId = normalizeStaffEmployeeId(autoEmployeeId)
                     addStaffCard(
                         name = name,
                         employeeId = newEmployeeId,
-                        role = role,
-                        shift = shift,
-                        status = status
+                        role = selectedRole
                     )
 
                     Snackbar.make(
@@ -2605,12 +2909,23 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         dialog.show()
     }
 
+    private fun staffInitialsFromName(rawName: String): String {
+        val parts = rawName.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+        if (parts.isEmpty()) return "?"
+        val first = parts.first().firstOrNull()?.uppercaseChar()?.toString().orEmpty()
+        val second = parts.getOrNull(1)?.firstOrNull()?.uppercaseChar()?.toString().orEmpty()
+        return (first + second).ifBlank { "?" }
+    }
+
+    private fun updateStaffCardAvatar(card: StaffCardViews) {
+        val initialsView = card.rootView.findViewById<TextView>(R.id.tvStaffCardInitials)
+        initialsView?.text = staffInitialsFromName(card.nameView.text.toString())
+    }
+
     private fun addStaffCard(
         name: String,
         employeeId: String,
-        role: String,
-        shift: String,
-        status: String
+        role: String
     ) {
         val cardRoot = layoutInflater.inflate(
             R.layout.item_staff_profile_card,
@@ -2621,31 +2936,68 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val nameView = cardRoot.findViewById<TextView>(R.id.tvStaffName)
         val idView = cardRoot.findViewById<TextView>(R.id.tvStaffId)
         val roleView = cardRoot.findViewById<TextView>(R.id.tvStaffRole)
-        val shiftView = cardRoot.findViewById<TextView>(R.id.tvStaffShift)
-        val statusView = cardRoot.findViewById<TextView>(R.id.tvStaffStatus)
+        val initialsView = cardRoot.findViewById<TextView>(R.id.tvStaffCardInitials)
         val editButton = cardRoot.findViewById<MaterialButton>(R.id.btnEditStaff)
         val actionsButton = cardRoot.findViewById<MaterialButton>(R.id.btnStaffActions)
 
         nameView.text = name
         idView.text = getString(R.string.staff_id_format, employeeId)
         roleView.text = role
-        shiftView.text = shift
-        statusView.text = normalizeStaffStatus(status)
+        initialsView.text = staffInitialsFromName(name)
 
         val newCard = StaffCardViews(
             rootView = cardRoot,
             nameView = nameView,
             idView = idView,
             roleView = roleView,
-            shiftView = shiftView,
-            statusView = statusView,
             editButton = editButton,
             actionsButton = actionsButton
         )
 
         bindStaffCardInteractions(newCard)
-        binding.staffContent.staffCardsContainer.addView(cardRoot)
         staffCards.add(newCard)
+        rebuildStaffGrid()
+    }
+
+    private fun rebuildStaffGrid() {
+        val container = binding.staffContent.staffCardsContainer
+        container.removeAllViews()
+
+        val rowGap = dpToPx(12)
+        val colGap = dpToPx(12)
+        val columnsPerRow = 3
+
+        staffCards.chunked(columnsPerRow).forEachIndexed { rowIndex, rowCards ->
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    if (rowIndex > 0) topMargin = rowGap
+                }
+            }
+
+            for (col in 0 until columnsPerRow) {
+                val slot = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                    if (col > 0) marginStart = colGap
+                }
+                val card = rowCards.getOrNull(col)
+                if (card != null) {
+                    (card.rootView.parent as? ViewGroup)?.removeView(card.rootView)
+                    card.rootView.layoutParams = slot
+                    row.addView(card.rootView)
+                } else {
+                    val placeholder = View(this).apply {
+                        layoutParams = slot
+                        visibility = View.INVISIBLE
+                    }
+                    row.addView(placeholder)
+                }
+            }
+
+            container.addView(row)
+        }
     }
 
     private fun normalizeStaffEmployeeId(value: String): String {
@@ -2655,17 +3007,20 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         }
 
         normalized = normalized.removePrefix("#")
-        if (!normalized.startsWith("EMP-", ignoreCase = true)) {
-            normalized = "EMP-$normalized"
-        }
+        val digits = Regex("(\\d+)").find(normalized)?.groupValues?.getOrNull(1)
+        val number = digits?.toIntOrNull() ?: return "#EMP_001"
 
-        return "#${normalized.uppercase(Locale.getDefault())}"
+        return formatEmployeeId(number)
+    }
+
+    private fun formatEmployeeId(number: Int): String {
+        return "#EMP_%03d".format(number)
     }
 
     private fun generateNextStaffEmployeeId(): String {
         val nextNumber = staffCards
             .mapNotNull { card ->
-                Regex("EMP-(\\d+)", RegexOption.IGNORE_CASE)
+                Regex("EMP[_-](\\d+)", RegexOption.IGNORE_CASE)
                     .find(card.idView.text.toString())
                     ?.groupValues
                     ?.getOrNull(1)
@@ -2673,9 +3028,9 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             }
             .maxOrNull()
             ?.plus(1)
-            ?: 2401
+            ?: 1
 
-        return "#EMP-$nextNumber"
+        return formatEmployeeId(nextNumber)
     }
 
     private fun bindStaffCardInteractions(card: StaffCardViews) {
@@ -2685,7 +3040,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         card.actionsButton.setOnClickListener { anchor ->
             showStaffActionsMenu(card, anchor)
         }
-        updateStaffCardVisuals(card)
     }
 
     private fun showStaffRoleFilterMenu(anchor: View) {
@@ -2708,40 +3062,14 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         }.show()
     }
 
-    private fun showStaffStatusFilterMenu(anchor: View) {
-        val statuses = listOf(
-            getString(R.string.staff_status_active),
-            getString(R.string.on_break),
-            getString(R.string.off_duty)
-        )
-
-        PopupMenu(this, anchor).apply {
-            menu.add(0, 0, 0, getString(R.string.all_status))
-            statuses.forEachIndexed { index, status ->
-                menu.add(0, index + 1, index + 1, status)
-            }
-            setOnMenuItemClickListener { item ->
-                selectedStaffStatus = if (item.itemId == 0) null else item.title.toString()
-                applyStaffFilters()
-                true
-            }
-        }.show()
-    }
-
     private fun showStaffActionsMenu(card: StaffCardViews, anchor: View) {
         PopupMenu(this, anchor).apply {
             menu.add(0, 1, 0, getString(R.string.staff_action_view_summary))
-            menu.add(0, 2, 1, getString(R.string.staff_action_mark_active))
-            menu.add(0, 3, 2, getString(R.string.staff_action_mark_on_break))
-            menu.add(0, 4, 3, getString(R.string.staff_action_mark_off_duty))
-            menu.add(0, 5, 4, getString(R.string.staff_action_remove))
+            menu.add(0, 2, 1, getString(R.string.staff_action_remove))
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     1 -> showStaffSummaryDialog(card)
-                    2 -> updateStaffStatus(card, getString(R.string.staff_status_active))
-                    3 -> updateStaffStatus(card, getString(R.string.on_break))
-                    4 -> updateStaffStatus(card, getString(R.string.off_duty))
-                    5 -> showRemoveStaffDialog(card)
+                    2 -> showRemoveStaffDialog(card)
                 }
                 true
             }
@@ -2751,9 +3079,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private fun showStaffSummaryDialog(card: StaffCardViews) {
         val summary = buildString {
             appendLine(getString(R.string.staff_field_employee_id) + ": " + card.idView.text)
-            appendLine(getString(R.string.staff_field_role) + ": " + card.roleView.text)
-            appendLine(getString(R.string.staff_field_shift) + ": " + card.shiftView.text)
-            append(getString(R.string.staff_field_status) + ": " + normalizeStaffStatus(card.statusView.text.toString()))
+            append(getString(R.string.staff_field_role) + ": " + card.roleView.text)
         }
 
         MaterialAlertDialogBuilder(this)
@@ -2773,6 +3099,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             .setPositiveButton(getString(R.string.staff_remove_dialog_confirm)) { _, _ ->
                 (card.rootView.parent as? ViewGroup)?.removeView(card.rootView)
                 staffCards.remove(card)
+                rebuildStaffGrid()
                 refreshStaffUi()
                 Snackbar.make(
                     binding.root,
@@ -2784,21 +3111,17 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             .showStyledDialog(this)
     }
 
-    private fun updateStaffStatus(card: StaffCardViews, status: String) {
-        card.statusView.text = normalizeStaffStatus(status)
-        updateStaffCardVisuals(card)
-        refreshStaffUi()
-        Snackbar.make(
-            binding.root,
-            getString(R.string.staff_status_updated_message, card.nameView.text, card.statusView.text),
-            Snackbar.LENGTH_SHORT
-        ).show()
-    }
-
     private fun refreshStaffUi() {
         updateStaffMetrics()
         applyStaffFilters()
+        updateStaffEmptyState()
         refreshNotificationBadges()
+    }
+
+    private fun updateStaffEmptyState() {
+        val isEmpty = staffCards.isEmpty()
+        binding.staffContent.tvStaffEmptyState.visibility = if (isEmpty) View.VISIBLE else View.GONE
+        binding.staffContent.staffCardsContainer.visibility = if (isEmpty) View.GONE else View.VISIBLE
     }
 
     private fun applyStaffFilters() {
@@ -2811,7 +3134,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
         if (currentSection == Section.STAFF) {
             binding.tvTopSubtitle.text =
-                if (normalizedQuery.isBlank() && selectedStaffRole.isNullOrBlank() && selectedStaffStatus.isNullOrBlank()) {
+                if (normalizedQuery.isBlank() && selectedStaffRole.isNullOrBlank()) {
                     getString(R.string.staff_subtitle)
                 } else {
                     getString(R.string.staff_results_summary, visibleCount, staffCards.size)
@@ -2819,125 +3142,38 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         }
 
         binding.staffContent.btnStaffRoleFilter.text = selectedStaffRole ?: getString(R.string.all_roles)
-        binding.staffContent.btnStaffStatusFilter.text = selectedStaffStatus ?: getString(R.string.all_status)
     }
 
     private fun matchesStaffFilters(card: StaffCardViews, normalizedQuery: String): Boolean {
-        val normalizedStatus = normalizeStaffStatus(card.statusView.text.toString())
         val matchesRole = selectedStaffRole.isNullOrBlank() ||
             card.roleView.text.toString().equals(selectedStaffRole, ignoreCase = true)
-        val matchesStatus = selectedStaffStatus.isNullOrBlank() ||
-            normalizedStatus.equals(selectedStaffStatus, ignoreCase = true)
         val searchableText = listOf(
             card.nameView.text,
             card.idView.text,
-            card.roleView.text,
-            card.shiftView.text,
-            normalizedStatus
+            card.roleView.text
         ).joinToString(" ").lowercase(Locale.getDefault())
         val matchesQuery = normalizedQuery.isBlank() || searchableText.contains(normalizedQuery)
 
-        return matchesRole && matchesStatus && matchesQuery
-    }
-
-    private fun showStaffNotificationDialog() {
-        val activeCount = countStaffWithStatus(getString(R.string.staff_status_active))
-        val onBreakCount = countStaffWithStatus(getString(R.string.on_break))
-        val offDutyCount = countStaffWithStatus(getString(R.string.off_duty))
-        val message = getString(
-            R.string.staff_notification_summary,
-            activeCount,
-            onBreakCount,
-            offDutyCount
-        )
-        val options = arrayOf(
-            getString(R.string.staff_notification_view_all),
-            getString(R.string.staff_notification_view_breaks),
-            getString(R.string.staff_notification_view_off_duty),
-            getString(R.string.add_staff)
-        )
-
-        MaterialAlertDialogBuilder(this)
-            .setTitle(getString(R.string.staff_notification_title))
-            .setMessage(message)
-            .setItems(options) { dialog, which ->
-                dialog.dismiss()
-                when (which) {
-                    0 -> focusStaffStatus(null)
-                    1 -> focusStaffStatus(getString(R.string.on_break))
-                    2 -> focusStaffStatus(getString(R.string.off_duty))
-                    3 -> showStaffDialog(card = null)
-                }
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .showStyledDialog(this)
-    }
-
-    private fun focusStaffStatus(status: String?) {
-        selectedStaffRole = null
-        selectedStaffStatus = status
-        staffSearchQuery = ""
-        if (binding.staffContent.etStaffSearch.text.isNullOrEmpty()) {
-            applyStaffFilters()
-        } else {
-            binding.staffContent.etStaffSearch.setText("")
-        }
+        return matchesRole && matchesQuery
     }
 
     private fun updateStaffMetrics() {
         binding.staffContent.tvStaffMetricTotal.text = staffCards.size.toString()
-        binding.staffContent.tvStaffMetricActive.text =
-            countStaffWithStatus(getString(R.string.staff_status_active)).toString()
-        binding.staffContent.tvStaffMetricBreak.text =
-            countStaffWithStatus(getString(R.string.on_break)).toString()
-        binding.staffContent.tvStaffMetricOff.text =
-            countStaffWithStatus(getString(R.string.off_duty)).toString()
-    }
-
-    private fun updateStaffCardVisuals(card: StaffCardViews) {
-        val normalizedStatus = normalizeStaffStatus(card.statusView.text.toString())
-        val backgroundColor = when (normalizedStatus) {
-            getString(R.string.on_break) -> R.color.pos_warning
-            getString(R.string.off_duty) -> R.color.pos_badge
-            else -> R.color.pos_secondary
-        }
-
-        card.statusView.text = normalizedStatus
-        card.statusView.backgroundTintList = ColorStateList.valueOf(
-            ContextCompat.getColor(this, backgroundColor)
-        )
-        card.statusView.setTextColor(ContextCompat.getColor(this, R.color.white))
-    }
-
-    private fun countStaffWithStatus(status: String): Int {
-        return staffCards.count {
-            normalizeStaffStatus(it.statusView.text.toString()).equals(status, ignoreCase = true)
-        }
-    }
-
-    private fun normalizeStaffStatus(value: String): String {
-        val normalized = value.trim().lowercase(Locale.getDefault())
-        return when {
-            normalized.contains("break") -> getString(R.string.on_break)
-            normalized.contains("off") -> getString(R.string.off_duty)
-            else -> getString(R.string.staff_status_active)
-        }
     }
 
     private fun showNotificationCenterDialog() {
         val alertCount = dashboardSnapshot.alerts.size
-        val activeOrders = orders.count { it.status != CafeOrderStatus.COMPLETED }
-        val staffUpdates = staffCards.count {
-            normalizeStaffStatus(it.statusView.text.toString()) != getString(R.string.staff_status_active)
+        val activeOrders = orders.count {
+            it.status != CafeOrderStatus.COMPLETED && it.status != CafeOrderStatus.CANCELLED
         }
-        val message = if (alertCount + activeOrders + staffUpdates == 0) {
+        val message = if (alertCount + activeOrders == 0) {
             getString(R.string.notification_center_empty)
         } else {
             getString(
                 R.string.notification_center_summary,
                 alertCount,
                 activeOrders,
-                staffUpdates
+                0
             )
         }
         val options = arrayOf(
@@ -2956,10 +3192,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                     0 -> renderSection(Section.DASHBOARD)
                     1 -> renderSection(Section.ORDERS)
                     2 -> renderSection(Section.INVENTORY)
-                    3 -> {
-                        renderSection(Section.STAFF)
-                        showStaffNotificationDialog()
-                    }
+                    3 -> renderSection(Section.STAFF)
                 }
             }
             .setNegativeButton(android.R.string.cancel, null)
@@ -2968,9 +3201,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
     private fun refreshNotificationBadges() {
         val topCount = dashboardSnapshot.alerts.size +
-            orders.count { it.status != CafeOrderStatus.COMPLETED } +
-            staffCards.count {
-                normalizeStaffStatus(it.statusView.text.toString()) != getString(R.string.staff_status_active)
+            orders.count {
+                it.status != CafeOrderStatus.COMPLETED && it.status != CafeOrderStatus.CANCELLED
             }
         setBadgeCount(binding.tvNotificationBadge, topCount)
     }
@@ -3006,6 +3238,35 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         }
         container.addView(editText)
         return editText
+    }
+
+    private fun createStaffLabeledDropdown(
+        container: LinearLayout,
+        label: String,
+        options: List<String>,
+        selectedValue: String?
+    ): android.widget.Spinner {
+        val labelView = TextView(this).apply {
+            text = label
+            textSize = 12f
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_secondary))
+            setPadding(0, dpToPx(8), 0, dpToPx(4))
+        }
+        container.addView(labelView)
+
+        val spinner = android.widget.Spinner(this).apply {
+            adapter = android.widget.ArrayAdapter(
+                this@MainActivity,
+                android.R.layout.simple_spinner_dropdown_item,
+                options
+            )
+            setPadding(dpToPx(12), dpToPx(10), dpToPx(12), dpToPx(10))
+            setBackgroundResource(R.drawable.bg_input_field)
+            val initialIndex = options.indexOfFirst { it.equals(selectedValue, ignoreCase = true) }
+            if (initialIndex >= 0) setSelection(initialIndex)
+        }
+        container.addView(spinner)
+        return spinner
     }
 
     private fun createLabeledReadOnlyValue(
@@ -3059,13 +3320,13 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             categoryAdapter.selectedCategory = selected
         }
 
-        viewModel.products.observe(this) { products ->
-            productAdapter.submitList(products)
+        viewModel.productGroups.observe(this) { groups ->
+            productAdapter.submitList(groups)
             binding.rvProducts.scrollToPosition(0)
             // Accumulate one representative image per category for the picker dialog.
-            products.forEach { product ->
-                if (!categoryThumbnails.containsKey(product.category) && !product.imageUrl.isNullOrBlank()) {
-                    categoryThumbnails[product.category] = product.imageUrl
+            groups.forEach { group ->
+                if (!categoryThumbnails.containsKey(group.category) && !group.imageUrl.isNullOrBlank()) {
+                    categoryThumbnails[group.category] = group.imageUrl
                 }
             }
         }

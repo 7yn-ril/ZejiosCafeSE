@@ -242,6 +242,57 @@
                         android:textColor="@color/pos_secondary"
                         android:textStyle="bold" />
                 </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/chipCancelledOrders"
+                    android:layout_width="160dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:background="@drawable/bg_chip_unselected"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="56dp"
+                    android:orientation="horizontal"
+                    android:paddingStart="16dp"
+                    android:paddingTop="10dp"
+                    android:paddingEnd="14dp"
+                    android:paddingBottom="10dp">
+
+                    <ImageView
+                        android:id="@+id/ivCancelledOrdersIcon"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_warning_24"
+                        app:tint="@color/pos_badge" />
+
+                    <TextView
+                        android:id="@+id/tvCancelledOrdersLabel"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:text="@string/cancelled"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.BodyMedium"
+                        android:textColor="@color/pos_text_primary"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvCancelledOrdersCount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_page_button"
+                        android:gravity="center"
+                        android:minWidth="28dp"
+                        android:paddingStart="8dp"
+                        android:paddingTop="3dp"
+                        android:paddingEnd="8dp"
+                        android:paddingBottom="3dp"
+                        android:text="@string/cancelled_orders_count"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.Overline"
+                        android:textColor="@color/pos_badge"
+                        android:textStyle="bold" />
+                </LinearLayout>
             </LinearLayout>
         </HorizontalScrollView>
 

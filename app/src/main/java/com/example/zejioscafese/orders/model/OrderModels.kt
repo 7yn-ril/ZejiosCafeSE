@@ -19,14 +19,28 @@ data class CafeOrder(
     val createdAtMillis: Long = 0L,
     val completedAtMillis: Long? = null,
     val paymentMethod: String = "cash",
-    val orderType: String = "dine_in"
+    val orderType: String = "dine_in",
+    val subtotal: Double = total,
+    val tax: Double = 0.0,
+    val lineItems: List<CafeOrderLine> = emptyList(),
+    val discountLabel: String? = null,
+    val discountAmount: Double = 0.0
 ) {
     val isTakeout: Boolean get() = orderType.equals("takeout", ignoreCase = true)
     val isGcash: Boolean get() = paymentMethod.equals("gcash", ignoreCase = true)
 }
 
+data class CafeOrderLine(
+    val productName: String,
+    val variantName: String,
+    val quantity: Int,
+    val unitPrice: Double,
+    val lineTotal: Double
+)
+
 enum class CafeOrderStatus {
     PENDING,
     PREPARING,
-    COMPLETED
+    COMPLETED,
+    CANCELLED
 }

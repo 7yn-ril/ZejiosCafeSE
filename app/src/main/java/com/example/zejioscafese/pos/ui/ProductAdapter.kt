@@ -10,67 +10,101 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.zejioscafese.R
 import com.example.zejioscafese.databinding.ItemProductBinding
 import com.example.zejioscafese.pos.data.model.Product
+import com.example.zejioscafese.pos.data.model.ProductGroup
 
 class ProductAdapter(
-    private val onCardClick: (Product) -> Unit,
-    private val onIncrease: (Product) -> Unit = onCardClick,
+    private val onGroupClick: (ProductGroup) -> Unit,
+    private val onIncrease: (Product) -> Unit,
     private val onDecrease: (Product) -> Unit = {}
-) : ListAdapter<Product, ProductAdapter.ProductViewHolder>(DiffCallback) {
+) : ListAdapter<ProductGroup, ProductAdapter.ProductViewHolder>(DiffCallback) {
 
-    private val quantities = linkedMapOf<String, Int>()
+    private val variantQuantities = linkedMapOf<String, Int>()
 
     fun submitQuantities(updatedQuantities: Map<String, Int>) {
-        quantities.clear()
-        quantities.putAll(updatedQuantities)
+        variantQuantities.clear()
+        variantQuantities.putAll(updatedQuantities)
         notifyDataSetChanged()
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ProductViewHolder {
         val binding = ItemProductBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return ProductViewHolder(binding, onCardClick, onIncrease, onDecrease)
+        return ProductViewHolder(binding, onGroupClick, onIncrease, onDecrease)
     }
 
     override fun onBindViewHolder(holder: ProductViewHolder, position: Int) {
-        val product = getItem(position)
-        holder.bind(product, quantities[product.id] ?: 0)
+        val group = getItem(position)
+        val groupQuantity = group.variants.sumOf { variantQuantities[it.id] ?: 0 }
+        holder.bind(group, groupQuantity)
     }
 
     class ProductViewHolder(
         private val binding: ItemProductBinding,
-        private val onCardClick: (Product) -> Unit,
+        private val onGroupClick: (ProductGroup) -> Unit,
         private val onIncrease: (Product) -> Unit,
         private val onDecrease: (Product) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(product: Product, quantity: Int) {
+        fun bind(group: ProductGroup, totalQuantity: Int) {
             val context = binding.root.context
-            binding.tvProductCategory.text = product.category
-            binding.tvProductName.text = product.name
-            binding.tvProductPrice.text = context.getString(
-                R.string.currency_format,
-                product.price
-            )
+            binding.tvProductCategory.text = group.category
+            binding.tvProductName.text = group.displayName
+            binding.tvProductPrice.text = formatPrice(context, group)
             binding.tvStockLeft.text = context.getString(
                 R.string.stock_left_format,
-                product.stockLeft
+                group.totalStock
             )
 
-            val inCart = quantity > 0
-            binding.btnAddToDish.visibility = if (inCart) View.GONE else View.VISIBLE
-            binding.productStepper.visibility = if (inCart) View.VISIBLE else View.GONE
-            binding.tvProductQuantity.text = quantity.toString()
+            val inCart = totalQuantity > 0
+            val isSingleVariant = !group.hasMultipleVariants
+            val singleVariant = group.singleVariant
+
+            // Multi-variant cards never show the inline stepper — they always open the picker.
+            val showStepper = isSingleVariant && inCart
+            val showAddButton = !showStepper
+
+            binding.btnAddToDish.visibility = if (showAddButton) View.VISIBLE else View.GONE
+            binding.productStepper.visibility = if (showStepper) View.VISIBLE else View.GONE
+            binding.tvProductQuantity.text = totalQuantity.toString()
+
+            binding.btnAddToDish.text = if (group.hasMultipleVariants) {
+                context.getString(R.string.choose_size)
+            } else {
+                context.getString(R.string.add_to_cart)
+            }
+
+            // Multi-variant in-cart badge (top-right of price row)
+            if (group.hasMultipleVariants && inCart) {
+                binding.tvQuantityBadge.visibility = View.VISIBLE
+                binding.tvQuantityBadge.text = context.getString(R.string.in_cart_count, totalQuantity)
+            } else {
+                binding.tvQuantityBadge.visibility = View.GONE
+            }
 
             val selectedStroke = ContextCompat.getColor(context, R.color.pos_secondary)
             val defaultStroke = ContextCompat.getColor(context, R.color.pos_border)
             binding.productCard.strokeColor = if (inCart) selectedStroke else defaultStroke
             binding.productCard.strokeWidth = if (inCart) dp(context, 2) else dp(context, 1)
 
-            RemoteImageLoader.load(binding.ivProduct, product.imageUrl, product.imageResId)
+            RemoteImageLoader.load(binding.ivProduct, group.imageUrl, group.imageResId)
 
-            binding.productCard.setOnClickListener { onCardClick(product) }
-            binding.btnAddToDish.setOnClickListener { onCardClick(product) }
-            binding.btnProductIncrease.setOnClickListener { onIncrease(product) }
-            binding.btnProductDecrease.setOnClickListener { onDecrease(product) }
+            binding.productCard.setOnClickListener { onGroupClick(group) }
+            binding.btnAddToDish.setOnClickListener { onGroupClick(group) }
+
+            if (isSingleVariant && singleVariant != null) {
+                binding.btnProductIncrease.setOnClickListener { onIncrease(singleVariant) }
+                binding.btnProductDecrease.setOnClickListener { onDecrease(singleVariant) }
+            } else {
+                binding.btnProductIncrease.setOnClickListener { onGroupClick(group) }
+                binding.btnProductDecrease.setOnClickListener { onGroupClick(group) }
+            }
+        }
+
+        private fun formatPrice(context: android.content.Context, group: ProductGroup): String {
+            return if (group.hasMultipleVariants && group.minPrice != group.maxPrice) {
+                context.getString(R.string.price_from_format, group.minPrice)
+            } else {
+                context.getString(R.string.currency_format, group.minPrice)
+            }
         }
 
         private fun dp(context: android.content.Context, value: Int): Int {
@@ -78,12 +112,12 @@ class ProductAdapter(
         }
     }
 
-    private object DiffCallback : DiffUtil.ItemCallback<Product>() {
-        override fun areItemsTheSame(oldItem: Product, newItem: Product): Boolean {
-            return oldItem.id == newItem.id
+    private object DiffCallback : DiffUtil.ItemCallback<ProductGroup>() {
+        override fun areItemsTheSame(oldItem: ProductGroup, newItem: ProductGroup): Boolean {
+            return oldItem.groupId == newItem.groupId
         }
 
-        override fun areContentsTheSame(oldItem: Product, newItem: Product): Boolean {
+        override fun areContentsTheSame(oldItem: ProductGroup, newItem: ProductGroup): Boolean {
             return oldItem == newItem
         }
     }

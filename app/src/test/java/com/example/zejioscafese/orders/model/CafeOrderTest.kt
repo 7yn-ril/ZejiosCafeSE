@@ -63,11 +63,12 @@ class CafeOrderTest {
     // ── CafeOrderStatus ───────────────────────────────────────────────────────
 
     @Test
-    fun cafeOrderStatus_enumValues_areThreeExpectedValues() {
+    fun cafeOrderStatus_enumValues_areFourExpectedValues() {
         val values = CafeOrderStatus.values()
-        assertEquals(3, values.size)
+        assertEquals(4, values.size)
         assertTrue(CafeOrderStatus.PENDING in values)
         assertTrue(CafeOrderStatus.PREPARING in values)
         assertTrue(CafeOrderStatus.COMPLETED in values)
+        assertTrue(CafeOrderStatus.CANCELLED in values)
     }
 }

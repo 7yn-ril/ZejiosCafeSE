@@ -42,6 +42,7 @@ class OrderManagementAdapter(
                 CafeOrderStatus.PENDING -> Triple(R.color.pos_warning, R.color.pos_warning_soft, R.string.pending)
                 CafeOrderStatus.PREPARING -> Triple(R.color.pos_info, R.color.pos_info_soft, R.string.preparing)
                 CafeOrderStatus.COMPLETED -> Triple(R.color.pos_secondary, R.color.pos_success_soft, R.string.completed)
+                CafeOrderStatus.CANCELLED -> Triple(R.color.pos_badge, R.color.pos_critical_soft, R.string.cancelled)
             }
 
             binding.tvOrderId.text = item.id
