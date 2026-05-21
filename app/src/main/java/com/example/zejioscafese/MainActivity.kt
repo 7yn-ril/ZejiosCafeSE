@@ -55,6 +55,7 @@ import com.example.zejioscafese.dashboard.ui.DashboardAlertAdapter
 import com.example.zejioscafese.dashboard.ui.DashboardInsightAdapter
 import com.example.zejioscafese.dashboard.ui.DashboardTopItemAdapter
 import com.example.zejioscafese.databinding.ActivityMainBinding
+import com.example.zejioscafese.core.local.LocalAppPrefs
 import com.example.zejioscafese.core.network.NetworkErrorFormatter
 import com.example.zejioscafese.orders.data.repository.CheckoutOrderLine
 import com.example.zejioscafese.orders.data.repository.CheckoutOrderPayload
@@ -281,13 +282,24 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             ?: shouldDefaultSidebarBeExpanded()
         captureCheckoutExpandedGuidePercent()
         isCheckoutExpanded = savedInstanceState?.getBoolean(STATE_CHECKOUT_EXPANDED) ?: false
-        userProfileState = UserProfileState(
-            name = getString(R.string.profile_name),
-            email = getString(R.string.profile_email),
-            role = getString(R.string.profile_role),
-            phone = getString(R.string.profile_phone_value),
-            address = getString(R.string.profile_address_value)
-        )
+        val savedProfile = LocalAppPrefs.loadProfile(this)
+        userProfileState = if (savedProfile != null) {
+            UserProfileState(
+                name = savedProfile.name,
+                email = savedProfile.email,
+                role = savedProfile.role,
+                phone = savedProfile.phone,
+                address = savedProfile.address
+            )
+        } else {
+            UserProfileState(
+                name = getString(R.string.profile_name),
+                email = getString(R.string.profile_email),
+                role = getString(R.string.profile_role),
+                phone = getString(R.string.profile_phone_value),
+                address = getString(R.string.profile_address_value)
+            )
+        }
 
         setupRecyclerViews()
         setupDashboard()
@@ -3044,6 +3056,14 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         staffCards.clear()
         binding.staffContent.staffCardsContainer.removeAllViews()
 
+        LocalAppPrefs.loadStaff(this).forEach { saved ->
+            addStaffCard(
+                name = saved.name,
+                employeeId = saved.employeeId,
+                role = saved.role
+            )
+        }
+
         binding.staffContent.etStaffSearch.doAfterTextChanged { text ->
             staffSearchQuery = text?.toString().orEmpty()
             applyStaffFilters()
@@ -3054,6 +3074,22 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         }
 
         refreshStaffUi()
+    }
+
+    private fun persistStaffCards() {
+        LocalAppPrefs.saveStaff(
+            this,
+            staffCards.map { card ->
+                LocalAppPrefs.StoredStaff(
+                    name = card.nameView.text?.toString().orEmpty(),
+                    employeeId = card.idView.text?.toString()
+                        ?.removePrefix("ID:")
+                        ?.trim()
+                        .orEmpty(),
+                    role = card.roleView.text?.toString().orEmpty()
+                )
+            }
+        )
     }
 
     private fun setupProfileInteractions() {
@@ -3174,6 +3210,17 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                     role = etRole.text.toString().trim().ifBlank { userProfileState.role },
                     phone = etPhone.text.toString().trim().ifBlank { userProfileState.phone },
                     address = etAddress.text.toString().trim().ifBlank { userProfileState.address }
+                )
+
+                LocalAppPrefs.saveProfile(
+                    this,
+                    LocalAppPrefs.StoredProfile(
+                        name = userProfileState.name,
+                        email = userProfileState.email,
+                        role = userProfileState.role,
+                        phone = userProfileState.phone,
+                        address = userProfileState.address
+                    )
                 )
 
                 applyUserProfileStateToUi()
@@ -3329,6 +3376,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                     ).show()
                 }
 
+                persistStaffCards()
                 refreshStaffUi()
                 dialog.dismiss()
             }
@@ -3527,6 +3575,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             .setPositiveButton(getString(R.string.staff_remove_dialog_confirm)) { _, _ ->
                 (card.rootView.parent as? ViewGroup)?.removeView(card.rootView)
                 staffCards.remove(card)
+                persistStaffCards()
                 rebuildStaffGrid()
                 refreshStaffUi()
                 Snackbar.make(

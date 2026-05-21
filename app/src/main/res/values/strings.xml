@@ -41,8 +41,8 @@
     <string name="inventory_header_production_subtitle">Menu variants you can make based on current ingredient stock</string>
     <string name="inventory_search_ingredients_hint">Search ingredients...</string>
     <string name="inventory_search_products_hint">Search producible menu items...</string>
-    <string name="inventory_add_ingredient">+ Add Ingredient</string>
-    <string name="inventory_add_product">+ Add Product</string>
+    <string name="inventory_add_ingredient">Add Ingredient</string>
+    <string name="inventory_add_product">Add Product</string>
     <!-- UI CHANGE: badge / piece-only labels for the restyled inventory list. -->
     <string name="inventory_status_in_stock">•&#160;In&#160;Stock</string>
     <string name="inventory_status_low_stock">•&#160;Low&#160;Stock</string>
@@ -147,9 +147,13 @@
     <string name="reports_export_copy">Copy summary</string>
     <string name="reports_export_refresh">Refresh data</string>
     <string name="reports_export_copied">Report summary copied.</string>
-    <string name="reports_export_excel_progress">Exporting Excel report...</string>
-    <string name="reports_export_excel_success">Excel report saved to Downloads: %1$s</string>
-    <string name="reports_export_excel_failed">Could not export the Excel report right now.</string>
+    <string name="reports_export_excel_dialog_title">Export Excel Report</string>
+    <string name="reports_export_excel_dialog_message">Prepare %1$s for the %2$s report. It includes Summary, Revenue Trend, Categories, Products, and Transactions sheets.</string>
+    <string name="reports_export_excel_download">Download Excel</string>
+    <string name="reports_export_excel_cancelled">Export cancelled.</string>
+    <string name="reports_export_excel_progress">Saving Excel report...</string>
+    <string name="reports_export_excel_success">Excel report saved.</string>
+    <string name="reports_export_excel_failed">Could not save the Excel report. Choose a writable folder and try again.</string>
     <string name="reports_export_range_summary">Range: %1$s</string>
     <string name="reports_export_revenue_summary">Revenue: %1$s</string>
     <string name="reports_export_orders_summary">Orders: %1$d</string>

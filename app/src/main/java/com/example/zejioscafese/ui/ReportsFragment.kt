@@ -1,13 +1,8 @@
 package com.example.zejioscafese.ui
 
-import android.content.ContentValues
-import android.content.Context
 import android.content.res.ColorStateList
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.os.Environment
-import android.provider.MediaStore
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -15,6 +10,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.Fragment
@@ -25,9 +21,10 @@ import com.example.zejioscafese.pos.data.model.CategorySalesRecord
 import com.example.zejioscafese.pos.data.model.ProductSalesRecord
 import com.example.zejioscafese.reports.data.model.ReportTransaction
 import com.example.zejioscafese.reports.data.model.SalesTimelinePoint
+import com.example.zejioscafese.ui.showStyledDialog
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
-import java.io.File
 import java.io.IOException
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -42,6 +39,28 @@ class ReportsFragment : Fragment() {
     private val binding: FragmentReportsBinding
         get() = requireNotNull(_binding) { "Reports view binding is only valid between onCreateView and onDestroyView." }
     private val viewModel: ReportsViewModel by activityViewModels()
+    private var pendingExcelExport: PendingExcelExport? = null
+
+    private val createReportDocumentLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument(EXCEL_MIME_TYPE)
+    ) { uri ->
+        val export = pendingExcelExport
+        pendingExcelExport = null
+        if (export == null) return@registerForActivityResult
+
+        if (uri == null) {
+            _binding?.root?.let { root ->
+                Snackbar.make(
+                    root,
+                    getString(R.string.reports_export_excel_cancelled),
+                    Snackbar.LENGTH_SHORT
+                ).show()
+            }
+            return@registerForActivityResult
+        }
+
+        saveExcelReport(uri, export)
+    }
 
     private val categoryColors by lazy {
         mapOf(
@@ -105,11 +124,11 @@ class ReportsFragment : Fragment() {
 
     private fun setupExportButton() {
         binding.btnExport.setOnClickListener {
-            exportCurrentReport()
+            showExportDownloadDialog()
         }
     }
 
-    private fun exportCurrentReport() {
+    private fun showExportDownloadDialog() {
         val selectedRange = viewModel.selectedRange.value ?: ReportsViewModel.DateRange.DAILY
         val generatedAt = LocalDateTime.now().format(EXPORT_DISPLAY_FORMATTER)
         val fileStamp = LocalDateTime.now().format(EXPORT_FILE_FORMATTER)
@@ -129,6 +148,32 @@ class ReportsFragment : Fragment() {
             transactions = viewModel.transactions.value.orEmpty()
         )
 
+        val workbook = buildExcelWorkbook(exportData)
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(getString(R.string.reports_export_excel_dialog_title))
+            .setMessage(
+                getString(
+                    R.string.reports_export_excel_dialog_message,
+                    fileName,
+                    rangeLabel
+                )
+            )
+            .setPositiveButton(getString(R.string.reports_export_excel_download)) { _, _ ->
+                pendingExcelExport = PendingExcelExport(
+                    fileName = fileName,
+                    workbook = workbook
+                )
+                createReportDocumentLauncher.launch(fileName)
+            }
+            .setNeutralButton(getString(R.string.reports_export_refresh)) { _, _ ->
+                viewModel.refreshReports(force = true)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .showStyledDialog(requireContext())
+    }
+
+    private fun saveExcelReport(uri: Uri, export: PendingExcelExport) {
         val appContext = requireContext().applicationContext
         binding.btnExport.isEnabled = false
         Snackbar.make(
@@ -140,11 +185,9 @@ class ReportsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             val result = runCatching {
                 withContext(Dispatchers.IO) {
-                    writeExcelReport(
-                        context = appContext,
-                        fileName = fileName,
-                        workbook = buildExcelWorkbook(exportData)
-                    )
+                    appContext.contentResolver.openOutputStream(uri)?.use { output ->
+                        output.write(export.workbook.toByteArray(Charsets.UTF_8))
+                    } ?: throw IOException("Could not open report output stream.")
                 }
             }
 
@@ -154,7 +197,7 @@ class ReportsFragment : Fragment() {
                 .onSuccess {
                     Snackbar.make(
                         currentBinding.root,
-                        getString(R.string.reports_export_excel_success, fileName),
+                        getString(R.string.reports_export_excel_success),
                         Snackbar.LENGTH_LONG
                     ).show()
                 }
@@ -166,41 +209,6 @@ class ReportsFragment : Fragment() {
                     ).show()
                 }
         }
-    }
-
-    private fun writeExcelReport(
-        context: Context,
-        fileName: String,
-        workbook: String
-    ): Uri {
-        val bytes = workbook.toByteArray(Charsets.UTF_8)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val resolver = context.contentResolver
-            val values = ContentValues().apply {
-                put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-                put(MediaStore.Downloads.MIME_TYPE, EXCEL_MIME_TYPE)
-                put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-                put(MediaStore.Downloads.IS_PENDING, 1)
-            }
-            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                ?: throw IOException("Could not create Excel report in Downloads.")
-            resolver.openOutputStream(uri)?.use { output ->
-                output.write(bytes)
-            } ?: throw IOException("Could not open Excel report output stream.")
-            values.clear()
-            values.put(MediaStore.Downloads.IS_PENDING, 0)
-            resolver.update(uri, values, null, null)
-            return uri
-        }
-
-        val directory = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
-            ?: throw IOException("Could not access documents directory.")
-        if (!directory.exists()) {
-            directory.mkdirs()
-        }
-        val file = File(directory, fileName)
-        file.writeBytes(bytes)
-        return Uri.fromFile(file)
     }
 
     private fun buildExcelWorkbook(data: ReportExportData): String {
@@ -636,6 +644,11 @@ class ReportsFragment : Fragment() {
         val value: String,
         val type: String,
         val styleId: String? = null
+    )
+
+    private data class PendingExcelExport(
+        val fileName: String,
+        val workbook: String
     )
 
     private companion object {
