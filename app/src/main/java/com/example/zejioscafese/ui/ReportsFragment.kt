@@ -1,9 +1,13 @@
 package com.example.zejioscafese.ui
 
-import android.content.ClipData
-import android.content.ClipboardManager
+import android.content.ContentValues
+import android.content.Context
 import android.content.res.ColorStateList
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -14,15 +18,23 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.example.zejioscafese.R
 import com.example.zejioscafese.databinding.FragmentReportsBinding
 import com.example.zejioscafese.pos.data.model.CategorySalesRecord
 import com.example.zejioscafese.pos.data.model.ProductSalesRecord
-import com.example.zejioscafese.ui.showStyledDialog
+import com.example.zejioscafese.reports.data.model.ReportTransaction
+import com.example.zejioscafese.reports.data.model.SalesTimelinePoint
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
+import java.io.File
+import java.io.IOException
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ReportsFragment : Fragment() {
 
@@ -84,6 +96,7 @@ class ReportsFragment : Fragment() {
                 R.id.btnReportHourly -> ReportsViewModel.DateRange.HOURLY
                 R.id.btnReportWeekly -> ReportsViewModel.DateRange.WEEKLY
                 R.id.btnReportMonthly -> ReportsViewModel.DateRange.MONTHLY
+                R.id.btnReportYearly -> ReportsViewModel.DateRange.YEARLY
                 else -> ReportsViewModel.DateRange.DAILY
             }
             viewModel.setDateRange(range)
@@ -92,56 +105,247 @@ class ReportsFragment : Fragment() {
 
     private fun setupExportButton() {
         binding.btnExport.setOnClickListener {
-            showExportDialog()
+            exportCurrentReport()
         }
     }
 
-    private fun showExportDialog() {
+    private fun exportCurrentReport() {
         val selectedRange = viewModel.selectedRange.value ?: ReportsViewModel.DateRange.DAILY
-        val revenueText = String.format(
-            Locale.getDefault(),
-            "PHP %,.2f",
-            viewModel.totalRevenue.value ?: 0.0
+        val generatedAt = LocalDateTime.now().format(EXPORT_DISPLAY_FORMATTER)
+        val fileStamp = LocalDateTime.now().format(EXPORT_FILE_FORMATTER)
+        val rangeLabel = getString(selectedRange.labelRes)
+        val fileName = "ZejiosCafe_${rangeLabel}_Report_$fileStamp.xls"
+            .replace(Regex("[^A-Za-z0-9._-]"), "_")
+        val exportData = ReportExportData(
+            rangeLabel = rangeLabel,
+            generatedAt = generatedAt,
+            totalRevenue = viewModel.totalRevenue.value ?: 0.0,
+            totalOrders = viewModel.totalOrders.value ?: 0,
+            averageOrderValue = viewModel.avgOrderValue.value ?: 0.0,
+            bestProduct = viewModel.bestProduct.value ?: getString(R.string.reports_best_seller_empty),
+            timeline = viewModel.salesByDateRange.value.orEmpty(),
+            categories = viewModel.salesByCategory.value.orEmpty(),
+            products = viewModel.salesByProduct.value.orEmpty(),
+            transactions = viewModel.transactions.value.orEmpty()
         )
-        val averageText = String.format(
-            Locale.getDefault(),
-            "PHP %,.2f",
-            viewModel.avgOrderValue.value ?: 0.0
+
+        val appContext = requireContext().applicationContext
+        binding.btnExport.isEnabled = false
+        Snackbar.make(
+            binding.root,
+            getString(R.string.reports_export_excel_progress),
+            Snackbar.LENGTH_SHORT
+        ).show()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    writeExcelReport(
+                        context = appContext,
+                        fileName = fileName,
+                        workbook = buildExcelWorkbook(exportData)
+                    )
+                }
+            }
+
+            val currentBinding = _binding ?: return@launch
+            currentBinding.btnExport.isEnabled = true
+            result
+                .onSuccess {
+                    Snackbar.make(
+                        currentBinding.root,
+                        getString(R.string.reports_export_excel_success, fileName),
+                        Snackbar.LENGTH_LONG
+                    ).show()
+                }
+                .onFailure {
+                    Snackbar.make(
+                        currentBinding.root,
+                        getString(R.string.reports_export_excel_failed),
+                        Snackbar.LENGTH_LONG
+                    ).show()
+                }
+        }
+    }
+
+    private fun writeExcelReport(
+        context: Context,
+        fileName: String,
+        workbook: String
+    ): Uri {
+        val bytes = workbook.toByteArray(Charsets.UTF_8)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val resolver = context.contentResolver
+            val values = ContentValues().apply {
+                put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                put(MediaStore.Downloads.MIME_TYPE, EXCEL_MIME_TYPE)
+                put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                put(MediaStore.Downloads.IS_PENDING, 1)
+            }
+            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                ?: throw IOException("Could not create Excel report in Downloads.")
+            resolver.openOutputStream(uri)?.use { output ->
+                output.write(bytes)
+            } ?: throw IOException("Could not open Excel report output stream.")
+            values.clear()
+            values.put(MediaStore.Downloads.IS_PENDING, 0)
+            resolver.update(uri, values, null, null)
+            return uri
+        }
+
+        val directory = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
+            ?: throw IOException("Could not access documents directory.")
+        if (!directory.exists()) {
+            directory.mkdirs()
+        }
+        val file = File(directory, fileName)
+        file.writeBytes(bytes)
+        return Uri.fromFile(file)
+    }
+
+    private fun buildExcelWorkbook(data: ReportExportData): String {
+        val summaryRows = listOf(
+            listOf(textCell("Zejios Cafe Report", STYLE_TITLE)),
+            listOf(textCell("Metric", STYLE_HEADER), textCell("Value", STYLE_HEADER)),
+            listOf(textCell("Range"), textCell(data.rangeLabel)),
+            listOf(textCell("Generated At"), textCell(data.generatedAt)),
+            listOf(textCell("Total Revenue"), numberCell(data.totalRevenue, STYLE_CURRENCY)),
+            listOf(textCell("Total Orders"), numberCell(data.totalOrders)),
+            listOf(textCell("Average Order Value"), numberCell(data.averageOrderValue, STYLE_CURRENCY)),
+            listOf(textCell("Best Product"), textCell(data.bestProduct))
         )
-        val exportSummary = buildString {
-            appendLine(getString(R.string.reports_export_range_summary, getString(selectedRange.labelRes)))
-            appendLine(getString(R.string.reports_export_revenue_summary, revenueText))
-            appendLine(getString(R.string.reports_export_orders_summary, viewModel.totalOrders.value ?: 0))
-            appendLine(getString(R.string.reports_export_average_summary, averageText))
-            append(
-                getString(
-                    R.string.reports_export_best_product_summary,
-                    viewModel.bestProduct.value ?: getString(R.string.reports_best_seller_empty)
-                )
+
+        val trendRows = listOf(
+            listOf(
+                textCell("Period", STYLE_HEADER),
+                textCell("Revenue", STYLE_HEADER),
+                textCell("Orders", STYLE_HEADER),
+                textCell("Average Order Value", STYLE_HEADER)
+            )
+        ) + data.timeline.map { point ->
+            listOf(
+                textCell(point.label),
+                numberCell(point.totalSales, STYLE_CURRENCY),
+                numberCell(point.totalOrders),
+                numberCell(point.averageOrderValue, STYLE_CURRENCY)
             )
         }
 
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(getString(R.string.reports_export_dialog_title))
-            .setMessage(exportSummary)
-            .setPositiveButton(getString(R.string.reports_export_copy)) { _, _ ->
-                copyExportSummary(exportSummary)
-            }
-            .setNeutralButton(getString(R.string.reports_export_refresh)) { _, _ ->
-                viewModel.refreshReports(force = true)
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .showStyledDialog(requireContext())
+        val categoryRows = listOf(
+            listOf(
+                textCell("Category", STYLE_HEADER),
+                textCell("Revenue", STYLE_HEADER),
+                textCell("Items Sold", STYLE_HEADER),
+                textCell("Percent of Total", STYLE_HEADER)
+            )
+        ) + data.categories.map { category ->
+            listOf(
+                textCell(category.categoryName),
+                numberCell(category.totalRevenue, STYLE_CURRENCY),
+                numberCell(category.itemsSold),
+                numberCell(category.percentageOfTotal, STYLE_PERCENT)
+            )
+        }
+
+        val productRows = listOf(
+            listOf(
+                textCell("Product", STYLE_HEADER),
+                textCell("Revenue", STYLE_HEADER),
+                textCell("Items Sold", STYLE_HEADER),
+                textCell("Percent of Total", STYLE_HEADER)
+            )
+        ) + data.products.map { product ->
+            listOf(
+                textCell(product.productName),
+                numberCell(product.totalRevenue, STYLE_CURRENCY),
+                numberCell(product.itemsSold),
+                numberCell(product.percentageOfTotal, STYLE_PERCENT)
+            )
+        }
+
+        val transactionRows = listOf(
+            listOf(
+                textCell("Order ID", STYLE_HEADER),
+                textCell("Date", STYLE_HEADER),
+                textCell("Items", STYLE_HEADER),
+                textCell("Status", STYLE_HEADER),
+                textCell("Total", STYLE_HEADER)
+            )
+        ) + data.transactions.map { transaction ->
+            listOf(
+                textCell(transaction.orderId),
+                textCell(transaction.date),
+                textCell(transaction.items),
+                textCell(transaction.status),
+                numberCell(transaction.total, STYLE_CURRENCY)
+            )
+        }
+
+        return buildString {
+            appendLine("""<?xml version="1.0" encoding="UTF-8"?>""")
+            appendLine("""<?mso-application progid="Excel.Sheet"?>""")
+            appendLine("<Workbook xmlns=\"urn:schemas-microsoft-com:office:spreadsheet\"")
+            appendLine(" xmlns:o=\"urn:schemas-microsoft-com:office:office\"")
+            appendLine(" xmlns:x=\"urn:schemas-microsoft-com:office:excel\"")
+            appendLine(" xmlns:ss=\"urn:schemas-microsoft-com:office:spreadsheet\">")
+            appendLine("<Styles>")
+            appendLine("""<Style ss:ID="$STYLE_TITLE"><Font ss:Bold="1" ss:Size="16"/></Style>""")
+            appendLine("""<Style ss:ID="$STYLE_HEADER"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#6B4A3D" ss:Pattern="Solid"/></Style>""")
+            appendLine("""<Style ss:ID="$STYLE_CURRENCY"><NumberFormat ss:Format="&quot;PHP&quot; #,##0.00"/></Style>""")
+            appendLine("""<Style ss:ID="$STYLE_PERCENT"><NumberFormat ss:Format="0.0"/></Style>""")
+            appendLine("</Styles>")
+            appendWorksheet("Summary", summaryRows)
+            appendWorksheet("Revenue Trend", trendRows)
+            appendWorksheet("Categories", categoryRows)
+            appendWorksheet("Products", productRows)
+            appendWorksheet("Transactions", transactionRows)
+            appendLine("</Workbook>")
+        }
     }
 
-    private fun copyExportSummary(summary: String) {
-        val clipboardManager = requireContext().getSystemService(ClipboardManager::class.java)
-        clipboardManager?.setPrimaryClip(ClipData.newPlainText("reports-summary", summary))
-        Snackbar.make(
-            binding.root,
-            getString(R.string.reports_export_copied),
-            Snackbar.LENGTH_SHORT
-        ).show()
+    private fun StringBuilder.appendWorksheet(
+        name: String,
+        rows: List<List<ExcelCell>>
+    ) {
+        appendLine("""<Worksheet ss:Name="${xmlEscape(name.take(31))}">""")
+        appendLine("<Table>")
+        repeat(6) {
+            appendLine("""<Column ss:AutoFitWidth="1" ss:Width="140"/>""")
+        }
+        rows.forEach { cells ->
+            append("<Row>")
+            cells.forEach { cell ->
+                val style = cell.styleId?.let { " ss:StyleID=\"$it\"" }.orEmpty()
+                append("""<Cell$style><Data ss:Type="${cell.type}">${xmlEscape(cell.value)}</Data></Cell>""")
+            }
+            appendLine("</Row>")
+        }
+        appendLine("</Table>")
+        appendLine("</Worksheet>")
+    }
+
+    private fun textCell(value: String, styleId: String? = null): ExcelCell {
+        return ExcelCell(value = value, type = EXCEL_TYPE_STRING, styleId = styleId)
+    }
+
+    private fun numberCell(value: Number, styleId: String? = null): ExcelCell {
+        return ExcelCell(
+            value = when (value) {
+                is Float, is Double -> String.format(Locale.US, "%.2f", value.toDouble())
+                else -> value.toLong().toString()
+            },
+            type = EXCEL_TYPE_NUMBER,
+            styleId = styleId
+        )
+    }
+
+    private fun xmlEscape(value: String): String {
+        return value
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&apos;")
     }
 
     private fun observeViewModel() {
@@ -191,6 +395,7 @@ class ReportsFragment : Fragment() {
             ReportsViewModel.DateRange.DAILY -> R.id.btnReportDaily
             ReportsViewModel.DateRange.WEEKLY -> R.id.btnReportWeekly
             ReportsViewModel.DateRange.MONTHLY -> R.id.btnReportMonthly
+            ReportsViewModel.DateRange.YEARLY -> R.id.btnReportYearly
         }
 
         if (binding.toggleReportRangeGroup.checkedButtonId != selectedButtonId) {
@@ -221,7 +426,8 @@ class ReportsFragment : Fragment() {
             binding.btnReportHourly,
             binding.btnReportDaily,
             binding.btnReportWeekly,
-            binding.btnReportMonthly
+            binding.btnReportMonthly,
+            binding.btnReportYearly
         ).forEach { button ->
             styleDateRangeButton(
                 button = button,
@@ -411,5 +617,36 @@ class ReportsFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private data class ReportExportData(
+        val rangeLabel: String,
+        val generatedAt: String,
+        val totalRevenue: Double,
+        val totalOrders: Int,
+        val averageOrderValue: Double,
+        val bestProduct: String,
+        val timeline: List<SalesTimelinePoint>,
+        val categories: List<CategorySalesRecord>,
+        val products: List<ProductSalesRecord>,
+        val transactions: List<ReportTransaction>
+    )
+
+    private data class ExcelCell(
+        val value: String,
+        val type: String,
+        val styleId: String? = null
+    )
+
+    private companion object {
+        const val EXCEL_MIME_TYPE = "application/vnd.ms-excel"
+        const val EXCEL_TYPE_STRING = "String"
+        const val EXCEL_TYPE_NUMBER = "Number"
+        const val STYLE_TITLE = "Title"
+        const val STYLE_HEADER = "Header"
+        const val STYLE_CURRENCY = "Currency"
+        const val STYLE_PERCENT = "Percent"
+        val EXPORT_FILE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
+        val EXPORT_DISPLAY_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
     }
 }

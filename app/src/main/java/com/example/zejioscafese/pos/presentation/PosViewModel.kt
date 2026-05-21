@@ -20,8 +20,10 @@ import com.example.zejioscafese.pos.data.repository.ProductRepository
 import java.time.LocalDate
 import java.util.Locale
 import kotlin.math.round
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class PosViewModel(
@@ -63,6 +65,9 @@ class PosViewModel(
     private var filteredProducts: List<Product> = emptyList()
     private var filteredGroups: List<ProductGroup> = emptyList()
     private var currentProductPageIndex: Int = 0
+    private var menuLoadJob: Job? = null
+    private var menuRetryJob: Job? = null
+    private var consecutiveMenuLoadFailures: Int = 0
 
     private val _categories = MutableLiveData(listOf(CategoryRepository.ALL_CATEGORY))
     val categories: LiveData<List<String>> = _categories
@@ -168,6 +173,8 @@ class PosViewModel(
     }
 
     fun refreshMenu() {
+        consecutiveMenuLoadFailures = 0
+        menuRetryJob?.cancel()
         loadMenuData()
     }
 
@@ -321,7 +328,11 @@ class PosViewModel(
     }
 
     private fun loadMenuData() {
-        viewModelScope.launch {
+        if (menuLoadJob?.isActive == true) {
+            return
+        }
+
+        menuLoadJob = viewModelScope.launch {
             val previousProducts = allProducts
             val previousCategories = _categories.value.orEmpty()
 
@@ -353,6 +364,8 @@ class PosViewModel(
 
                     refreshProductList(resetPage = false)
                     syncOrderState()
+                    consecutiveMenuLoadFailures = 0
+                    menuRetryJob?.cancel()
                 }
             } catch (exception: Exception) {
                 Log.e(TAG, "Failed to load POS menu from Supabase", exception)
@@ -360,12 +373,33 @@ class PosViewModel(
                 _categories.value = previousCategories.ifEmpty { listOf(CategoryRepository.ALL_CATEGORY) }
                 refreshProductList(resetPage = false)
                 syncOrderState()
-                _menuLoadError.value = NetworkErrorFormatter.toUserMessage(
-                    exception = exception,
-                    fallbackMessage = "Failed to load menu data."
-                )
+                consecutiveMenuLoadFailures += 1
+                val shouldRetryEmptyStartup =
+                    previousProducts.isEmpty() &&
+                        consecutiveMenuLoadFailures < MAX_EMPTY_MENU_LOAD_ATTEMPTS
+                if (shouldRetryEmptyStartup) {
+                    scheduleMenuRetry()
+                } else {
+                    _menuLoadError.value = NetworkErrorFormatter.toUserMessage(
+                        exception = exception,
+                        fallbackMessage = "Failed to load menu data."
+                    )
+                }
             } finally {
                 _isMenuLoading.value = false
+                menuLoadJob = null
+            }
+        }
+    }
+
+    private fun scheduleMenuRetry() {
+        if (menuRetryJob?.isActive == true) {
+            return
+        }
+        menuRetryJob = viewModelScope.launch {
+            delay(EMPTY_MENU_RETRY_DELAY_MS)
+            if (allProducts.isEmpty()) {
+                loadMenuData()
             }
         }
     }
@@ -599,5 +633,7 @@ class PosViewModel(
         const val ORDER_NUMBER_TEMPLATE = "#POS-%04d"
 
         const val POS_PAGE_SIZE = 12
+        const val MAX_EMPTY_MENU_LOAD_ATTEMPTS = 3
+        const val EMPTY_MENU_RETRY_DELAY_MS = 2_500L
     }
 }

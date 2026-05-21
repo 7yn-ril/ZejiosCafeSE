@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/pos_background"
+    android:background="@drawable/bg_login_canvas"
     android:padding="28dp"
     tools:context=".LoginActivity">
 
@@ -13,8 +13,8 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         app:cardBackgroundColor="@color/pos_sidebar_bg"
-        app:cardCornerRadius="18dp"
-        app:cardElevation="6dp"
+        app:cardCornerRadius="22dp"
+        app:cardElevation="18dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

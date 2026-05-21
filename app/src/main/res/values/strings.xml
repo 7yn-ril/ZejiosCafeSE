@@ -74,6 +74,10 @@
     <string name="inventory_metric_out_of_stock_subtitle">Cannot be produced right now</string>
     <string name="inventory_metric_sales_value_title">Average Price</string>
     <string name="inventory_metric_sales_value_subtitle">Across tracked menu variants</string>
+    <string name="inventory_low_stock_dialog_title">Low Stock Items</string>
+    <string name="inventory_low_stock_dialog_empty">All ingredients are above their minimum stock.</string>
+    <string name="inventory_low_stock_dialog_stock_format">Current: %1$s %2$s &#8226; Minimum: %3$s %4$s</string>
+    <string name="inventory_restock_action">Restock</string>
     <string name="inventory_nav_ingredients">Ingredients</string>
     <string name="inventory_nav_can_produce">Can Produce</string>
     <string name="inventory_can_make_format">Can make %1$d</string>
@@ -117,10 +121,12 @@
     <string name="reports_range_daily">Daily</string>
     <string name="reports_range_weekly">Weekly</string>
     <string name="reports_range_monthly">Monthly</string>
+    <string name="reports_range_yearly">Yearly</string>
     <string name="reports_granularity_hourly_subtitle">Hourly revenue for today</string>
     <string name="reports_granularity_daily_subtitle">Daily revenue for the last 7 days</string>
     <string name="reports_granularity_weekly_subtitle">Weekly revenue for the last 8 weeks</string>
     <string name="reports_granularity_monthly_subtitle">Monthly revenue for the last 12 months</string>
+    <string name="reports_granularity_yearly_subtitle">Yearly revenue for the last 5 years</string>
     <string name="reports_metric_total_revenue">Total Revenue</string>
     <string name="reports_metric_total_revenue_subtitle">Gross sales</string>
     <string name="reports_metric_total_orders">Total Orders</string>
@@ -141,6 +147,9 @@
     <string name="reports_export_copy">Copy summary</string>
     <string name="reports_export_refresh">Refresh data</string>
     <string name="reports_export_copied">Report summary copied.</string>
+    <string name="reports_export_excel_progress">Exporting Excel report...</string>
+    <string name="reports_export_excel_success">Excel report saved to Downloads: %1$s</string>
+    <string name="reports_export_excel_failed">Could not export the Excel report right now.</string>
     <string name="reports_export_range_summary">Range: %1$s</string>
     <string name="reports_export_revenue_summary">Revenue: %1$s</string>
     <string name="reports_export_orders_summary">Orders: %1$d</string>
@@ -278,6 +287,11 @@
     <string name="add_to_dish">Add to Dish</string>
     <string name="add_to_cart">Add to Cart</string>
     <string name="choose_size">Choose Size</string>
+    <string name="product_unavailable_overlay">Not available</string>
+    <string name="product_unavailable_button">Unavailable</string>
+    <string name="product_unavailable_title">Item not available</string>
+    <string name="product_unavailable_message">%1$s cannot be prepared right now.\n\n%2$s</string>
+    <string name="product_unavailable_fallback">One or more required ingredients are not available.</string>
     <string name="price_from_format">from PHP %1$.2f</string>
     <string name="in_cart_count">%1$d in cart</string>
     <string name="size_picker_title">Choose a size</string>
@@ -461,6 +475,7 @@
     <string name="dashboard_focus_badge_format">%1$d pending</string>
     <string name="dashboard_focus_support_format">%1$d critical and %2$d warning items require review.</string>
     <string name="dashboard_focus_fallback_headline">Operations are stable right now</string>
+    <string name="dashboard_focus_no_pending">No priority issues need attention right now.</string>
     <string name="dashboard_snapshot_title">Dashboard Snapshot</string>
     <string name="dashboard_snapshot_subtitle">Sales, service, and stock for today.</string>
     <string name="revenue">Revenue</string>

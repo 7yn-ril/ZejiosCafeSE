@@ -11,7 +11,10 @@ data class Product(
     val sourceProductId: String? = null,
     val sourceProductName: String? = null,
     val sourceVariantName: String? = null,
+    val unavailableReason: String? = null,
     val imageUrl: String? = null,
     @DrawableRes val imageResId: Int = android.R.drawable.ic_menu_gallery
-)
+) {
+    val isOrderable: Boolean get() = stockLeft > 0
+}
 

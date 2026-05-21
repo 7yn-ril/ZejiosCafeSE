@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Base: deep diagonal espresso-to-cocoa gradient -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="135"
+                android:centerColor="#2E1D17"
+                android:endColor="#3D2620"
+                android:startColor="#150B08"
+                android:type="linear" />
+        </shape>
+    </item>
+
+    <!-- Top-right warm caramel glow orb -->
+    <item
+        android:bottom="200dp"
+        android:left="120dp"
+        android:right="-280dp"
+        android:top="-280dp">
+        <shape android:shape="oval">
+            <gradient
+                android:endColor="#00B7683D"
+                android:gradientRadius="520dp"
+                android:startColor="#80B7683D"
+                android:type="radial" />
+        </shape>
+    </item>
+
+    <!-- Bottom-left emerald ambient glow -->
+    <item
+        android:bottom="-280dp"
+        android:left="-280dp"
+        android:right="120dp"
+        android:top="200dp">
+        <shape android:shape="oval">
+            <gradient
+                android:endColor="#00228B22"
+                android:gradientRadius="520dp"
+                android:startColor="#66228B22"
+                android:type="radial" />
+        </shape>
+    </item>
+
+    <!-- Subtle center mocha haze (gives a soft "lifted" feel under the card) -->
+    <item
+        android:bottom="80dp"
+        android:left="80dp"
+        android:right="80dp"
+        android:top="80dp">
+        <shape android:shape="oval">
+            <gradient
+                android:endColor="#008A6A5D"
+                android:gradientRadius="420dp"
+                android:startColor="#408A6A5D"
+                android:type="radial" />
+        </shape>
+    </item>
+
+    <!-- Soft top-left highlight (gives directional light) -->
+    <item
+        android:bottom="320dp"
+        android:left="-180dp"
+        android:right="320dp"
+        android:top="-180dp">
+        <shape android:shape="oval">
+            <gradient
+                android:endColor="#00F4EDE8"
+                android:gradientRadius="380dp"
+                android:startColor="#33F4EDE8"
+                android:type="radial" />
+        </shape>
+    </item>
+
+</layer-list>

@@ -1,5 +1,6 @@
 package com.example.zejioscafese.pos.ui
 
+import android.content.res.ColorStateList
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -57,33 +58,54 @@ class ProductAdapter(
             val inCart = totalQuantity > 0
             val isSingleVariant = !group.hasMultipleVariants
             val singleVariant = group.singleVariant
+            val isOrderable = group.isOrderable
 
             // Multi-variant cards never show the inline stepper — they always open the picker.
-            val showStepper = isSingleVariant && inCart
+            val showStepper = isOrderable && isSingleVariant && inCart
             val showAddButton = !showStepper
 
             binding.btnAddToDish.visibility = if (showAddButton) View.VISIBLE else View.GONE
             binding.productStepper.visibility = if (showStepper) View.VISIBLE else View.GONE
             binding.tvProductQuantity.text = totalQuantity.toString()
 
-            binding.btnAddToDish.text = if (group.hasMultipleVariants) {
-                context.getString(R.string.choose_size)
-            } else {
-                context.getString(R.string.add_to_cart)
+            binding.btnAddToDish.text = when {
+                !isOrderable -> context.getString(R.string.product_unavailable_button)
+                group.hasMultipleVariants -> context.getString(R.string.choose_size)
+                else -> context.getString(R.string.add_to_cart)
             }
 
             // Multi-variant in-cart badge (top-right of price row)
-            if (group.hasMultipleVariants && inCart) {
+            if (isOrderable && group.hasMultipleVariants && inCart) {
                 binding.tvQuantityBadge.visibility = View.VISIBLE
                 binding.tvQuantityBadge.text = context.getString(R.string.in_cart_count, totalQuantity)
             } else {
                 binding.tvQuantityBadge.visibility = View.GONE
             }
 
+            binding.tvUnavailableOverlay.visibility = if (isOrderable) View.GONE else View.VISIBLE
+            binding.ivProduct.alpha = if (isOrderable) 1f else 0.72f
+            binding.tvStockLeft.backgroundTintList = ColorStateList.valueOf(
+                ContextCompat.getColor(
+                    context,
+                    if (isOrderable) R.color.pos_stock_badge else R.color.stock_critical
+                )
+            )
+            binding.btnAddToDish.backgroundTintList = ColorStateList.valueOf(
+                ContextCompat.getColor(
+                    context,
+                    if (isOrderable) R.color.pos_primary else R.color.pos_text_secondary
+                )
+            )
+
             val selectedStroke = ContextCompat.getColor(context, R.color.pos_secondary)
+            val unavailableStroke = ContextCompat.getColor(context, R.color.stock_critical)
             val defaultStroke = ContextCompat.getColor(context, R.color.pos_border)
-            binding.productCard.strokeColor = if (inCart) selectedStroke else defaultStroke
-            binding.productCard.strokeWidth = if (inCart) dp(context, 2) else dp(context, 1)
+            binding.productCard.strokeColor = when {
+                !isOrderable -> unavailableStroke
+                inCart -> selectedStroke
+                else -> defaultStroke
+            }
+            binding.productCard.strokeWidth = if (inCart || !isOrderable) dp(context, 2) else dp(context, 1)
 
             RemoteImageLoader.load(binding.ivProduct, group.imageUrl, group.imageResId)
 

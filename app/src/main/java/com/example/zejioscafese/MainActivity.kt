@@ -46,6 +46,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
 import com.example.zejioscafese.dashboard.model.AlertLevel
+import com.example.zejioscafese.dashboard.model.DashboardAlert
 import com.example.zejioscafese.dashboard.model.DashboardPeriod
 import com.example.zejioscafese.dashboard.model.DashboardRecentOrder
 import com.example.zejioscafese.dashboard.model.DashboardSnapshot
@@ -845,6 +846,10 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         if (currentSection != Section.POS) {
             renderSection(Section.POS)
         }
+        if (!group.isOrderable) {
+            showProductUnavailableDialog(group)
+            return
+        }
         val singleVariant = group.singleVariant
         if (singleVariant != null) {
             viewModel.increaseProduct(singleVariant)
@@ -852,6 +857,22 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         } else {
             showSizePickerDialog(group)
         }
+    }
+
+    private fun showProductUnavailableDialog(group: com.example.zejioscafese.pos.data.model.ProductGroup) {
+        val reason = group.unavailableReason
+            ?: getString(R.string.product_unavailable_fallback)
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.product_unavailable_title))
+            .setMessage(
+                getString(
+                    R.string.product_unavailable_message,
+                    group.displayName,
+                    reason
+                )
+            )
+            .setPositiveButton(android.R.string.ok, null)
+            .showStyledDialog(this)
     }
 
     private fun showSizePickerDialog(group: com.example.zejioscafese.pos.data.model.ProductGroup) {
@@ -890,7 +911,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
                 val isOut = variant.stockLeft <= 0
                 tvStock.text = if (isOut) {
-                    getString(R.string.size_picker_out_of_stock)
+                    variant.unavailableReason ?: getString(R.string.size_picker_out_of_stock)
                 } else {
                     getString(R.string.stock_left_format, variant.stockLeft)
                 }
@@ -1705,12 +1726,12 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply { topMargin = if (index == 0) 6.dp() else 4.dp() }
+                ).apply { topMargin = if (index == 0) 4.dp() else 3.dp() }
             }
             val nameView = TextView(this).apply {
                 text = line.label
                 setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
-                textSize = 12f
+                textSize = 11f
                 setTypeface(typeface, Typeface.NORMAL)
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             }
@@ -1724,10 +1745,9 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             val priceView = TextView(this).apply {
                 text = formatCurrency(line.lineTotal)
                 setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
-                textSize = 12f
-                setTypeface(typeface, Typeface.BOLD)
+                textSize = 11f
                 gravity = Gravity.END
-                layoutParams = LinearLayout.LayoutParams(90.dp(), LinearLayout.LayoutParams.WRAP_CONTENT)
+                layoutParams = LinearLayout.LayoutParams(88.dp(), LinearLayout.LayoutParams.WRAP_CONTENT)
             }
             row.addView(nameView)
             row.addView(qtyView)
@@ -1735,10 +1755,22 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             receiptBinding.receiptItemsContainer.addView(row)
         }
 
-        MaterialAlertDialogBuilder(this)
+        val receiptDialog = MaterialAlertDialogBuilder(this)
             .setView(receiptBinding.root)
-            .setPositiveButton(R.string.receipt_done, null)
+            .setBackground(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
             .showStyledDialog(this)
+        receiptDialog.window?.apply {
+            setBackgroundDrawable(
+                android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT)
+            )
+            decorView.setPadding(0, 0, 0, 0)
+            setLayout(
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            setGravity(android.view.Gravity.CENTER)
+        }
+        receiptBinding.btnCloseReceipt.setOnClickListener { receiptDialog.dismiss() }
     }
 
     private fun createSectionLabel(text: String): TextView {
@@ -2853,6 +2885,39 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
         binding.dashboardContent.root.findViewById<View>(R.id.cardMetricLowStock)?.setOnClickListener {
             showDashboardLowStockDialog()
+        }
+
+        binding.dashboardContent.cardNeedsAttention.setOnClickListener {
+            navigateToDashboardAttentionTarget()
+        }
+    }
+
+    private fun navigateToDashboardAttentionTarget() {
+        val priorityAlert = dashboardSnapshot.alerts.firstOrNull { it.level == AlertLevel.CRITICAL }
+            ?: dashboardSnapshot.alerts.firstOrNull()
+
+        if (priorityAlert == null) {
+            Snackbar.make(
+                binding.root,
+                getString(R.string.dashboard_focus_no_pending),
+                Snackbar.LENGTH_SHORT
+            ).show()
+            return
+        }
+
+        renderSection(resolveDashboardAlertSection(priorityAlert))
+    }
+
+    private fun resolveDashboardAlertSection(alert: DashboardAlert): Section {
+        val searchableText = "${alert.title} ${alert.detail}".lowercase(Locale.US)
+        return when {
+            searchableText.contains("order") ||
+                searchableText.contains("pending") ||
+                searchableText.contains("preparing") -> Section.ORDERS
+            searchableText.contains("stock") ||
+                searchableText.contains("ingredient") ||
+                searchableText.contains("reorder") -> Section.INVENTORY
+            else -> Section.INVENTORY
         }
     }
 

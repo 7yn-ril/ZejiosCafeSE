@@ -29,7 +29,7 @@ class ReportsRepository(
     private val clientProvider: () -> SupabaseClient = { SupabaseProvider.client }
 ) {
 
-    enum class TimelineGranularity { HOURLY, DAILY, WEEKLY, MONTHLY }
+    enum class TimelineGranularity { HOURLY, DAILY, WEEKLY, MONTHLY, YEARLY }
 
     data class ReportDateWindow(
         val startDate: LocalDate,
@@ -199,6 +199,7 @@ class ReportsRepository(
             TimelineGranularity.DAILY -> buildDailySales(orders, dateWindow)
             TimelineGranularity.WEEKLY -> buildWeeklySales(orders, dateWindow)
             TimelineGranularity.MONTHLY -> buildMonthlySales(orders, dateWindow)
+            TimelineGranularity.YEARLY -> buildYearlySales(orders, dateWindow)
         }
     }
 
@@ -281,6 +282,24 @@ class ReportsRepository(
                 averageOrderValue = if (totalOrders > 0) totalSales / totalOrders else 0.0
             )
         }.toList()
+    }
+
+    private fun buildYearlySales(
+        orders: List<OrderRecord>,
+        dateWindow: ReportDateWindow
+    ): List<SalesTimelinePoint> {
+        val ordersByYear = orders.groupBy { order -> order.localDate.year }
+        return (dateWindow.startDate.year..dateWindow.endDate.year).map { year ->
+            val yearlyOrders = ordersByYear[year].orEmpty()
+            val totalSales = yearlyOrders.sumOf(OrderRecord::total)
+            val totalOrders = yearlyOrders.size
+            SalesTimelinePoint(
+                label = year.toString(),
+                totalSales = totalSales,
+                totalOrders = totalOrders,
+                averageOrderValue = if (totalOrders > 0) totalSales / totalOrders else 0.0
+            )
+        }
     }
 
     private fun buildItemsPreview(items: List<String>): String {

@@ -2,109 +2,111 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
+    android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:background="@android:color/transparent"
     android:clipToPadding="false"
-    android:padding="8dp">
+    android:padding="0dp">
 
     <LinearLayout
-        android:layout_width="match_parent"
+        android:layout_width="340dp"
         android:layout_height="wrap_content"
         android:background="@drawable/bg_receipt_sheet"
         android:orientation="vertical"
         android:elevation="6dp"
         android:clipToOutline="true">
 
-        <!-- Branded header band -->
-        <LinearLayout
+        <!-- Brand header (centered like a paper receipt) + X close button -->
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_receipt_header"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingStart="18dp"
-            android:paddingTop="14dp"
-            android:paddingEnd="18dp"
-            android:paddingBottom="14dp">
+            android:layout_height="wrap_content">
 
-            <FrameLayout
-                android:layout_width="46dp"
-                android:layout_height="46dp"
-                android:background="@drawable/bg_receipt_logo_ring">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_horizontal"
+                android:orientation="vertical"
+                android:paddingStart="44dp"
+                android:paddingTop="18dp"
+                android:paddingEnd="44dp"
+                android:paddingBottom="6dp">
 
                 <ImageView
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:layout_gravity="center"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
                     android:src="@drawable/ic_logo_coffee_24"
                     android:contentDescription="@string/receipt_brand_name"
                     app:tint="@color/pos_primary_dark" />
-            </FrameLayout>
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="14dp"
-                android:orientation="vertical">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
                     android:text="@string/receipt_brand_name"
-                    android:textColor="@color/white"
-                    android:textSize="17sp"
-                    android:letterSpacing="0.03"
+                    android:textColor="@color/pos_primary_dark"
+                    android:textSize="20sp"
+                    android:letterSpacing="0.02"
                     android:textStyle="bold" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
+                    android:layout_marginTop="3dp"
                     android:text="@string/receipt_brand_tagline"
-                    android:textColor="#E8DDD5"
+                    android:textColor="@color/pos_text_secondary"
                     android:textSize="10sp"
-                    android:letterSpacing="0.04" />
+                    android:letterSpacing="0.02" />
             </LinearLayout>
-        </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/btnCloseReceipt"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_gravity="top|end"
+                android:layout_marginTop="8dp"
+                android:layout_marginEnd="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/close_checkout"
+                android:padding="6dp"
+                android:src="@drawable/ic_close_24"
+                app:tint="@color/pos_text_secondary" />
+        </FrameLayout>
 
         <!-- Body -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingStart="18dp"
-            android:paddingTop="14dp"
-            android:paddingEnd="18dp"
-            android:paddingBottom="16dp">
+            android:paddingStart="20dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="14dp">
 
-            <!-- Order ID chip + time -->
+            <!-- Dashed divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@drawable/divider_receipt_dash"
+                android:layerType="software" />
+
+            <!-- Order header: ID + time -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
                 <TextView
                     android:id="@+id/tvReceiptOrderId"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/bg_receipt_order_chip"
-                    android:paddingStart="10dp"
-                    android:paddingTop="4dp"
-                    android:paddingEnd="10dp"
-                    android:paddingBottom="4dp"
-                    android:fontFamily="monospace"
-                    android:textColor="@color/pos_primary_dark"
-                    android:textSize="11sp"
-                    android:textStyle="bold"
-                    tools:text="#POS-1072" />
-
-                <View
                     android:layout_width="0dp"
-                    android:layout_height="0dp"
-                    android:layout_weight="1" />
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:fontFamily="monospace"
+                    android:textColor="@color/pos_text_primary"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    tools:text="#POS-1087" />
 
                 <TextView
                     android:id="@+id/tvReceiptTime"
@@ -112,15 +114,14 @@
                     android:layout_height="wrap_content"
                     android:textColor="@color/pos_text_primary"
                     android:textSize="12sp"
-                    android:textStyle="bold"
-                    tools:text="09:15 PM" />
+                    tools:text="01:40 PM" />
             </LinearLayout>
 
-            <!-- Order info rows -->
+            <!-- Customer / Order type / Payment -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
+                android:layout_marginTop="4dp"
                 android:orientation="horizontal">
 
                 <TextView
@@ -136,15 +137,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/pos_text_primary"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
+                    android:textSize="11sp"
                     tools:text="Walk-in Customer" />
             </LinearLayout>
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="2dp"
                 android:orientation="horizontal">
 
                 <TextView
@@ -160,15 +160,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/pos_text_primary"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
+                    android:textSize="11sp"
                     tools:text="Dine In" />
             </LinearLayout>
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="2dp"
                 android:orientation="horizontal">
 
                 <TextView
@@ -184,8 +183,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/pos_text_primary"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
+                    android:textSize="11sp"
                     tools:text="Cash" />
             </LinearLayout>
 
@@ -193,91 +191,66 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:layout_marginTop="12dp"
-                android:layout_marginBottom="10dp"
+                android:layout_marginTop="10dp"
                 android:background="@drawable/divider_receipt_dash"
                 android:layerType="software" />
 
-            <!-- Section label -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/receipt_items_header"
-                android:textColor="@color/pos_primary_dark"
-                android:textSize="10sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.16"
-                android:textAllCaps="true" />
-
-            <!-- Items card -->
+            <!-- Items table header -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:background="@drawable/bg_receipt_items_card"
-                android:orientation="vertical"
-                android:paddingStart="12dp"
-                android:paddingTop="10dp"
-                android:paddingEnd="12dp"
-                android:paddingBottom="10dp">
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
 
-                <!-- Table header -->
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <TextView
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                    android:layout_weight="1"
+                    android:text="@string/items_label"
+                    android:textColor="@color/pos_text_secondary"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
 
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/items_label"
-                        android:textColor="@color/pos_text_secondary"
-                        android:textSize="10sp"
-                        android:textStyle="bold"
-                        android:letterSpacing="0.12"
-                        android:textAllCaps="true" />
-
-                    <TextView
-                        android:layout_width="36dp"
-                        android:layout_height="wrap_content"
-                        android:gravity="center"
-                        android:text="QTY"
-                        android:textColor="@color/pos_text_secondary"
-                        android:textSize="10sp"
-                        android:textStyle="bold"
-                        android:letterSpacing="0.12" />
-
-                    <TextView
-                        android:layout_width="90dp"
-                        android:layout_height="wrap_content"
-                        android:gravity="end"
-                        android:text="@string/total_label"
-                        android:textColor="@color/pos_text_secondary"
-                        android:textSize="10sp"
-                        android:textStyle="bold"
-                        android:letterSpacing="0.12"
-                        android:textAllCaps="true" />
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginTop="6dp"
-                    android:background="@color/pos_border" />
-
-                <LinearLayout
-                    android:id="@+id/receiptItemsContainer"
-                    android:layout_width="match_parent"
+                <TextView
+                    android:layout_width="36dp"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical" />
+                    android:gravity="center"
+                    android:text="QTY"
+                    android:textColor="@color/pos_text_secondary"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="88dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="end"
+                    android:text="@string/total_label"
+                    android:textColor="@color/pos_text_secondary"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
             </LinearLayout>
+
+            <!-- Items go here -->
+            <LinearLayout
+                android:id="@+id/receiptItemsContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:orientation="vertical" />
+
+            <!-- Dashed divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/divider_receipt_dash"
+                android:layerType="software" />
 
             <!-- Subtotal -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="10dp"
                 android:orientation="horizontal">
 
                 <TextView
@@ -286,15 +259,15 @@
                     android:layout_weight="1"
                     android:text="@string/subtotal"
                     android:textColor="@color/pos_text_secondary"
-                    android:textSize="12sp" />
+                    android:textSize="11sp" />
 
                 <TextView
                     android:id="@+id/tvReceiptSubtotal"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/pos_text_primary"
-                    android:textSize="12sp"
-                    tools:text="PHP 250.00" />
+                    android:textSize="11sp"
+                    tools:text="PHP 295.00" />
             </LinearLayout>
 
             <!-- Discount row (conditional) -->
@@ -302,7 +275,7 @@
                 android:id="@+id/receiptDiscountRow"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="3dp"
                 android:orientation="horizontal"
                 android:visibility="gone"
                 tools:visibility="visible">
@@ -313,31 +286,26 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:textColor="@color/pos_secondary"
-                    android:textSize="12sp"
-                    tools:text="PWD Discount (-20%)" />
+                    android:textSize="11sp"
+                    tools:text="Valentines Day (25%)" />
 
                 <TextView
                     android:id="@+id/tvReceiptDiscountAmount"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/pos_secondary"
-                    android:textSize="12sp"
+                    android:textSize="11sp"
                     android:textStyle="bold"
-                    tools:text="-PHP 47.00" />
+                    tools:text="-PHP 73.75" />
             </LinearLayout>
 
-            <!-- Total highlight block -->
+            <!-- Total (plain bold, no highlight box) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:background="@drawable/bg_receipt_total_highlight"
                 android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingStart="14dp"
-                android:paddingTop="9dp"
-                android:paddingEnd="14dp"
-                android:paddingBottom="9dp">
+                android:orientation="horizontal">
 
                 <TextView
                     android:layout_width="0dp"
@@ -346,79 +314,71 @@
                     android:text="@string/total"
                     android:textAllCaps="true"
                     android:textColor="@color/pos_primary_dark"
-                    android:textSize="12sp"
+                    android:textSize="16sp"
                     android:textStyle="bold"
-                    android:letterSpacing="0.14" />
+                    android:letterSpacing="0.04" />
 
                 <TextView
                     android:id="@+id/tvReceiptTotal"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/pos_primary_dark"
-                    android:textSize="17sp"
+                    android:textSize="16sp"
                     android:textStyle="bold"
-                    tools:text="PHP 250.00" />
+                    tools:text="PHP 221.25" />
             </LinearLayout>
 
-            <!-- Cash + change two-column row -->
+            <!-- Cash row -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
+                android:layout_marginTop="8dp"
                 android:orientation="horizontal">
 
-                <LinearLayout
+                <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:text="@string/receipt_cash_received_label"
+                    android:textAllCaps="true"
+                    android:textColor="@color/pos_text_secondary"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.06" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/receipt_cash_received_label"
-                        android:textColor="@color/pos_text_secondary"
-                        android:textSize="10sp"
-                        android:textAllCaps="true"
-                        android:letterSpacing="0.08" />
+                <TextView
+                    android:id="@+id/tvReceiptCashReceived"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/pos_text_primary"
+                    android:textSize="11sp"
+                    tools:text="PHP 225.00" />
+            </LinearLayout>
 
-                    <TextView
-                        android:id="@+id/tvReceiptCashReceived"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:textColor="@color/pos_text_primary"
-                        android:textSize="13sp"
-                        android:textStyle="bold"
-                        tools:text="PHP 300.00" />
-                </LinearLayout>
+            <!-- Change row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:orientation="horizontal">
 
-                <LinearLayout
+                <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:gravity="end"
-                    android:orientation="vertical">
+                    android:text="@string/receipt_change_label"
+                    android:textAllCaps="true"
+                    android:textColor="@color/pos_text_secondary"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.06" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/receipt_change_label"
-                        android:textColor="@color/pos_text_secondary"
-                        android:textSize="10sp"
-                        android:textAllCaps="true"
-                        android:letterSpacing="0.08" />
-
-                    <TextView
-                        android:id="@+id/tvReceiptChange"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:textColor="@color/pos_secondary_dark"
-                        android:textSize="13sp"
-                        android:textStyle="bold"
-                        tools:text="PHP 50.00" />
-                </LinearLayout>
+                <TextView
+                    android:id="@+id/tvReceiptChange"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/pos_secondary_dark"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    tools:text="PHP 3.75" />
             </LinearLayout>
 
             <!-- Footer dashed divider -->
@@ -436,10 +396,11 @@
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:text="@string/receipt_thank_you"
+                android:textAllCaps="true"
                 android:textColor="@color/pos_primary_dark"
                 android:textSize="12sp"
                 android:textStyle="bold"
-                android:letterSpacing="0.03" />
+                android:letterSpacing="0.08" />
 
             <TextView
                 android:layout_width="match_parent"

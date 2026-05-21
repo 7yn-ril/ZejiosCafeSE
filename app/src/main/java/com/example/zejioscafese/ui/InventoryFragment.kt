@@ -32,6 +32,7 @@ import com.example.zejioscafese.inventory.data.model.ProducibleProduct
 import com.example.zejioscafese.pos.data.model.Ingredient
 import com.example.zejioscafese.ui.applyZejiosCafeButtonStyling
 import com.example.zejioscafese.ui.showStyledDialog
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.snackbar.Snackbar
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -70,6 +71,7 @@ class InventoryFragment : Fragment() {
         setupSearch()
         setupBottomNavigation()
         setupAddButton()
+        setupMetricActions()
         setupPaginationControls()
         setupSortSpinner()
         setupFilterChips()
@@ -270,6 +272,12 @@ class InventoryFragment : Fragment() {
         }
     }
 
+    private fun setupMetricActions() {
+        binding.cardInventoryLowStockMetric.setOnClickListener {
+            showLowStockRestockDialog()
+        }
+    }
+
     private fun setupPaginationControls() {
         binding.btnInventoryPreviousPage.setOnClickListener {
             viewModel.goToPreviousPage()
@@ -421,6 +429,103 @@ class InventoryFragment : Fragment() {
             (viewModel.lowStockIngredients.value?.size ?: 0).toString()
         binding.tvInventoryValue.text =
             formatCurrency(viewModel.totalInventoryValue.value ?: 0.0)
+    }
+
+    private fun showLowStockRestockDialog() {
+        val lowStockItems = viewModel.lowStockIngredients.value.orEmpty()
+        if (lowStockItems.isEmpty()) {
+            Snackbar.make(
+                binding.root,
+                getString(R.string.inventory_low_stock_dialog_empty),
+                Snackbar.LENGTH_SHORT
+            ).show()
+            return
+        }
+
+        val ctx = requireContext()
+        val container = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dpToPx(20), dpToPx(8), dpToPx(20), dpToPx(4))
+        }
+
+        var lowStockDialog: AlertDialog? = null
+        lowStockItems.forEachIndexed { index, ingredient ->
+            if (index > 0) {
+                container.addView(View(ctx).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        1
+                    ).apply {
+                        topMargin = dpToPx(12)
+                        bottomMargin = dpToPx(12)
+                    }
+                    setBackgroundColor(ContextCompat.getColor(ctx, R.color.pos_border))
+                })
+            }
+
+            val row = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+            }
+
+            val details = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+            }
+            row.addView(
+                details,
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            )
+
+            details.addView(TextView(ctx).apply {
+                text = ingredient.name
+                textSize = 15f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                setTextColor(ContextCompat.getColor(ctx, R.color.pos_text_primary))
+            })
+
+            details.addView(TextView(ctx).apply {
+                text = getString(
+                    R.string.inventory_low_stock_dialog_stock_format,
+                    formatQuantity(ingredient.currentStock),
+                    ingredient.unit,
+                    formatQuantity(ingredient.minimumStock),
+                    ingredient.unit
+                )
+                textSize = 13f
+                setTextColor(ContextCompat.getColor(ctx, R.color.pos_text_secondary))
+                setPadding(0, dpToPx(4), 0, 0)
+            })
+
+            val restockButton = MaterialButton(ctx).apply {
+                text = getString(R.string.inventory_restock_action)
+                isAllCaps = false
+                minHeight = dpToPx(36)
+                minimumHeight = dpToPx(36)
+                cornerRadius = dpToPx(12)
+                backgroundTintList = ColorStateList.valueOf(
+                    ContextCompat.getColor(ctx, R.color.pos_primary)
+                )
+                setTextColor(ContextCompat.getColor(ctx, R.color.white))
+                setOnClickListener {
+                    lowStockDialog?.dismiss()
+                    showRestockDialog(ingredient)
+                }
+            }
+            row.addView(
+                restockButton,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { marginStart = dpToPx(16) }
+            )
+            container.addView(row)
+        }
+
+        lowStockDialog = AlertDialog.Builder(ctx)
+            .setTitle(getString(R.string.inventory_low_stock_dialog_title))
+            .setView(ScrollView(ctx).apply { addView(container) })
+            .setNegativeButton(R.string.inventory_dialog_close, null)
+            .showStyledDialog(ctx)
     }
 
     private fun showRestockDialog(ingredient: Ingredient) {

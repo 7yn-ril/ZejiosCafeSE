@@ -120,6 +120,13 @@ class ReportsViewModelTest {
     }
 
     @Test
+    fun setDateRange_yearly_updatesSelectedRange() = runTest {
+        advanceUntilIdle()
+        viewModel.setDateRange(ReportsViewModel.DateRange.YEARLY)
+        assertEquals(ReportsViewModel.DateRange.YEARLY, viewModel.selectedRange.value)
+    }
+
+    @Test
     fun setDateRange_differentRange_triggersRepositoryFetch() = runTest {
         advanceUntilIdle()
         viewModel.setDateRange(ReportsViewModel.DateRange.MONTHLY)
