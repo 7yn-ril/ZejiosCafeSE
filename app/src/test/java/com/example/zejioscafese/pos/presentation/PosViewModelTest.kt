@@ -1,16 +1,20 @@
 package com.example.zejioscafese.pos.presentation
 
 import com.example.zejioscafese.helpers.InstantExecutorExtension
+import com.example.zejioscafese.orders.data.repository.CheckoutOrderPayload
 import com.example.zejioscafese.orders.data.repository.OrderRepository
 import com.example.zejioscafese.orders.model.CafeOrder
 import com.example.zejioscafese.orders.model.CafeOrderStatus
+import com.example.zejioscafese.pos.data.model.Discount
 import com.example.zejioscafese.pos.data.model.Product
 import com.example.zejioscafese.pos.data.repository.CategoryRepository
+import com.example.zejioscafese.pos.data.repository.DiscountRepository
 import com.example.zejioscafese.pos.data.repository.ProductRepository
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.mockk.slot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -32,7 +36,18 @@ class PosViewModelTest {
     private lateinit var productRepo: ProductRepository
     private lateinit var categoryRepo: CategoryRepository
     private lateinit var orderRepo: OrderRepository
+    private lateinit var discountRepo: DiscountRepository
     private lateinit var viewModel: PosViewModel
+
+    private val pwdDiscount = Discount(
+        id = Discount.PWD_ID, name = "PWD", percent = 20.0, isBuiltIn = true
+    )
+    private val seniorDiscount = Discount(
+        id = Discount.SENIOR_ID, name = "Senior Citizen", percent = 20.0, isBuiltIn = true
+    )
+    private val anniversaryDiscount = Discount(
+        id = "DSC-001", name = "Anniversary Week", percent = 15.0, isBuiltIn = false
+    )
 
     private val coffeeA = Product(
         id = "VAR-001", name = "Americano", category = "Coffee",
@@ -57,10 +72,14 @@ class PosViewModelTest {
         productRepo = mockk()
         categoryRepo = mockk()
         orderRepo = mockk()
+        discountRepo = mockk()
         coEvery { productRepo.fetchProducts() } returns allProducts
         coEvery { categoryRepo.fetchCategories() } returns listOf("All", "Coffee", "Food")
         coEvery { orderRepo.fetchNextOrderNumber() } returns "#POS-1025"
-        viewModel = PosViewModel(productRepo, categoryRepo, orderRepo)
+        coEvery { discountRepo.fetchActiveDiscounts(any()) } returns listOf(
+            pwdDiscount, seniorDiscount, anniversaryDiscount
+        )
+        viewModel = PosViewModel(productRepo, categoryRepo, orderRepo, discountRepo)
     }
 
     @AfterEach
@@ -437,5 +456,152 @@ class PosViewModelTest {
         advanceUntilIdle()
         val state = viewModel.productPaginationState.value!!
         assertFalse(state.canGoNext) // 3 products < 12 per page
+    }
+
+    // ── discounts ─────────────────────────────────────────────────────────────
+
+    @Test
+    fun init_loadsAvailableDiscounts_listExposedToUi() = runTest {
+        advanceUntilIdle()
+        assertEquals(3, viewModel.availableDiscounts.value?.size)
+    }
+
+    @Test
+    fun setDiscount_pwd_reducesTotalBy20Percent() = runTest {
+        advanceUntilIdle()
+        viewModel.increaseProduct(coffeeA) // 90.0
+        viewModel.setDiscount(pwdDiscount)
+        // 90 - (90 * 0.20) = 72
+        assertEquals(72.0, viewModel.total.value)
+        assertEquals(18.0, viewModel.discountAmount.value)
+    }
+
+    @Test
+    fun setDiscount_senior_reducesTotalBy20Percent() = runTest {
+        advanceUntilIdle()
+        viewModel.increaseProduct(coffeeA) // 90.0
+        viewModel.increaseProduct(coffeeB) // 110.0
+        viewModel.setDiscount(seniorDiscount)
+        // (90 + 110) * 0.80 = 160
+        assertEquals(160.0, viewModel.total.value)
+    }
+
+    @Test
+    fun setDiscount_custom15Percent_appliesCorrectAmount() = runTest {
+        advanceUntilIdle()
+        viewModel.increaseProduct(coffeeB) // 110.0
+        viewModel.setDiscount(anniversaryDiscount)
+        // 110 * 0.85 = 93.5
+        assertEquals(93.5, viewModel.total.value)
+        assertEquals(16.5, viewModel.discountAmount.value)
+    }
+
+    @Test
+    fun setDiscount_null_clearsDiscountAndRestoresTotal() = runTest {
+        advanceUntilIdle()
+        viewModel.increaseProduct(coffeeA) // 90.0
+        viewModel.setDiscount(pwdDiscount)
+        viewModel.setDiscount(null)
+        assertEquals(90.0, viewModel.total.value)
+        assertEquals(0.0, viewModel.discountAmount.value)
+        assertNull(viewModel.selectedDiscount.value)
+    }
+
+    @Test
+    fun setDiscount_changingItemsRecomputesAgainstNewSubtotal() = runTest {
+        advanceUntilIdle()
+        viewModel.increaseProduct(coffeeA) // 90.0
+        viewModel.setDiscount(pwdDiscount) // 90 * 0.20 = 18
+        viewModel.increaseProduct(coffeeB) // subtotal becomes 200
+        // syncOrderState calls recomputeTotals → 200 * 0.20 = 40 discount
+        assertEquals(40.0, viewModel.discountAmount.value)
+        assertEquals(160.0, viewModel.total.value)
+    }
+
+    @Test
+    fun checkout_withDiscount_forwardsDiscountIdAndPercentToRepository() = runTest {
+        advanceUntilIdle()
+        val savedOrder = CafeOrder(
+            id = "#POS-1025", customerName = "Walk-in Customer",
+            itemsSummary = "Americano", itemCount = 1,
+            timeLabel = "10:00 AM", status = CafeOrderStatus.PREPARING,
+            total = 72.0, initials = "WC"
+        )
+        val payloadSlot = slot<CheckoutOrderPayload>()
+        coEvery { orderRepo.saveCheckoutOrder(capture(payloadSlot), any()) } returns savedOrder
+
+        viewModel.increaseProduct(coffeeA) // 90.0
+        viewModel.setDiscount(pwdDiscount)
+        viewModel.checkout()
+        advanceUntilIdle()
+
+        val payload = payloadSlot.captured
+        assertEquals(Discount.PWD_ID, payload.discountId)
+        assertEquals(20.0, payload.discountPercent)
+        assertEquals(18.0, payload.discountAmount)
+        assertEquals(72.0, payload.total)
+    }
+
+    @Test
+    fun checkout_withoutDiscount_payloadHasNullDiscountFields() = runTest {
+        advanceUntilIdle()
+        val savedOrder = CafeOrder(
+            id = "#POS-1025", customerName = "Walk-in Customer",
+            itemsSummary = "Americano", itemCount = 1,
+            timeLabel = "10:00 AM", status = CafeOrderStatus.PREPARING,
+            total = 90.0, initials = "WC"
+        )
+        val payloadSlot = slot<CheckoutOrderPayload>()
+        coEvery { orderRepo.saveCheckoutOrder(capture(payloadSlot), any()) } returns savedOrder
+
+        viewModel.increaseProduct(coffeeA)
+        viewModel.checkout()
+        advanceUntilIdle()
+
+        val payload = payloadSlot.captured
+        assertNull(payload.discountId)
+        assertNull(payload.discountPercent)
+        assertEquals(0.0, payload.discountAmount)
+    }
+
+    @Test
+    fun checkout_success_clearsSelectedDiscount() = runTest {
+        advanceUntilIdle()
+        val savedOrder = CafeOrder(
+            id = "#POS-1025", customerName = "Walk-in Customer",
+            itemsSummary = "Americano", itemCount = 1,
+            timeLabel = "10:00 AM", status = CafeOrderStatus.PREPARING,
+            total = 72.0, initials = "WC"
+        )
+        coEvery { orderRepo.saveCheckoutOrder(any(), any()) } returns savedOrder
+
+        viewModel.increaseProduct(coffeeA)
+        viewModel.setDiscount(pwdDiscount)
+        viewModel.checkout()
+        advanceUntilIdle()
+
+        assertNull(viewModel.selectedDiscount.value)
+        assertEquals(0.0, viewModel.discountAmount.value)
+    }
+
+    @Test
+    fun onDiscountCreated_appendsAndAutoSelects() = runTest {
+        advanceUntilIdle()
+        val brandNew = Discount(
+            id = "DSC-002", name = "May Day", percent = 25.0, isBuiltIn = false
+        )
+        viewModel.onDiscountCreated(brandNew)
+        assertTrue(viewModel.availableDiscounts.value.orEmpty().any { it.id == "DSC-002" })
+        assertEquals(brandNew, viewModel.selectedDiscount.value)
+    }
+
+    @Test
+    fun onDiscountCreated_duplicateId_doesNotDuplicate() = runTest {
+        advanceUntilIdle()
+        // pwdDiscount is already in availableDiscounts; "creating" it again
+        // should still leave a single entry for PWD_ID.
+        viewModel.onDiscountCreated(pwdDiscount)
+        val pwdRows = viewModel.availableDiscounts.value.orEmpty().filter { it.id == Discount.PWD_ID }
+        assertEquals(1, pwdRows.size)
     }
 }

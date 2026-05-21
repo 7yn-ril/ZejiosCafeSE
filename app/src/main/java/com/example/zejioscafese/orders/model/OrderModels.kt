@@ -16,6 +16,10 @@ data class CafeOrder(
     val orderedItems: List<String> = emptyList(),
     val orderedItemVariantIds: List<String> = emptyList(),
     val completedItemVariantIds: Set<String> = emptySet(),
+    // CHANGE: Partial completion — items whose recipe ingredients have been
+    // subtracted from stock. The items dialog renders these as a static
+    // green check (no editable checkbox) since they're effectively locked in.
+    val deductedItemVariantIds: Set<String> = emptySet(),
     val createdAtMillis: Long = 0L,
     val completedAtMillis: Long? = null,
     val paymentMethod: String = "cash",

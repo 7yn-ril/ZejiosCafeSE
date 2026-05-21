@@ -10,11 +10,14 @@ import com.example.zejioscafese.orders.data.repository.CheckoutOrderLine
 import com.example.zejioscafese.orders.data.repository.CheckoutOrderPayload
 import com.example.zejioscafese.orders.data.repository.OrderRepository
 import com.example.zejioscafese.orders.model.CafeOrder
+import com.example.zejioscafese.pos.data.model.Discount
 import com.example.zejioscafese.pos.data.model.OrderItem
 import com.example.zejioscafese.pos.data.model.Product
 import com.example.zejioscafese.pos.data.model.ProductGroup
 import com.example.zejioscafese.pos.data.repository.CategoryRepository
+import com.example.zejioscafese.pos.data.repository.DiscountRepository
 import com.example.zejioscafese.pos.data.repository.ProductRepository
+import java.time.LocalDate
 import java.util.Locale
 import kotlin.math.round
 import kotlinx.coroutines.async
@@ -24,7 +27,8 @@ import kotlinx.coroutines.launch
 class PosViewModel(
     private val productRepository: ProductRepository = ProductRepository(),
     private val categoryRepository: CategoryRepository = CategoryRepository(),
-    private val orderRepository: OrderRepository = OrderRepository()
+    private val orderRepository: OrderRepository = OrderRepository(),
+    private val discountRepository: DiscountRepository = DiscountRepository()
 ) : ViewModel() {
 
     data class PaginationState(
@@ -127,6 +131,20 @@ class PosViewModel(
     private val _checkoutEvent = MutableLiveData<CafeOrder?>(null)
     val checkoutEvent: LiveData<CafeOrder?> = _checkoutEvent
 
+    // CHANGE: Discounts — replaces the hard-coded 10/20/50 radio in the
+    // checkout dialog. availableDiscounts is everything active for today
+    // (built-ins + custom rows whose date range covers LocalDate.now()).
+    // selectedDiscount drives the recomputed total and is sent through
+    // to the saved order so reports can attribute revenue accurately.
+    private val _availableDiscounts = MutableLiveData<List<Discount>>(emptyList())
+    val availableDiscounts: LiveData<List<Discount>> = _availableDiscounts
+
+    private val _selectedDiscount = MutableLiveData<Discount?>(null)
+    val selectedDiscount: LiveData<Discount?> = _selectedDiscount
+
+    private val _discountAmount = MutableLiveData(0.0)
+    val discountAmount: LiveData<Double> = _discountAmount
+
     private val orderQuantitiesStore = linkedMapOf<String, Int>()
 
     init {
@@ -195,6 +213,24 @@ class PosViewModel(
         _selectedOrderType.value = type
     }
 
+    fun setDiscount(discount: Discount?) {
+        _selectedDiscount.value = discount
+        recomputeTotals()
+    }
+
+    fun refreshAvailableDiscounts() {
+        viewModelScope.launch { loadAvailableDiscounts() }
+    }
+
+    fun onDiscountCreated(discount: Discount) {
+        // Newly-created custom discount should appear in the dropdown
+        // immediately and be the active selection for the in-flight cart.
+        val updated = (_availableDiscounts.value.orEmpty() + discount)
+            .distinctBy(Discount::id)
+        _availableDiscounts.value = updated
+        setDiscount(discount)
+    }
+
     fun checkout(
         customerName: String? = null,
         discountLabel: String? = null,
@@ -209,9 +245,21 @@ class PosViewModel(
         val currentOrderNumber = _orderNumber.value ?: formatOrderNumber(orderCounter)
         val subtotal = _subtotal.value ?: 0.0
         val tax = _tax.value ?: 0.0
-        val cartTotal = _total.value ?: subtotal
-        val boundedDiscount = discountAmount.coerceIn(0.0, cartTotal)
-        val savedTotal = finalTotal?.coerceIn(0.0, cartTotal) ?: (cartTotal - boundedDiscount)
+        // CHANGE: Discounts — the selectedDiscount LiveData is the source of
+        // truth; the caller-passed discountLabel/amount/finalTotal arguments
+        // are kept for backwards compatibility with the existing dialog but
+        // the id/percent now ride along to the saved order too.
+        val activeDiscount = _selectedDiscount.value
+        val cartTotal = _total.value ?: (subtotal - (_discountAmount.value ?: 0.0))
+        val resolvedDiscountAmount = (
+            discountAmount.takeIf { it > 0.0 }
+                ?: _discountAmount.value
+                ?: 0.0
+        ).coerceIn(0.0, subtotal)
+        val resolvedDiscountLabel = discountLabel?.trim()?.takeIf(String::isNotBlank)
+            ?: activeDiscount?.displayLabel()
+        val savedTotal = finalTotal?.coerceIn(0.0, subtotal)
+            ?: (subtotal - resolvedDiscountAmount).coerceAtLeast(0.0)
 
         viewModelScope.launch {
             _isCheckoutInProgress.value = true
@@ -227,8 +275,10 @@ class PosViewModel(
                         subtotal = subtotal,
                         tax = tax,
                         total = savedTotal.roundToTwoDecimals(),
-                        discountLabel = discountLabel?.trim()?.takeIf(String::isNotBlank),
-                        discountAmount = boundedDiscount.roundToTwoDecimals(),
+                        discountLabel = resolvedDiscountLabel,
+                        discountAmount = resolvedDiscountAmount.roundToTwoDecimals(),
+                        discountId = activeDiscount?.id,
+                        discountPercent = activeDiscount?.percent,
                         paymentMethod = (_selectedPaymentMethod.value ?: PaymentMethod.CASH).name.lowercase(Locale.US),
                         status = "preparing",
                         items = buildCheckoutLines(itemsToCheckout),
@@ -242,6 +292,8 @@ class PosViewModel(
                 )
 
                 clearOrder()
+                _selectedDiscount.value = null
+                _discountAmount.value = 0.0
                 setNextOrderNumberAfter(savedOrder.id)
                 _checkoutEvent.value = savedOrder
             } catch (exception: Exception) {
@@ -280,15 +332,20 @@ class PosViewModel(
                 coroutineScope {
                     val productsDeferred = async { productRepository.fetchProducts() }
                     val categoriesDeferred = async { categoryRepository.fetchCategories() }
+                    val discountsDeferred = async {
+                        runCatching { discountRepository.fetchActiveDiscounts() }.getOrDefault(emptyList())
+                    }
 
                     val fetchedProducts = productsDeferred.await()
                     val fetchedCategories = categoriesDeferred.await()
+                    val fetchedDiscounts = discountsDeferred.await()
 
                     allProducts = fetchedProducts
                     _categories.value = buildVisibleCategories(
                         fetchedCategories = fetchedCategories,
                         products = fetchedProducts
                     )
+                    _availableDiscounts.value = fetchedDiscounts
 
                     if ((_selectedCategory.value ?: CategoryRepository.ALL_CATEGORY) !in _categories.value.orEmpty()) {
                         _selectedCategory.value = CategoryRepository.ALL_CATEGORY
@@ -322,6 +379,22 @@ class PosViewModel(
             } catch (exception: Exception) {
                 Log.w(TAG, "Falling back to local order number seed", exception)
             }
+        }
+    }
+
+    private suspend fun loadAvailableDiscounts() {
+        try {
+            val fetched = discountRepository.fetchActiveDiscounts()
+            _availableDiscounts.value = fetched
+            // Drop a selection that no longer applies today (date range expired
+            // while the user had the dialog open).
+            val selected = _selectedDiscount.value
+            if (selected != null && fetched.none { it.id == selected.id }) {
+                _selectedDiscount.value = null
+                recomputeTotals()
+            }
+        } catch (exception: Exception) {
+            Log.w(TAG, "Failed to refresh discount list", exception)
         }
     }
 
@@ -464,11 +537,19 @@ class PosViewModel(
         _orderQuantities.value = LinkedHashMap(orderQuantitiesStore)
         _orderItems.value = items
 
-        val subtotalAmount = items.sumOf { it.lineTotal }
+        recomputeTotals()
+    }
+
+    private fun recomputeTotals() {
+        val subtotalAmount = (_orderItems.value.orEmpty()).sumOf { it.lineTotal }
         val taxAmount = 0.0
+        val rawDiscount = _selectedDiscount.value?.amountFor(subtotalAmount) ?: 0.0
+        val boundedDiscount = rawDiscount.coerceIn(0.0, subtotalAmount)
+
         _subtotal.value = subtotalAmount.roundToTwoDecimals()
         _tax.value = taxAmount.roundToTwoDecimals()
-        _total.value = subtotalAmount.roundToTwoDecimals()
+        _discountAmount.value = boundedDiscount.roundToTwoDecimals()
+        _total.value = (subtotalAmount - boundedDiscount).roundToTwoDecimals()
     }
 
     private fun buildCheckoutLines(items: List<OrderItem>): List<CheckoutOrderLine> {

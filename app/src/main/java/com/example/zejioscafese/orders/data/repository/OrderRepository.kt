@@ -36,6 +36,11 @@ data class CheckoutOrderPayload(
     val total: Double,
     val discountLabel: String? = null,
     val discountAmount: Double = 0.0,
+    // CHANGE: Discounts — snapshot the discount row id and the percent
+    // applied at checkout. Persisted on the order so historical reports
+    // stay accurate even if the discount row is later edited.
+    val discountId: String? = null,
+    val discountPercent: Double? = null,
     val paymentMethod: String,
     val status: String,
     val items: List<CheckoutOrderLine>,
@@ -56,6 +61,22 @@ data class CheckoutOrderLine(
     val unitPrice: Double,
     @SerialName("quantity")
     val quantity: Int
+)
+
+// CHANGE: Partial completion — surfaces which line items the server could
+// not deduct so the UI can show "Item X blocked: only 2 left" instead of
+// just failing the whole completion attempt.
+data class OrderStatusUpdateResult(
+    val fullyCompleted: Boolean,
+    val blockedItems: List<BlockedOrderItem>
+)
+
+@Serializable
+data class BlockedOrderItem(
+    @SerialName("name")
+    val name: String,
+    @SerialName("reason")
+    val reason: String
 )
 
 class OrderRepository(
@@ -162,6 +183,10 @@ class OrderRepository(
                         .filter(OrderItemRowDto::orderItemIsCompleted)
                         .map(OrderItemRowDto::productVariantId)
                         .toSet(),
+                    deductedItemVariantIds = orderItemRows
+                        .filter(OrderItemRowDto::orderItemInventoryDeducted)
+                        .map(OrderItemRowDto::productVariantId)
+                        .toSet(),
                     createdAtMillis = row.createdAt.toEpochMillis(),
                     completedAtMillis = row.orderCompletedAt?.toEpochMillis(),
                     // CHANGE: Orders — surface payment method + order type
@@ -179,14 +204,28 @@ class OrderRepository(
         }
     }
 
-    suspend fun updateOrderStatus(orderNumber: String, status: CafeOrderStatus) = withContext(Dispatchers.IO) {
+    // CHANGE: Partial completion — completing an order can now return a list
+    // of items that couldn't be made (insufficient ingredients, missing
+    // recipe, manual stock too low). The completable items get processed
+    // server-side and the order stays in PREPARING until every line is done.
+    suspend fun updateOrderStatus(
+        orderNumber: String,
+        status: CafeOrderStatus
+    ): OrderStatusUpdateResult = withContext(Dispatchers.IO) {
         SupabaseSessionHelper.withJwtRetry(supabaseClient) {
             if (status == CafeOrderStatus.COMPLETED) {
-                supabaseClient.postgrest.rpc(
-                    COMPLETE_ORDER_RPC,
-                    buildJsonObject {
-                        put("p_order_number", orderNumber)
-                    }
+                val rpcResult = supabaseClient.postgrest
+                    .rpc(
+                        COMPLETE_ORDER_RPC,
+                        buildJsonObject {
+                            put("p_order_number", orderNumber)
+                        }
+                    )
+                    .decodeSingle<CompleteOrderRpcResultDto>()
+
+                OrderStatusUpdateResult(
+                    fullyCompleted = rpcResult.fullyCompleted,
+                    blockedItems = rpcResult.blockedItems
                 )
             } else {
                 supabaseClient
@@ -200,6 +239,7 @@ class OrderRepository(
                             eq("order_number", orderNumber)
                         }
                     }
+                OrderStatusUpdateResult(fullyCompleted = true, blockedItems = emptyList())
             }
         }
     }
@@ -249,6 +289,10 @@ class OrderRepository(
                 .decodeSingle<OrderIdentityDto>()
                 .orderId
 
+            // CHANGE: Partial completion — never un-tick items whose
+            // inventory has already been deducted. Those are locked-in
+            // server-side and showing them as anything other than completed
+            // would be misleading.
             supabaseClient
                 .from(ORDER_ITEMS_TABLE)
                 .update(
@@ -258,6 +302,7 @@ class OrderRepository(
                 ) {
                     filter {
                         eq("order_id", orderId)
+                        eq("order_item_inventory_deducted", false)
                     }
                 }
 
@@ -344,17 +389,43 @@ class OrderRepository(
     }
 
     private suspend fun applyCheckoutTotals(orderId: String, payload: CheckoutOrderPayload) {
-        supabaseClient
-            .from(ORDERS_TABLE)
-            .update(
-                {
-                    set("order_subtotal", payload.subtotal)
-                    set("order_tax", payload.tax)
-                    set("order_total", payload.total)
+        // CHANGE: Discounts — persist discount fields alongside the totals so
+        // the checkout dialog's selection actually lands on the order row.
+        // Previously discountLabel/discountAmount were dropped between the
+        // ViewModel and the database. Done as a best-effort tag so older
+        // databases without the discount columns (pre add_discount_support.sql)
+        // do not block checkout.
+        runCatching {
+            supabaseClient
+                .from(ORDERS_TABLE)
+                .update(
+                    {
+                        set("order_subtotal", payload.subtotal)
+                        set("order_tax", payload.tax)
+                        set("order_total", payload.total)
+                        set("order_discount_label", payload.discountLabel)
+                        set("order_discount_amount", payload.discountAmount)
+                        set("order_discount_id", payload.discountId)
+                        set("order_discount_percent", payload.discountPercent)
+                    }
+                ) {
+                    filter { eq("order_id", orderId) }
                 }
-            ) {
-                filter { eq("order_id", orderId) }
-            }
+        }.recoverCatching {
+            // Fall back to the legacy 3-column update if the discount columns
+            // don't exist yet so checkout still succeeds before the migration.
+            supabaseClient
+                .from(ORDERS_TABLE)
+                .update(
+                    {
+                        set("order_subtotal", payload.subtotal)
+                        set("order_tax", payload.tax)
+                        set("order_total", payload.total)
+                    }
+                ) {
+                    filter { eq("order_id", orderId) }
+                }
+        }.getOrThrow()
     }
 
     // Best-effort tag for order_type. Swallows any failure (e.g. column
@@ -586,7 +657,13 @@ class OrderRepository(
         @SerialName("order_item_line_total")
         val orderItemLineTotal: Double? = null,
         @SerialName("order_item_is_completed")
-        val orderItemIsCompleted: Boolean = false
+        val orderItemIsCompleted: Boolean = false,
+        // CHANGE: Partial completion — true once complete_order has actually
+        // subtracted this item's recipe from inventory. Distinct from
+        // order_item_is_completed (the UI kitchen-progress checkbox) so the
+        // items dialog can render deducted items as immutable.
+        @SerialName("order_item_inventory_deducted")
+        val orderItemInventoryDeducted: Boolean = false
     )
 
     @Serializable
@@ -599,6 +676,14 @@ class OrderRepository(
     private data class NextOrderNumberRpcDto(
         @SerialName("next_order_number")
         val nextOrderNumber: String
+    )
+
+    @Serializable
+    private data class CompleteOrderRpcResultDto(
+        @SerialName("fully_completed")
+        val fullyCompleted: Boolean = false,
+        @SerialName("blocked_items")
+        val blockedItems: List<BlockedOrderItem> = emptyList()
     )
 
     private companion object {

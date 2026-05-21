@@ -4,6 +4,7 @@ package com.example.zejioscafese
 import android.animation.ValueAnimator
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
+import android.app.DatePickerDialog
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.content.res.Configuration
@@ -15,12 +16,14 @@ import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.RadioButton
 import android.widget.RadioGroup
@@ -59,7 +62,9 @@ import com.example.zejioscafese.orders.model.CafeOrder
 import com.example.zejioscafese.orders.model.CafeOrderLine
 import com.example.zejioscafese.orders.model.CafeOrderStatus
 import com.example.zejioscafese.orders.ui.OrderManagementAdapter
+import com.example.zejioscafese.pos.data.model.Discount
 import com.example.zejioscafese.pos.data.model.Product
+import com.example.zejioscafese.pos.data.repository.DiscountRepository
 import com.example.zejioscafese.pos.presentation.PosViewModel
 import com.example.zejioscafese.pos.ui.CategoryAdapter
 import com.example.zejioscafese.pos.ui.OrderItemAdapter
@@ -79,6 +84,9 @@ import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
@@ -151,17 +159,22 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val discountAmount: Double = 0.0
     )
 
-    private enum class PercentDiscountPreset(val label: String, val percent: Double) {
-        NONE("None", 0.0),
-        TEN("10%", 10.0),
-        TWENTY("20%", 20.0),
-        FIFTY("50%", 50.0)
-    }
-
+    // CHANGE: Discounts — replaces the legacy NONE/10/20/50 enum. The
+    // checkout dialog renders three radio options (None / Built-in /
+    // Other); the Built-in row resolves to either PWD or Senior based
+    // on which chip the user selected; Other surfaces a spinner of
+    // custom discounts whose date range covers today.
     private data class ResolvedDiscount(
+        val discount: Discount?,
         val label: String?,
         val amount: Double
-    )
+    ) {
+        companion object {
+            val NONE = ResolvedDiscount(discount = null, label = null, amount = 0.0)
+        }
+    }
+
+    private val discountRepository = DiscountRepository()
 
     private lateinit var binding: ActivityMainBinding
     private val viewModel: PosViewModel by viewModels()
@@ -192,8 +205,9 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     // combine "Preparing" + "GCash" + "Take Out" in one view.
     private var filterGcashOnly: Boolean = false
     private var filterTakeoutOnly: Boolean = false
+    private var filterTodayOnly: Boolean = false
 
-    private enum class OrderSort { DEFAULT, TOTAL_DESC, TOTAL_ASC, ITEMS_DESC }
+    private enum class OrderSort { DEFAULT, DATE_DESC, TOTAL_DESC, TOTAL_ASC, ITEMS_DESC }
     private val staffCards = mutableListOf<StaffCardViews>()
     private var selectedStaffRole: String? = null
     private var staffSearchQuery: String = ""
@@ -530,7 +544,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
         lifecycleScope.launch {
             try {
-                orderRepository.updateOrderStatus(order.id, newStatus)
+                val result = orderRepository.updateOrderStatus(order.id, newStatus)
                 loadOrdersFromSupabase(
                     showError = true,
                     force = true,
@@ -540,15 +554,36 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 if (newStatus == CafeOrderStatus.COMPLETED) {
                     viewModel.refreshMenu()
                 }
-                Snackbar.make(
-                    binding.root,
-                    getString(
-                        R.string.order_status_updated_message,
-                        order.id,
-                        formatOrderStatus(newStatus)
-                    ),
-                    Snackbar.LENGTH_SHORT
-                ).show()
+                // CHANGE: Partial completion — when some items couldn't be
+                // made (insufficient ingredients, missing recipe, low manual
+                // stock), the server marked the completable lines done and
+                // left the rest pending. Tell the barista which lines need
+                // restocking so they know what to do next.
+                if (newStatus == CafeOrderStatus.COMPLETED && !result.fullyCompleted) {
+                    val summary = result.blockedItems.joinToString("; ") {
+                        "${it.name} (${it.reason})"
+                    }
+                    Snackbar.make(
+                        binding.root,
+                        getString(
+                            R.string.order_completion_partial_message,
+                            order.id,
+                            result.blockedItems.size,
+                            summary
+                        ),
+                        Snackbar.LENGTH_LONG
+                    ).show()
+                } else {
+                    Snackbar.make(
+                        binding.root,
+                        getString(
+                            R.string.order_status_updated_message,
+                            order.id,
+                            formatOrderStatus(newStatus)
+                        ),
+                        Snackbar.LENGTH_SHORT
+                    ).show()
+                }
             } catch (exception: Exception) {
                 val rollbackIndex = orders.indexOfFirst { it.id == previous.id }
                 if (rollbackIndex >= 0) {
@@ -715,18 +750,23 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private fun showOrdersFilterMenu(anchor: View) {
         val popup = PopupMenu(this, anchor)
         popup.menu.add(0, 1, 0, getString(R.string.orders_sort_default))
-        popup.menu.add(0, 2, 1, getString(R.string.orders_sort_total_desc))
-        popup.menu.add(0, 3, 2, getString(R.string.orders_sort_total_asc))
-        popup.menu.add(0, 4, 3, getString(R.string.orders_sort_items_desc))
-        popup.menu.add(0, 6, 4, getString(R.string.orders_filter_gcash)).apply {
+        popup.menu.add(0, 8, 1, getString(R.string.orders_sort_date_desc))
+        popup.menu.add(0, 2, 2, getString(R.string.orders_sort_total_desc))
+        popup.menu.add(0, 3, 3, getString(R.string.orders_sort_total_asc))
+        popup.menu.add(0, 4, 4, getString(R.string.orders_sort_items_desc))
+        popup.menu.add(0, 6, 5, getString(R.string.orders_filter_gcash)).apply {
             isCheckable = true
             isChecked = filterGcashOnly
         }
-        popup.menu.add(0, 7, 5, getString(R.string.orders_filter_takeout)).apply {
+        popup.menu.add(0, 7, 6, getString(R.string.orders_filter_takeout)).apply {
             isCheckable = true
             isChecked = filterTakeoutOnly
         }
-        popup.menu.add(0, 5, 6, getString(R.string.orders_sort_reset))
+        popup.menu.add(0, 9, 7, getString(R.string.orders_filter_today)).apply {
+            isCheckable = true
+            isChecked = filterTodayOnly
+        }
+        popup.menu.add(0, 5, 8, getString(R.string.orders_sort_reset))
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 1 -> orderSort = OrderSort.DEFAULT
@@ -740,9 +780,12 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                     binding.ordersContent.etOrderSearch.setText("")
                     filterGcashOnly = false
                     filterTakeoutOnly = false
+                    filterTodayOnly = false
                 }
                 6 -> filterGcashOnly = !filterGcashOnly
                 7 -> filterTakeoutOnly = !filterTakeoutOnly
+                8 -> orderSort = OrderSort.DATE_DESC
+                9 -> filterTodayOnly = !filterTodayOnly
             }
             ordersPage = 0
             applyOrderFilters()
@@ -992,6 +1035,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             } else {
                 visibleOrders
             }
+            OrderSort.DATE_DESC -> visibleOrders.sortedByDescending { it.createdAtMillis }
             OrderSort.TOTAL_DESC -> visibleOrders.sortedByDescending { it.total }
             OrderSort.TOTAL_ASC -> visibleOrders.sortedBy { it.total }
             OrderSort.ITEMS_DESC -> visibleOrders.sortedByDescending { it.itemCount }
@@ -1008,6 +1052,16 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private fun showOrderItemsDialog(order: CafeOrder) {
         val itemsToShow = order.orderedItems.ifEmpty { listOf(order.itemsSummary) }
         val isInteractive = order.status == CafeOrderStatus.PREPARING
+        // CHANGE: Partial completion — split items into "Completed" (server
+        // has already deducted their ingredients, locked-in) and "In Progress"
+        // (still pending). Completed items render as a static check; in-
+        // progress items keep the editable checkbox so the barista can mark
+        // them as done before tapping "Mark as completed" again.
+        val deductedIndexes = order.orderedItemVariantIds
+            .mapIndexedNotNull { index, variantId ->
+                index.takeIf { variantId in order.deductedItemVariantIds }
+            }
+            .toSet()
         val completedIndexesFromDatabase = order.orderedItemVariantIds
             .mapIndexedNotNull { index, variantId ->
                 index.takeIf { variantId in order.completedItemVariantIds }
@@ -1019,7 +1073,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             } else {
                 completedIndexesFromDatabase
             }
-        val workingCompletedSet = savedCompletedSet.toMutableSet()
+        // Deducted items are always considered completed (server-locked).
+        val workingCompletedSet = (savedCompletedSet + deductedIndexes).toMutableSet()
 
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -1034,7 +1089,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         )
         container.addView(progressLabel)
 
-        val checkBoxes = mutableListOf<CheckBox>()
+        val checkBoxes = mutableMapOf<Int, CheckBox>()
 
         fun refreshProgressLabel() {
             val prepared = workingCompletedSet.size
@@ -1042,20 +1097,60 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             progressLabel.text = getString(R.string.order_item_progress_format, prepared, total)
         }
 
-        itemsToShow.forEachIndexed { index, label ->
-            val checkBox = CheckBox(this).apply {
-                text = label
-                textSize = 14f
-                setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
-                isChecked = workingCompletedSet.contains(index)
-                isEnabled = isInteractive
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply { topMargin = 8.dp() }
+        // ── Completed section (read-only, ingredients already deducted) ───
+        if (deductedIndexes.isNotEmpty()) {
+            container.addView(
+                createDialogText(
+                    text = getString(R.string.order_items_section_completed, deductedIndexes.size),
+                    textSizeSp = 12f,
+                    typeface = Typeface.DEFAULT_BOLD,
+                    textColorRes = R.color.pos_secondary,
+                    topMarginDp = 12
+                )
+            )
+            deductedIndexes.sorted().forEach { index ->
+                val label = itemsToShow.getOrNull(index) ?: return@forEach
+                val row = TextView(this).apply {
+                    text = "✓  $label"
+                    textSize = 14f
+                    setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_secondary))
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply { topMargin = 6.dp() }
+                }
+                container.addView(row)
             }
-            checkBoxes.add(checkBox)
-            container.addView(checkBox)
+        }
+
+        // ── In Progress section (editable checkboxes) ────────────────────
+        val inProgressIndexes = itemsToShow.indices.filterNot { it in deductedIndexes }
+        if (inProgressIndexes.isNotEmpty()) {
+            container.addView(
+                createDialogText(
+                    text = getString(R.string.order_items_section_in_progress, inProgressIndexes.size),
+                    textSizeSp = 12f,
+                    typeface = Typeface.DEFAULT_BOLD,
+                    textColorRes = R.color.pos_primary,
+                    topMarginDp = 12
+                )
+            )
+            inProgressIndexes.forEach { index ->
+                val label = itemsToShow[index]
+                val checkBox = CheckBox(this).apply {
+                    text = label
+                    textSize = 14f
+                    setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
+                    isChecked = workingCompletedSet.contains(index)
+                    isEnabled = isInteractive
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply { topMargin = 6.dp() }
+                }
+                checkBoxes[index] = checkBox
+                container.addView(checkBox)
+            }
         }
         refreshProgressLabel()
 
@@ -1095,7 +1190,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         }
         refreshPrimaryButton()
 
-        checkBoxes.forEachIndexed { index, checkBox ->
+        checkBoxes.forEach { (index, checkBox) ->
             checkBox.setOnCheckedChangeListener { _, isChecked ->
                 if (isChecked) {
                     workingCompletedSet.add(index)
@@ -1258,33 +1353,107 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         content.addView(customerNameInput)
 
         content.addView(createSectionLabel(getString(R.string.discount)))
-        val presetEntries = PercentDiscountPreset.values()
-        val discountPercentGroup = RadioGroup(this).apply {
+
+        // CHANGE: Discounts — snapshot the VM's available discounts when the
+        // dialog opens, then partition into built-ins (PWD/Senior) vs custom.
+        // The mutable copy is replaced whenever the manager creates a new
+        // custom discount via the "+ New" row at the bottom of the spinner.
+        val availableDiscounts = viewModel.availableDiscounts.value.orEmpty().toMutableList()
+        val pwdDiscount = availableDiscounts.firstOrNull { it.id == Discount.PWD_ID }
+        val seniorDiscount = availableDiscounts.firstOrNull { it.id == Discount.SENIOR_ID }
+        val customDiscountsRef = arrayOf(
+            availableDiscounts.filterNot { it.isBuiltIn }.toMutableList()
+        )
+
+        val discountTypeGroup = RadioGroup(this).apply {
             orientation = RadioGroup.HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = 6.dp(); bottomMargin = 8.dp() }
+            ).apply { topMargin = 6.dp() }
         }
-        val discountButtons = presetEntries.associateWith { preset ->
-            RadioButton(this).apply {
-                id = View.generateViewId()
-                text = preset.label
-                isChecked = preset == PercentDiscountPreset.NONE
-                setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
-                textSize = 13f
-                layoutParams = RadioGroup.LayoutParams(
-                    0,
-                    RadioGroup.LayoutParams.WRAP_CONTENT,
-                    1f
+        fun makeDiscountRadio(label: String, enabled: Boolean = true) = RadioButton(this).apply {
+            id = View.generateViewId()
+            text = label
+            isEnabled = enabled
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
+            textSize = 13f
+            layoutParams = RadioGroup.LayoutParams(0, RadioGroup.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        val rbDiscountNone = makeDiscountRadio(getString(R.string.discount_none))
+        val rbDiscountPwd = makeDiscountRadio(
+            label = pwdDiscount?.displayLabel() ?: getString(R.string.discount_pwd_default),
+            enabled = pwdDiscount != null
+        )
+        val rbDiscountSenior = makeDiscountRadio(
+            label = seniorDiscount?.displayLabel() ?: getString(R.string.discount_senior_default),
+            enabled = seniorDiscount != null
+        )
+        val rbDiscountOther = makeDiscountRadio(getString(R.string.discount_other))
+        rbDiscountNone.isChecked = true
+        discountTypeGroup.addView(rbDiscountNone)
+        discountTypeGroup.addView(rbDiscountPwd)
+        discountTypeGroup.addView(rbDiscountSenior)
+        discountTypeGroup.addView(rbDiscountOther)
+        content.addView(discountTypeGroup)
+
+        // Container for the "Other" dropdown + "New discount" button. Hidden
+        // unless the Other radio is selected.
+        val otherDiscountContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = 6.dp() }
+            visibility = View.GONE
+        }
+        val customDiscountSpinner = Spinner(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+        val customDiscountEmptyView = createDialogText(
+            text = getString(R.string.discount_no_custom_available),
+            textSizeSp = 12f,
+            textColorRes = R.color.pos_text_secondary,
+            topMarginDp = 4
+        ).apply { visibility = View.GONE }
+        val newDiscountButton = com.google.android.material.button.MaterialButton(this).apply {
+            text = getString(R.string.discount_create_new)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                36.dp()
+            ).apply { topMargin = 6.dp() }
+            setBackgroundColor(ContextCompat.getColor(this@MainActivity, android.R.color.transparent))
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_primary))
+            strokeColor = ColorStateList.valueOf(ContextCompat.getColor(this@MainActivity, R.color.pos_primary))
+            strokeWidth = 1.dp()
+            cornerRadius = 10.dp()
+            textSize = 12f
+        }
+        otherDiscountContainer.addView(customDiscountSpinner)
+        otherDiscountContainer.addView(customDiscountEmptyView)
+        otherDiscountContainer.addView(newDiscountButton)
+        content.addView(otherDiscountContainer)
+
+        fun rebuildCustomDiscountSpinner() {
+            val custom = customDiscountsRef[0]
+            if (custom.isEmpty()) {
+                customDiscountSpinner.visibility = View.GONE
+                customDiscountEmptyView.visibility = View.VISIBLE
+                customDiscountSpinner.adapter = null
+            } else {
+                customDiscountSpinner.visibility = View.VISIBLE
+                customDiscountEmptyView.visibility = View.GONE
+                customDiscountSpinner.adapter = ArrayAdapter(
+                    this,
+                    android.R.layout.simple_spinner_dropdown_item,
+                    custom.map(Discount::displayLabel)
                 )
             }
         }
-        presetEntries.forEach { preset ->
-            discountPercentGroup.addView(discountButtons.getValue(preset))
-        }
-        discountPercentGroup.check(discountButtons.getValue(PercentDiscountPreset.NONE).id)
-        content.addView(discountPercentGroup)
+        rebuildCustomDiscountSpinner()
 
         val discountSummaryView = createDialogText(
             text = "",
@@ -1377,16 +1546,29 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             .create()
 
         fun resolveDiscount(): ResolvedDiscount {
-            val checkedPreset = presetEntries.firstOrNull { preset ->
-                discountButtons[preset]?.id == discountPercentGroup.checkedRadioButtonId
-            } ?: PercentDiscountPreset.NONE
-            val percent = checkedPreset.percent
-            if (percent <= 0.0) return ResolvedDiscount(null, 0.0)
-            val amount = (total * percent / 100).coerceAtMost(total)
+            val selected: Discount = when (discountTypeGroup.checkedRadioButtonId) {
+                rbDiscountPwd.id -> pwdDiscount
+                rbDiscountSenior.id -> seniorDiscount
+                rbDiscountOther.id -> {
+                    val pos = customDiscountSpinner.selectedItemPosition
+                    customDiscountsRef[0].getOrNull(pos)
+                }
+                else -> null
+            } ?: return ResolvedDiscount.NONE
+
+            val amount = selected.amountFor(total)
+            if (amount <= 0.0) return ResolvedDiscount.NONE
             return ResolvedDiscount(
-                label = "Discount (${formatPercentLabel(percent)})",
+                discount = selected,
+                label = selected.displayLabel(),
                 amount = amount
             )
+        }
+
+        fun syncOtherContainerVisibility() {
+            otherDiscountContainer.visibility = if (
+                discountTypeGroup.checkedRadioButtonId == rbDiscountOther.id
+            ) View.VISIBLE else View.GONE
         }
 
         fun refreshPaymentState() {
@@ -1396,6 +1578,13 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             val change = cashReceived?.minus(finalTotal)
             val isValid = cashReceived != null && change != null && change >= 0
 
+            // Keep the ViewModel in sync so discountId/percent ride along to
+            // the saved order. Calling setDiscount on every change is cheap
+            // (it only updates LiveData) but ensures checkout() sees the
+            // right metadata when the confirm button is tapped.
+            viewModel.setDiscount(discount.discount)
+
+            syncOtherContainerVisibility()
             checkoutTotalView.text = formatCurrency(finalTotal)
             discountSummaryView.visibility = if (discount.amount > 0) View.VISIBLE else View.GONE
             discountSummaryView.text = if (discount.amount > 0) {
@@ -1411,8 +1600,29 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             }
         }
 
-        discountButtons.values.forEach { button ->
-            button.setOnCheckedChangeListener { _, _ -> refreshPaymentState() }
+        // CHANGE: Discounts — must listen on the RadioGroup (fires AFTER the
+        // group's checkedRadioButtonId updates) instead of the individual
+        // RadioButtons (which fire BEFORE the group state changes, causing
+        // resolveDiscount to read the previous selection).
+        discountTypeGroup.setOnCheckedChangeListener { _, _ -> refreshPaymentState() }
+        customDiscountSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (discountTypeGroup.checkedRadioButtonId == rbDiscountOther.id) {
+                    refreshPaymentState()
+                }
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+        }
+        newDiscountButton.setOnClickListener {
+            showCreateDiscountDialog { created ->
+                // Append + refresh + auto-select the new discount.
+                customDiscountsRef[0] = (customDiscountsRef[0] + created).toMutableList()
+                viewModel.onDiscountCreated(created)
+                rebuildCustomDiscountSpinner()
+                discountTypeGroup.check(rbDiscountOther.id)
+                customDiscountSpinner.setSelection(customDiscountsRef[0].lastIndex)
+                refreshPaymentState()
+            }
         }
         paymentInput.doAfterTextChanged { refreshPaymentState() }
         refreshPaymentState()
@@ -1599,8 +1809,158 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         else String.format(Locale.getDefault(), "%.1f%%", percent)
     }
 
+    private fun showCreateDiscountDialog(onCreated: (Discount) -> Unit) {
+        val nameInput = createDialogInput(
+            hint = getString(R.string.discount_create_name_hint),
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS
+        )
+        val percentInput = createDialogInput(
+            hint = getString(R.string.discount_create_percent_hint),
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+        )
+
+        val dateFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.getDefault())
+        val startDateState = arrayOf<LocalDate?>(null)
+        val endDateState = arrayOf<LocalDate?>(null)
+
+        fun renderDateButton(button: com.google.android.material.button.MaterialButton, date: LocalDate?, placeholder: String) {
+            button.text = date?.format(dateFormatter) ?: placeholder
+        }
+
+        val startDateButton = com.google.android.material.button.MaterialButton(this).apply {
+            text = getString(R.string.discount_create_start_placeholder)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                40.dp()
+            ).apply { topMargin = 6.dp() }
+            setBackgroundColor(ContextCompat.getColor(this@MainActivity, android.R.color.transparent))
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
+            strokeColor = ColorStateList.valueOf(ContextCompat.getColor(this@MainActivity, R.color.pos_border))
+            strokeWidth = 1.dp()
+            cornerRadius = 10.dp()
+        }
+        val endDateButton = com.google.android.material.button.MaterialButton(this).apply {
+            text = getString(R.string.discount_create_end_placeholder)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                40.dp()
+            ).apply { topMargin = 6.dp() }
+            setBackgroundColor(ContextCompat.getColor(this@MainActivity, android.R.color.transparent))
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
+            strokeColor = ColorStateList.valueOf(ContextCompat.getColor(this@MainActivity, R.color.pos_border))
+            strokeWidth = 1.dp()
+            cornerRadius = 10.dp()
+        }
+        fun openDatePicker(initial: LocalDate?, onPicked: (LocalDate) -> Unit) {
+            val seed = initial ?: LocalDate.now()
+            DatePickerDialog(
+                this,
+                { _, year, month, dayOfMonth ->
+                    onPicked(LocalDate.of(year, month + 1, dayOfMonth))
+                },
+                seed.year,
+                seed.monthValue - 1,
+                seed.dayOfMonth
+            ).show()
+        }
+        startDateButton.setOnClickListener {
+            openDatePicker(startDateState[0]) { picked ->
+                startDateState[0] = picked
+                renderDateButton(startDateButton, picked, getString(R.string.discount_create_start_placeholder))
+            }
+        }
+        endDateButton.setOnClickListener {
+            openDatePicker(endDateState[0]) { picked ->
+                endDateState[0] = picked
+                renderDateButton(endDateButton, picked, getString(R.string.discount_create_end_placeholder))
+            }
+        }
+
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(24.dp(), 18.dp(), 24.dp(), 8.dp())
+            addView(createSectionLabel(getString(R.string.discount_create_name_label)))
+            addView(nameInput)
+            addView(createSectionLabel(getString(R.string.discount_create_percent_label)))
+            addView(percentInput)
+            addView(createSectionLabel(getString(R.string.discount_create_start_label)))
+            addView(startDateButton)
+            addView(createSectionLabel(getString(R.string.discount_create_end_label)))
+            addView(endDateButton)
+        }
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.discount_create_title)
+            .setView(ScrollView(this).apply { addView(container) })
+            .setPositiveButton(R.string.discount_create_save, null)
+            .setNegativeButton(android.R.string.cancel) { d, _ -> d.dismiss() }
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val name = nameInput.text?.toString()?.trim().orEmpty()
+                val percent = percentInput.text?.toString()?.toDoubleOrNull()
+                if (name.isEmpty()) {
+                    nameInput.error = getString(R.string.discount_create_name_required)
+                    return@setOnClickListener
+                }
+                if (percent == null || percent <= 0.0 || percent > 100.0) {
+                    percentInput.error = getString(R.string.discount_create_percent_invalid)
+                    return@setOnClickListener
+                }
+                val startDate = startDateState[0]
+                val endDate = endDateState[0]
+                if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
+                    Snackbar.make(binding.root, R.string.discount_create_date_range_invalid, Snackbar.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+
+                val saveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                saveButton.isEnabled = false
+
+                lifecycleScope.launch {
+                    val existingIds = (viewModel.availableDiscounts.value.orEmpty().map(Discount::id))
+                    val result = runCatching {
+                        discountRepository.createCustomDiscount(
+                            name = name,
+                            percent = percent,
+                            startDate = startDate,
+                            endDate = endDate,
+                            existingIds = existingIds
+                        )
+                    }
+                    saveButton.isEnabled = true
+                    result.onSuccess { created ->
+                        dialog.dismiss()
+                        onCreated(created)
+                    }.onFailure { exception ->
+                        Snackbar.make(
+                            binding.root,
+                            NetworkErrorFormatter.toUserMessage(
+                                exception = exception,
+                                fallbackMessage = getString(R.string.discount_create_failed)
+                            ),
+                            Snackbar.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
+        }
+        dialog.show()
+    }
+
     private fun applyOrderFilters() {
         val normalizedQuery = orderSearchQuery.trim().lowercase(Locale.getDefault())
+
+        // CHANGE: Orders — compute today's epoch boundaries once so the
+        // "Today only" filter doesn't recompute for every order in the list.
+        val zoneId = ZoneId.systemDefault()
+        val todayStartMillis = LocalDate.now()
+            .atStartOfDay(zoneId)
+            .toInstant().toEpochMilli()
+        val tomorrowStartMillis = LocalDate.now()
+            .plusDays(1)
+            .atStartOfDay(zoneId)
+            .toInstant().toEpochMilli()
 
         val filteredOrders = orders.filter { order ->
             val matchesStatus = selectedOrderStatus == null || order.status == selectedOrderStatus
@@ -1610,11 +1970,13 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 order.itemsSummary,
                 order.orderedItems.joinToString(" ")
             ).joinToString(" ").lowercase(Locale.getDefault()).contains(normalizedQuery)
-            // CHANGE: Orders — apply the GCash / Take Out toggles in
+            // CHANGE: Orders — apply the GCash / Take Out / Today toggles in
             // addition to the existing status + search filters.
             val matchesGcash = !filterGcashOnly || order.isGcash
             val matchesTakeout = !filterTakeoutOnly || order.isTakeout
-            matchesStatus && matchesQuery && matchesGcash && matchesTakeout
+            val matchesToday = !filterTodayOnly ||
+                (order.createdAtMillis in todayStartMillis until tomorrowStartMillis)
+            matchesStatus && matchesQuery && matchesGcash && matchesTakeout && matchesToday
         }
 
         val sortedOrders = when (orderSort) {
@@ -1623,6 +1985,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             } else {
                 filteredOrders
             }
+            OrderSort.DATE_DESC -> filteredOrders.sortedByDescending { it.createdAtMillis }
             OrderSort.TOTAL_DESC -> filteredOrders.sortedByDescending { it.total }
             OrderSort.TOTAL_ASC -> filteredOrders.sortedBy { it.total }
             OrderSort.ITEMS_DESC -> filteredOrders.sortedByDescending { it.itemCount }
