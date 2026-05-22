@@ -128,15 +128,22 @@ class ReportsRepository(
             .sortedByDescending(ProductSalesRecord::totalRevenue)
 
         val transactions = ordersInRange.map { order ->
-            val orderedItems = itemsByOrderId[order.orderId]
+            val orderItems = itemsByOrderId[order.orderId]
                 .orEmpty()
-                .map { item -> item.toDisplayLabel() }
+            val orderedItems = orderItems.map { item -> item.toDetailedDisplayLabel() }
             ReportTransaction(
                 orderId = order.orderNumber,
-                items = buildItemsPreview(orderedItems),
+                items = orderedItems.joinToString(separator = "; ").ifBlank { NO_ITEMS },
                 total = order.total,
                 status = order.statusDisplay,
-                date = order.createdAt.format(TRANSACTION_DATE_FORMATTER)
+                date = order.createdAt.format(TRANSACTION_DATE_FORMATTER),
+                orderType = order.orderType.toDisplayToken(),
+                paymentMethod = order.paymentMethod.toDisplayToken(),
+                itemCount = orderItems.sumOf(OrderItemRowDto::orderItemQuantity),
+                subtotal = order.subtotal,
+                discountLabel = order.discountLabel,
+                discountPercent = order.discountPercent,
+                discountAmount = order.discountAmount
             )
         }
 
@@ -302,20 +309,25 @@ class ReportsRepository(
         }
     }
 
-    private fun buildItemsPreview(items: List<String>): String {
-        return when {
-            items.isEmpty() -> NO_ITEMS
-            items.size == 1 -> items.first()
-            else -> "${items.first()} + ${items.size - 1} more"
-        }
-    }
-
     private fun OrderRowDto.toOrderRecord(zoneId: ZoneId): OrderRecord? {
         val createdAtDateTime = runCatching {
             OffsetDateTime.parse(createdAt).atZoneSameInstant(zoneId)
         }.getOrNull() ?: return null
 
         val normalizedStatus = orderStatus.trim().lowercase(Locale.US)
+        val normalizedPaymentMethod = orderPaymentMethod.orEmpty().ifBlank { DEFAULT_PAYMENT_METHOD }
+            .lowercase(Locale.US)
+        val normalizedOrderType = orderType.orEmpty().ifBlank { DEFAULT_ORDER_TYPE }
+            .lowercase(Locale.US)
+        val tax = orderTax ?: 0.0
+        val storedDiscountAmount = orderDiscountAmount?.coerceAtLeast(0.0)
+        val subtotal = orderSubtotal ?: (orderTotal + (storedDiscountAmount ?: 0.0) - tax)
+            .coerceAtLeast(0.0)
+        val inferredDiscount = (subtotal + tax - orderTotal).coerceAtLeast(0.0)
+        val discountAmount = storedDiscountAmount ?: inferredDiscount
+        val discountLabel = orderDiscountLabel
+            ?.trim()
+            ?.takeIf { it.isNotBlank() && discountAmount > 0.0 }
         return OrderRecord(
             orderId = orderId,
             orderNumber = orderNumber,
@@ -325,7 +337,13 @@ class ReportsRepository(
             statusDisplay = normalizedStatus.replaceFirstChar { character ->
                 if (character.isLowerCase()) character.titlecase(Locale.getDefault()) else character.toString()
             },
-            isCompleted = normalizedStatus == STATUS_COMPLETED
+            isCompleted = normalizedStatus == STATUS_COMPLETED,
+            subtotal = subtotal,
+            discountLabel = discountLabel,
+            discountPercent = orderDiscountPercent,
+            discountAmount = discountAmount,
+            paymentMethod = normalizedPaymentMethod,
+            orderType = normalizedOrderType
         )
     }
 
@@ -342,6 +360,29 @@ class ReportsRepository(
         }
     }
 
+    private fun OrderItemRowDto.toDetailedDisplayLabel(): String {
+        val displayName = toDisplayLabel()
+        return String.format(
+            Locale.US,
+            "%d x %s @ PHP %,.2f = PHP %,.2f",
+            orderItemQuantity,
+            displayName.removePrefix("$orderItemQuantity x "),
+            orderItemUnitPrice,
+            orderItemLineTotal
+        )
+    }
+
+    private fun String.toDisplayToken(): String {
+        return trim()
+            .split("_", "-", " ")
+            .filter(String::isNotBlank)
+            .joinToString(" ") { token ->
+                token.lowercase(Locale.US).replaceFirstChar { character ->
+                    if (character.isLowerCase()) character.titlecase(Locale.getDefault()) else character.toString()
+                }
+            }
+    }
+
     private data class OrderRecord(
         val orderId: String,
         val orderNumber: String,
@@ -349,7 +390,13 @@ class ReportsRepository(
         val localDate: LocalDate,
         val total: Double,
         val statusDisplay: String,
-        val isCompleted: Boolean
+        val isCompleted: Boolean,
+        val subtotal: Double,
+        val discountLabel: String?,
+        val discountPercent: Double?,
+        val discountAmount: Double,
+        val paymentMethod: String,
+        val orderType: String
     )
 
     @Serializable
@@ -360,6 +407,20 @@ class ReportsRepository(
         val orderNumber: String,
         @SerialName("order_total")
         val orderTotal: Double,
+        @SerialName("order_subtotal")
+        val orderSubtotal: Double? = null,
+        @SerialName("order_tax")
+        val orderTax: Double? = null,
+        @SerialName("order_discount_label")
+        val orderDiscountLabel: String? = null,
+        @SerialName("order_discount_percent")
+        val orderDiscountPercent: Double? = null,
+        @SerialName("order_discount_amount")
+        val orderDiscountAmount: Double? = null,
+        @SerialName("order_payment_method")
+        val orderPaymentMethod: String? = null,
+        @SerialName("order_type")
+        val orderType: String? = null,
         @SerialName("order_status")
         val orderStatus: String,
         @SerialName("created_at")
@@ -378,6 +439,8 @@ class ReportsRepository(
         val orderItemVariantName: String,
         @SerialName("order_item_quantity")
         val orderItemQuantity: Int,
+        @SerialName("order_item_unit_price")
+        val orderItemUnitPrice: Double = 0.0,
         @SerialName("order_item_line_total")
         val orderItemLineTotal: Double
     )
@@ -387,6 +450,8 @@ class ReportsRepository(
         const val ORDER_ITEMS_TABLE = "order_items"
         const val PRODUCT_VARIANT_STOCK_VIEW = "product_variant_stock_view"
         const val STATUS_COMPLETED = "completed"
+        const val DEFAULT_PAYMENT_METHOD = "cash"
+        const val DEFAULT_ORDER_TYPE = "dine_in"
         const val STANDARD_VARIANT = "standard"
         const val COMBO_VARIANT = "combo"
         const val NO_CATEGORY = "N/A"
@@ -400,6 +465,6 @@ class ReportsRepository(
         val MONTHLY_LABEL_FORMATTER: DateTimeFormatter =
             DateTimeFormatter.ofPattern("MMM", Locale.getDefault())
         val TRANSACTION_DATE_FORMATTER: DateTimeFormatter =
-            DateTimeFormatter.ofPattern("MMM dd", Locale.getDefault())
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.getDefault())
     }
 }

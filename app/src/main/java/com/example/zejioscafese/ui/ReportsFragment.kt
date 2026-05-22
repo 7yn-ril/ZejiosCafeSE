@@ -1,5 +1,7 @@
 package com.example.zejioscafese.ui
 
+import android.content.ClipData
+import android.content.Intent
 import android.content.res.ColorStateList
 import android.net.Uri
 import android.os.Bundle
@@ -12,6 +14,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -21,10 +24,12 @@ import com.example.zejioscafese.pos.data.model.CategorySalesRecord
 import com.example.zejioscafese.pos.data.model.ProductSalesRecord
 import com.example.zejioscafese.reports.data.model.ReportTransaction
 import com.example.zejioscafese.reports.data.model.SalesTimelinePoint
+import com.example.zejioscafese.ui.showErrorDialog
+import com.example.zejioscafese.ui.showInfoDialog
 import com.example.zejioscafese.ui.showStyledDialog
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.snackbar.Snackbar
+import java.io.File
 import java.io.IOException
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -49,12 +54,8 @@ class ReportsFragment : Fragment() {
         if (export == null) return@registerForActivityResult
 
         if (uri == null) {
-            _binding?.root?.let { root ->
-                Snackbar.make(
-                    root,
-                    getString(R.string.reports_export_excel_cancelled),
-                    Snackbar.LENGTH_SHORT
-                ).show()
+            _binding?.let {
+                showInfoDialog(requireContext(), getString(R.string.reports_export_excel_cancelled))
             }
             return@registerForActivityResult
         }
@@ -176,11 +177,6 @@ class ReportsFragment : Fragment() {
     private fun saveExcelReport(uri: Uri, export: PendingExcelExport) {
         val appContext = requireContext().applicationContext
         binding.btnExport.isEnabled = false
-        Snackbar.make(
-            binding.root,
-            getString(R.string.reports_export_excel_progress),
-            Snackbar.LENGTH_SHORT
-        ).show()
 
         viewLifecycleOwner.lifecycleScope.launch {
             val result = runCatching {
@@ -193,21 +189,55 @@ class ReportsFragment : Fragment() {
 
             val currentBinding = _binding ?: return@launch
             currentBinding.btnExport.isEnabled = true
+            val ctx = requireContext()
             result
                 .onSuccess {
-                    Snackbar.make(
-                        currentBinding.root,
-                        getString(R.string.reports_export_excel_success),
-                        Snackbar.LENGTH_LONG
-                    ).show()
+                    showExcelExportSavedDialog(export)
                 }
                 .onFailure {
-                    Snackbar.make(
-                        currentBinding.root,
-                        getString(R.string.reports_export_excel_failed),
-                        Snackbar.LENGTH_LONG
-                    ).show()
+                    showErrorDialog(ctx, getString(R.string.reports_export_excel_failed))
                 }
+        }
+    }
+
+    private fun showExcelExportSavedDialog(export: PendingExcelExport) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(getString(R.string.notice_success_title))
+            .setMessage(getString(R.string.reports_export_excel_success))
+            .setPositiveButton(getString(R.string.reports_export_excel_share)) { _, _ ->
+                shareExcelReport(export)
+            }
+            .setNegativeButton(android.R.string.ok, null)
+            .showStyledDialog(requireContext())
+    }
+
+    private fun shareExcelReport(export: PendingExcelExport) {
+        val ctx = requireContext()
+        runCatching {
+            val exportDir = File(ctx.cacheDir, EXPORT_CACHE_DIR).apply { mkdirs() }
+            val reportFile = File(exportDir, export.fileName)
+            reportFile.writeBytes(export.workbook.toByteArray(Charsets.UTF_8))
+
+            val reportUri = FileProvider.getUriForFile(
+                ctx,
+                "${ctx.packageName}.fileprovider",
+                reportFile
+            )
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = EXCEL_MIME_TYPE
+                putExtra(Intent.EXTRA_STREAM, reportUri)
+                putExtra(Intent.EXTRA_SUBJECT, export.fileName)
+                clipData = ClipData.newUri(ctx.contentResolver, export.fileName, reportUri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(
+                Intent.createChooser(
+                    shareIntent,
+                    getString(R.string.reports_export_excel_share_title)
+                )
+            )
+        }.onFailure {
+            showErrorDialog(ctx, getString(R.string.reports_export_excel_share_failed))
         }
     }
 
@@ -274,18 +304,32 @@ class ReportsFragment : Fragment() {
         val transactionRows = listOf(
             listOf(
                 textCell("Order ID", STYLE_HEADER),
-                textCell("Date", STYLE_HEADER),
+                textCell("Date/Time", STYLE_HEADER),
+                textCell("Order Type", STYLE_HEADER),
+                textCell("Payment", STYLE_HEADER),
                 textCell("Items", STYLE_HEADER),
+                textCell("Item Count", STYLE_HEADER),
+                textCell("Subtotal", STYLE_HEADER),
+                textCell("Discount", STYLE_HEADER),
+                textCell("Discount %", STYLE_HEADER),
+                textCell("Discount Amount", STYLE_HEADER),
+                textCell("Total", STYLE_HEADER),
                 textCell("Status", STYLE_HEADER),
-                textCell("Total", STYLE_HEADER)
             )
         ) + data.transactions.map { transaction ->
             listOf(
                 textCell(transaction.orderId),
                 textCell(transaction.date),
+                textCell(transaction.orderType),
+                textCell(transaction.paymentMethod),
                 textCell(transaction.items),
+                numberCell(transaction.itemCount),
+                numberCell(transaction.subtotal, STYLE_CURRENCY),
+                textCell(transaction.discountLabel.orEmpty()),
+                transaction.discountPercent?.let { numberCell(it, STYLE_PERCENT) } ?: textCell(""),
+                numberCell(transaction.discountAmount, STYLE_CURRENCY),
+                numberCell(transaction.total, STYLE_CURRENCY),
                 textCell(transaction.status),
-                numberCell(transaction.total, STYLE_CURRENCY)
             )
         }
 
@@ -317,7 +361,8 @@ class ReportsFragment : Fragment() {
     ) {
         appendLine("""<Worksheet ss:Name="${xmlEscape(name.take(31))}">""")
         appendLine("<Table>")
-        repeat(6) {
+        val columnCount = rows.maxOfOrNull { it.size } ?: 1
+        repeat(columnCount) {
             appendLine("""<Column ss:AutoFitWidth="1" ss:Width="140"/>""")
         }
         rows.forEach { cells ->
@@ -391,7 +436,7 @@ class ReportsFragment : Fragment() {
 
         viewModel.reportError.observe(viewLifecycleOwner) { errorMessage ->
             if (!errorMessage.isNullOrBlank()) {
-                Snackbar.make(binding.root, errorMessage, Snackbar.LENGTH_LONG).show()
+                showErrorDialog(requireContext(), errorMessage)
                 viewModel.onReportErrorConsumed()
             }
         }
@@ -659,6 +704,7 @@ class ReportsFragment : Fragment() {
         const val STYLE_HEADER = "Header"
         const val STYLE_CURRENCY = "Currency"
         const val STYLE_PERCENT = "Percent"
+        const val EXPORT_CACHE_DIR = "report_exports"
         val EXPORT_FILE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
         val EXPORT_DISPLAY_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
     }

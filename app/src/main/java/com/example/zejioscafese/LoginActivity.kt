@@ -7,7 +7,8 @@ import android.view.inputmethod.EditorInfo
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.example.zejioscafese.databinding.ActivityLoginBinding
-import com.google.android.material.snackbar.Snackbar
+import com.example.zejioscafese.ui.showErrorDialog
+import com.example.zejioscafese.ui.showWarningDialog
 import java.security.MessageDigest
 import java.util.Locale
 
@@ -55,13 +56,13 @@ class LoginActivity : AppCompatActivity() {
             if (password.isBlank()) {
                 binding.passwordInputLayout.error = getString(R.string.login_password_required)
             }
-            Snackbar.make(binding.root, R.string.login_empty_fields, Snackbar.LENGTH_SHORT).show()
+            showWarningDialog(this, getString(R.string.login_empty_fields))
             return
         }
 
         if (!isCredentialConfigPresent()) {
             binding.passwordInputLayout.error = getString(R.string.login_credentials_not_configured)
-            Snackbar.make(binding.root, R.string.login_credentials_not_configured, Snackbar.LENGTH_LONG).show()
+            showErrorDialog(this, getString(R.string.login_credentials_not_configured))
             return
         }
 
@@ -71,7 +72,7 @@ class LoginActivity : AppCompatActivity() {
         } else {
             binding.passwordInputLayout.error = getString(R.string.login_invalid_credentials)
             binding.etLoginPassword.text?.clear()
-            Snackbar.make(binding.root, R.string.login_invalid_credentials, Snackbar.LENGTH_SHORT).show()
+            showErrorDialog(this, getString(R.string.login_invalid_credentials))
         }
     }
 

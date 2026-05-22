@@ -62,8 +62,9 @@ class CategoryPickerAdapter(
         fun bind(category: String, imageUrl: String?, isSelected: Boolean) {
             binding.tvCategoryName.text = category
 
-            // Load the thumbnail; fall back to a generic icon.
-            val fallback = when {
+            // Always show the category icon (never a remote photo) so every card
+            // looks consistent.
+            val icon = when {
                 category.contains("Coffee", ignoreCase = true) -> R.drawable.ic_coffee_24
                 category.contains("Meal", ignoreCase = true) ||
                     category.contains("Burger", ignoreCase = true) -> R.drawable.ic_meal_24
@@ -71,7 +72,7 @@ class CategoryPickerAdapter(
                 category.contains("Snack", ignoreCase = true) -> R.drawable.ic_snack_24
                 else -> R.drawable.ic_coffee_24
             }
-            RemoteImageLoader.load(binding.ivCategoryThumb, imageUrl, fallback)
+            binding.ivCategoryThumb.setImageResource(icon)
 
             // Highlight the currently selected category.
             binding.selectedOverlay.visibility = if (isSelected) View.VISIBLE else View.GONE

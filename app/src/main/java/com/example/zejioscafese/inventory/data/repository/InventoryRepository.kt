@@ -4,17 +4,20 @@ import com.example.zejioscafese.core.supabase.SupabaseProvider
 import com.example.zejioscafese.core.supabase.SupabaseSessionHelper
 import com.example.zejioscafese.inventory.data.model.ProductCategoryOption
 import com.example.zejioscafese.inventory.data.model.ProductEditorDraft
+import com.example.zejioscafese.inventory.data.model.ProductRecipeIngredient
 import com.example.zejioscafese.inventory.data.model.ProducibleProduct
 import com.example.zejioscafese.inventory.data.remote.dto.IngredientDto
 import com.example.zejioscafese.inventory.data.remote.dto.ProductCategoryDto
 import com.example.zejioscafese.inventory.data.remote.dto.ProductRecipeLinkDto
 import com.example.zejioscafese.inventory.data.remote.dto.ProducibleProductDto
 import com.example.zejioscafese.pos.data.model.Ingredient
+import com.example.zejioscafese.pos.data.model.IngredientUnits
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import kotlin.math.round
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -26,6 +29,12 @@ class InventoryRepository(
 
     private val supabaseClient: SupabaseClient
         get() = clientProvider()
+
+    @Volatile
+    private var includeIngredientMlPerServingColumn = true
+
+    @Volatile
+    private var includeIngredientMlPerBottleColumn = true
 
     suspend fun fetchIngredients(): List<Ingredient> {
         return withContext(Dispatchers.IO) {
@@ -53,7 +62,6 @@ class InventoryRepository(
                     }
                     .decodeList<ProducibleProductDto>()
                     .asSequence()
-                    .filter { it.productIsActive && it.variantIsActive }
                     .map(ProducibleProductDto::toProducibleProduct)
                     .toList()
             }
@@ -108,51 +116,30 @@ class InventoryRepository(
     suspend fun addIngredient(ingredient: Ingredient) {
         ensureAuthenticatedSession()
         withContext(Dispatchers.IO) {
-            supabaseClient
-                .from(INGREDIENTS_TABLE)
-                .insert(
-                    IngredientInsertDto(
-                        ingredientId = ingredient.id,
-                        ingredientName = ingredient.name,
-                        ingredientCategory = ingredient.category,
-                        ingredientUnit = ingredient.unit,
-                        ingredientCurrentStock = ingredient.currentStock,
-                        ingredientMinimumStock = ingredient.minimumStock,
-                        ingredientCostPerUnit = ingredient.costPerUnit,
-                        ingredientLastRestockedAt = currentTimestamp(),
-                        ingredientMlPerServing = ingredient.mlPerServing,
-                        ingredientMlPerBottle = ingredient.mlPerBottle
-                    )
+            withIngredientLiquidColumnFallback {
+                includeServingColumn,
+                includeBottleColumn ->
+                insertIngredient(
+                    ingredient = ingredient,
+                    includeServingColumn = includeServingColumn,
+                    includeBottleColumn = includeBottleColumn
                 )
+            }
         }
     }
 
     suspend fun updateIngredient(ingredient: Ingredient) {
         ensureAuthenticatedSession()
         withContext(Dispatchers.IO) {
-            supabaseClient
-                .from(INGREDIENTS_TABLE)
-                .update(
-                    {
-                        set("ingredient_name", ingredient.name)
-                        set("ingredient_category", ingredient.category)
-                        set("ingredient_unit", ingredient.unit)
-                        set("ingredient_current_stock", ingredient.currentStock)
-                        set("ingredient_minimum_stock", ingredient.minimumStock)
-                        set("ingredient_cost_per_unit", ingredient.costPerUnit)
-                        if (ingredient.isLiquid) {
-                            set("ingredient_ml_per_serving", ingredient.mlPerServing)
-                            set("ingredient_ml_per_bottle", ingredient.mlPerBottle)
-                        } else {
-                            set("ingredient_ml_per_serving", null as Double?)
-                            set("ingredient_ml_per_bottle", null as Double?)
-                        }
-                    }
-                ) {
-                    filter {
-                        eq("ingredient_id", ingredient.id)
-                    }
-                }
+            withIngredientLiquidColumnFallback {
+                includeServingColumn,
+                includeBottleColumn ->
+                updateIngredientRow(
+                    ingredient = ingredient,
+                    includeServingColumn = includeServingColumn,
+                    includeBottleColumn = includeBottleColumn
+                )
+            }
         }
     }
 
@@ -177,80 +164,100 @@ class InventoryRepository(
     suspend fun addProduct(draft: ProductEditorDraft) {
         ensureAuthenticatedSession()
         withContext(Dispatchers.IO) {
-        val normalizedProductName = draft.productName.trim()
-        val normalizedVariantName = draft.variantName.trim()
-        val ingredientRows = draft.ingredients
+            val normalizedProductName = draft.productName.trim()
+            val normalizedVariantName = draft.variantName.trim()
+            val normalizedImageUrl = draft.imageUrl?.trim()?.takeIf(String::isNotBlank)
+            val ingredientRows = draft.ingredients
 
-        val existingProducts = fetchProductRows()
-        val matchingProduct = existingProducts.firstOrNull {
-            it.categoryId == draft.categoryId &&
-                it.productName.equals(normalizedProductName, ignoreCase = true)
-        }
+            val existingProducts = fetchProductRows()
+            val matchingProduct = existingProducts.firstOrNull {
+                it.categoryId == draft.categoryId &&
+                    it.productName.equals(normalizedProductName, ignoreCase = true)
+            }
 
-        val productId = matchingProduct?.productId ?: nextId(
-            prefix = PRODUCT_ID_PREFIX,
-            existingIds = existingProducts.map(ProductRowDto::productId)
-        )
+            val productId = matchingProduct?.productId ?: nextId(
+                prefix = PRODUCT_ID_PREFIX,
+                existingIds = existingProducts.map(ProductRowDto::productId)
+            )
 
-        if (matchingProduct == null) {
-            supabaseClient
-                .from(PRODUCTS_TABLE)
-                .insert(
-                    ProductInsertDto(
-                        productId = productId,
-                        categoryId = draft.categoryId,
-                        productName = normalizedProductName,
-                        productDisplayOrder = nextProductDisplayOrder(
+            if (matchingProduct == null) {
+                supabaseClient
+                    .from(PRODUCTS_TABLE)
+                    .insert(
+                        ProductInsertDto(
+                            productId = productId,
                             categoryId = draft.categoryId,
-                            existingProducts = existingProducts
+                            productName = normalizedProductName,
+                            productImageUrl = normalizedImageUrl,
+                            productDisplayOrder = nextProductDisplayOrder(
+                                categoryId = draft.categoryId,
+                                existingProducts = existingProducts
+                            )
                         )
                     )
-                )
-        } else if (!matchingProduct.productIsActive || matchingProduct.categoryId != draft.categoryId) {
-            supabaseClient
-                .from(PRODUCTS_TABLE)
-                .update(
-                    {
-                        set("category_id", draft.categoryId)
-                        set("product_name", normalizedProductName)
-                        set("product_is_active", true)
+            } else if (
+                !matchingProduct.productIsActive ||
+                matchingProduct.categoryId != draft.categoryId ||
+                matchingProduct.productImageUrl != normalizedImageUrl
+            ) {
+                supabaseClient
+                    .from(PRODUCTS_TABLE)
+                    .update(
+                        {
+                            set("category_id", draft.categoryId)
+                            set("product_name", normalizedProductName)
+                            set("product_image_url", normalizedImageUrl)
+                            set("product_is_active", true)
+                        }
+                    ) {
+                        filter {
+                            eq("product_id", productId)
+                        }
                     }
-                ) {
-                    filter {
-                        eq("product_id", productId)
-                    }
-                }
-        }
+            }
 
-        val existingVariants = fetchVariantRows()
-        val variantId = nextId(
-            prefix = VARIANT_ID_PREFIX,
-            existingIds = existingVariants.map(VariantRowDto::productVariantId)
-        )
-
-        supabaseClient
-            .from(PRODUCT_VARIANTS_TABLE)
-            .insert(
+            val existingVariants = fetchVariantRows()
+            val variantNames = if (draft.createDefaultBeverageSizes) {
+                BEVERAGE_SIZE_VARIANTS
+            } else {
+                listOf(normalizedVariantName.ifBlank { STANDARD_VARIANT_NAME })
+            }
+            val variantIds = nextIds(
+                prefix = VARIANT_ID_PREFIX,
+                existingIds = existingVariants.map(VariantRowDto::productVariantId),
+                count = variantNames.size
+            )
+            val firstVariantDisplayOrder = nextVariantDisplayOrder(
+                productId = productId,
+                existingVariants = existingVariants
+            )
+            val variantRows = variantNames.mapIndexed { index, variantName ->
                 ProductVariantInsertDto(
-                    productVariantId = variantId,
+                    productVariantId = variantIds[index],
                     productId = productId,
-                    variantName = normalizedVariantName,
-                    variantPrice = draft.price,
-                    variantDisplayOrder = nextVariantDisplayOrder(
-                        productId = productId,
-                        existingVariants = existingVariants
-                    ),
+                    variantName = variantName,
+                    variantPrice = priceForVariant(draft.price, variantName),
+                    variantDisplayOrder = firstVariantDisplayOrder + index,
                     variantManualStockLeft = 0,
                     variantTrackInventory = ingredientRows.isNotEmpty(),
                     variantIsActive = true
                 )
-            )
+            }
 
-        replaceVariantIngredients(
-            productVariantId = variantId,
-            ingredients = ingredientRows
-        )
-        } // end withContext
+            supabaseClient
+                .from(PRODUCT_VARIANTS_TABLE)
+                .insert(variantRows)
+
+            variantRows.forEach { variant ->
+                replaceVariantIngredients(
+                    productVariantId = variant.productVariantId,
+                    ingredients = ingredientsForVariant(
+                        ingredients = ingredientRows,
+                        variantName = variant.variantName
+                    )
+                )
+            }
+        }
     }
 
     suspend fun updateProduct(draft: ProductEditorDraft) {
@@ -263,6 +270,7 @@ class InventoryRepository(
 
             val normalizedProductName = draft.productName.trim()
             val normalizedVariantName = draft.variantName.trim()
+            val normalizedImageUrl = draft.imageUrl?.trim()?.takeIf(String::isNotBlank)
 
             supabaseClient
                 .from(PRODUCTS_TABLE)
@@ -270,6 +278,7 @@ class InventoryRepository(
                     {
                         set("category_id", draft.categoryId)
                         set("product_name", normalizedProductName)
+                        set("product_image_url", normalizedImageUrl)
                         set("product_is_active", true)
                     }
                 ) {
@@ -300,6 +309,45 @@ class InventoryRepository(
                 productVariantId = productVariantId,
                 ingredients = draft.ingredients
             )
+        }
+    }
+
+    suspend fun updateProductVariantPrice(productVariantId: String, newPrice: Double) {
+        ensureAuthenticatedSession()
+        withContext(Dispatchers.IO) {
+            supabaseClient
+                .from(PRODUCT_VARIANTS_TABLE)
+                .update(
+                    {
+                        set("variant_price", newPrice)
+                    }
+                ) {
+                    filter {
+                        eq("product_variant_id", productVariantId)
+                    }
+                }
+        }
+    }
+
+    suspend fun updateVariantIngredientQuantity(
+        productVariantId: String,
+        ingredientId: String,
+        newRequiredQuantity: Double
+    ) {
+        ensureAuthenticatedSession()
+        withContext(Dispatchers.IO) {
+            supabaseClient
+                .from(VARIANT_INGREDIENTS_TABLE)
+                .update(
+                    {
+                        set("required_quantity", newRequiredQuantity)
+                    }
+                ) {
+                    filter {
+                        eq("product_variant_id", productVariantId)
+                        eq("ingredient_id", ingredientId)
+                    }
+                }
         }
     }
 
@@ -344,6 +392,35 @@ class InventoryRepository(
         }
     }
 
+    suspend fun restoreProduct(product: ProducibleProduct) {
+        ensureAuthenticatedSession()
+        withContext(Dispatchers.IO) {
+            supabaseClient
+                .from(PRODUCTS_TABLE)
+                .update(
+                    {
+                        set("product_is_active", true)
+                    }
+                ) {
+                    filter {
+                        eq("product_id", product.productId)
+                    }
+                }
+
+            supabaseClient
+                .from(PRODUCT_VARIANTS_TABLE)
+                .update(
+                    {
+                        set("variant_is_active", true)
+                    }
+                ) {
+                    filter {
+                        eq("product_variant_id", product.id)
+                    }
+                }
+        }
+    }
+
     private suspend fun ensureAuthenticatedSession() {
         SupabaseSessionHelper.ensureValidSession(supabaseClient)
     }
@@ -352,9 +429,151 @@ class InventoryRepository(
         return OffsetDateTime.now(ZoneOffset.UTC).toString()
     }
 
+    private suspend fun withIngredientLiquidColumnFallback(
+        block: suspend (
+            includeServingColumn: Boolean,
+            includeBottleColumn: Boolean
+        ) -> Unit
+    ) {
+        repeat(INGREDIENT_OPTIONAL_COLUMN_RETRY_LIMIT) {
+            try {
+                block(
+                    includeIngredientMlPerServingColumn,
+                    includeIngredientMlPerBottleColumn
+                )
+                return
+            } catch (exception: Exception) {
+                val missingColumn = exception.missingIngredientLiquidColumn()
+                    ?: throw exception
+                if (!disableIngredientLiquidColumn(missingColumn)) {
+                    throw exception
+                }
+            }
+        }
+
+        block(
+            includeIngredientMlPerServingColumn,
+            includeIngredientMlPerBottleColumn
+        )
+    }
+
+    private fun disableIngredientLiquidColumn(column: String): Boolean {
+        return when (column) {
+            INGREDIENT_ML_PER_SERVING_COLUMN -> {
+                val wasEnabled = includeIngredientMlPerServingColumn
+                includeIngredientMlPerServingColumn = false
+                wasEnabled
+            }
+
+            INGREDIENT_ML_PER_BOTTLE_COLUMN -> {
+                val wasEnabled = includeIngredientMlPerBottleColumn
+                includeIngredientMlPerBottleColumn = false
+                wasEnabled
+            }
+
+            else -> false
+        }
+    }
+
+    private suspend fun insertIngredient(
+        ingredient: Ingredient,
+        includeServingColumn: Boolean,
+        includeBottleColumn: Boolean
+    ) {
+        val timestamp = currentTimestamp()
+        val normalizedUnit = IngredientUnits.normalize(ingredient.unit)
+        val isMl = IngredientUnits.isMl(normalizedUnit)
+        if (isMl && includeServingColumn && includeBottleColumn) {
+            supabaseClient
+                .from(INGREDIENTS_TABLE)
+                .insert(
+                    IngredientInsertWithLiquidFieldsDto(
+                        ingredientId = ingredient.id,
+                        ingredientName = ingredient.name,
+                        ingredientCategory = ingredient.category,
+                        ingredientUnit = normalizedUnit,
+                        ingredientCurrentStock = ingredient.currentStock,
+                        ingredientMinimumStock = ingredient.minimumStock,
+                        ingredientCostPerUnit = ingredient.costPerUnit,
+                        ingredientLastRestockedAt = timestamp,
+                        ingredientMlPerServing = ingredient.mlPerServing,
+                        ingredientMlPerBottle = ingredient.mlPerBottle
+                    )
+                )
+        } else if (isMl && includeServingColumn) {
+            supabaseClient
+                .from(INGREDIENTS_TABLE)
+                .insert(
+                    IngredientInsertWithServingDto(
+                        ingredientId = ingredient.id,
+                        ingredientName = ingredient.name,
+                        ingredientCategory = ingredient.category,
+                        ingredientUnit = normalizedUnit,
+                        ingredientCurrentStock = ingredient.currentStock,
+                        ingredientMinimumStock = ingredient.minimumStock,
+                        ingredientCostPerUnit = ingredient.costPerUnit,
+                        ingredientLastRestockedAt = timestamp,
+                        ingredientMlPerServing = ingredient.mlPerServing
+                    )
+                )
+        } else {
+            supabaseClient
+                .from(INGREDIENTS_TABLE)
+                .insert(
+                    IngredientInsertDto(
+                        ingredientId = ingredient.id,
+                        ingredientName = ingredient.name,
+                        ingredientCategory = ingredient.category,
+                        ingredientUnit = normalizedUnit,
+                        ingredientCurrentStock = ingredient.currentStock,
+                        ingredientMinimumStock = ingredient.minimumStock,
+                        ingredientCostPerUnit = ingredient.costPerUnit,
+                        ingredientLastRestockedAt = timestamp
+                    )
+                )
+        }
+    }
+
+    private suspend fun updateIngredientRow(
+        ingredient: Ingredient,
+        includeServingColumn: Boolean,
+        includeBottleColumn: Boolean
+    ) {
+        val normalizedUnit = IngredientUnits.normalize(ingredient.unit)
+        val isMl = IngredientUnits.isMl(normalizedUnit)
+        supabaseClient
+            .from(INGREDIENTS_TABLE)
+            .update(
+                {
+                    set("ingredient_name", ingredient.name)
+                    set("ingredient_category", ingredient.category)
+                    set("ingredient_unit", normalizedUnit)
+                    set("ingredient_current_stock", ingredient.currentStock)
+                    set("ingredient_minimum_stock", ingredient.minimumStock)
+                    set("ingredient_cost_per_unit", ingredient.costPerUnit)
+                    if (isMl && includeServingColumn) {
+                        set(
+                            INGREDIENT_ML_PER_SERVING_COLUMN,
+                            ingredient.mlPerServing
+                        )
+                    }
+                    if (isMl && includeBottleColumn) {
+                        set(
+                            INGREDIENT_ML_PER_BOTTLE_COLUMN,
+                            ingredient.mlPerBottle
+                        )
+                    }
+                }
+            ) {
+                filter {
+                    eq("ingredient_id", ingredient.id)
+                }
+            }
+    }
+
     private suspend fun replaceVariantIngredients(
         productVariantId: String,
-        ingredients: List<com.example.zejioscafese.inventory.data.model.ProductRecipeIngredient>
+        ingredients: List<ProductRecipeIngredient>
     ) {
         supabaseClient
             .from(VARIANT_INGREDIENTS_TABLE)
@@ -448,8 +667,92 @@ class InventoryRepository(
         }
     }
 
+    private fun priceForVariant(basePrice: Double, variantName: String): Double {
+        return if (variantName.equals(BEVERAGE_LARGE_VARIANT_NAME, ignoreCase = true)) {
+            basePrice + BEVERAGE_LARGE_PRICE_PREMIUM
+        } else {
+            basePrice
+        }
+    }
+
+    private fun ingredientsForVariant(
+        ingredients: List<ProductRecipeIngredient>,
+        variantName: String
+    ): List<ProductRecipeIngredient> {
+        val targetSizeOz = beverageVariantSizeOz(variantName)
+        if (targetSizeOz == BEVERAGE_BASE_SIZE_OZ) {
+            return ingredients
+        }
+
+        return ingredients.map { ingredient ->
+            if (IngredientUnits.isMl(ingredient.ingredientUnit)) {
+                ingredient.copy(
+                    requiredQuantity = roundToTwoDecimals(
+                        ingredient.requiredQuantity * targetSizeOz / BEVERAGE_BASE_SIZE_OZ
+                    )
+                )
+            } else {
+                ingredient
+            }
+        }
+    }
+
+    private fun beverageVariantSizeOz(variantName: String): Double {
+        return if (variantName.contains("22")) {
+            22.0
+        } else {
+            BEVERAGE_BASE_SIZE_OZ
+        }
+    }
+
+    private fun roundToTwoDecimals(value: Double): Double {
+        return round(value * 100.0) / 100.0
+    }
+
     @Serializable
     private data class IngredientInsertDto(
+        @SerialName("ingredient_id")
+        val ingredientId: String,
+        @SerialName("ingredient_name")
+        val ingredientName: String,
+        @SerialName("ingredient_category")
+        val ingredientCategory: String,
+        @SerialName("ingredient_unit")
+        val ingredientUnit: String,
+        @SerialName("ingredient_current_stock")
+        val ingredientCurrentStock: Double,
+        @SerialName("ingredient_minimum_stock")
+        val ingredientMinimumStock: Double,
+        @SerialName("ingredient_cost_per_unit")
+        val ingredientCostPerUnit: Double,
+        @SerialName("ingredient_last_restocked_at")
+        val ingredientLastRestockedAt: String
+    )
+
+    @Serializable
+    private data class IngredientInsertWithServingDto(
+        @SerialName("ingredient_id")
+        val ingredientId: String,
+        @SerialName("ingredient_name")
+        val ingredientName: String,
+        @SerialName("ingredient_category")
+        val ingredientCategory: String,
+        @SerialName("ingredient_unit")
+        val ingredientUnit: String,
+        @SerialName("ingredient_current_stock")
+        val ingredientCurrentStock: Double,
+        @SerialName("ingredient_minimum_stock")
+        val ingredientMinimumStock: Double,
+        @SerialName("ingredient_cost_per_unit")
+        val ingredientCostPerUnit: Double,
+        @SerialName("ingredient_last_restocked_at")
+        val ingredientLastRestockedAt: String,
+        @SerialName("ingredient_ml_per_serving")
+        val ingredientMlPerServing: Double? = null
+    )
+
+    @Serializable
+    private data class IngredientInsertWithLiquidFieldsDto(
         @SerialName("ingredient_id")
         val ingredientId: String,
         @SerialName("ingredient_name")
@@ -480,6 +783,8 @@ class InventoryRepository(
         val categoryId: String,
         @SerialName("product_name")
         val productName: String,
+        @SerialName("product_image_url")
+        val productImageUrl: String? = null,
         @SerialName("product_display_order")
         val productDisplayOrder: Int,
         @SerialName("product_is_active")
@@ -526,6 +831,8 @@ class InventoryRepository(
         val categoryId: String,
         @SerialName("product_name")
         val productName: String,
+        @SerialName("product_image_url")
+        val productImageUrl: String? = null,
         @SerialName("product_display_order")
         val productDisplayOrder: Int = 0,
         @SerialName("product_is_active")
@@ -561,5 +868,44 @@ class InventoryRepository(
         const val PRODUCT_ID_PREFIX = "PRD-"
         const val VARIANT_ID_PREFIX = "VAR-"
         const val RECIPE_ID_PREFIX = "RCP-"
+        const val STANDARD_VARIANT_NAME = "Standard"
+        const val BEVERAGE_LARGE_VARIANT_NAME = "22oz"
+        const val BEVERAGE_BASE_SIZE_OZ = 16.0
+        const val BEVERAGE_LARGE_PRICE_PREMIUM = 20.0
+        val BEVERAGE_SIZE_VARIANTS = listOf("16oz", BEVERAGE_LARGE_VARIANT_NAME)
+        const val INGREDIENT_ML_PER_SERVING_COLUMN = "ingredient_ml_per_serving"
+        const val INGREDIENT_ML_PER_BOTTLE_COLUMN = "ingredient_ml_per_bottle"
+        const val INGREDIENT_OPTIONAL_COLUMN_RETRY_LIMIT = 2
     }
 }
+
+private fun Throwable.missingIngredientLiquidColumn(): String? {
+    var current: Throwable? = this
+    var depth = 0
+
+    while (current != null && depth < MAX_ERROR_CAUSE_DEPTH) {
+        val message = current.message.orEmpty()
+        if (message.isMissingPostgrestColumnError()) {
+            return INGREDIENT_LIQUID_COLUMNS.firstOrNull { column ->
+                message.contains(column, ignoreCase = true)
+            }
+        }
+
+        current = current.cause
+        depth += 1
+    }
+
+    return null
+}
+
+private fun String.isMissingPostgrestColumnError(): Boolean {
+    return contains("Could not find", ignoreCase = true) ||
+        contains("schema cache", ignoreCase = true) ||
+        contains("PGRST204", ignoreCase = true)
+}
+
+private val INGREDIENT_LIQUID_COLUMNS = listOf(
+    "ingredient_ml_per_serving",
+    "ingredient_ml_per_bottle"
+)
+private const val MAX_ERROR_CAUSE_DEPTH = 10

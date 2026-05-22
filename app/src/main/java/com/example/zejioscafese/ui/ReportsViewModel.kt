@@ -45,7 +45,7 @@ class ReportsViewModel(
         MONTHLY(
             labelRes = R.string.reports_range_monthly,
             subtitleRes = R.string.reports_granularity_monthly_subtitle,
-            timelineGranularity = ReportsRepository.TimelineGranularity.MONTHLY
+            timelineGranularity = ReportsRepository.TimelineGranularity.DAILY
         ),
         YEARLY(
             labelRes = R.string.reports_range_yearly,
@@ -124,7 +124,7 @@ class ReportsViewModel(
                     )
 
                     DateRange.MONTHLY -> ReportsRepository.ReportDateWindow(
-                        startDate = today.withDayOfMonth(1).minusMonths(11),
+                        startDate = today.withDayOfMonth(1),
                         endDate = today,
                         timelineGranularity = selected.timelineGranularity
                     )

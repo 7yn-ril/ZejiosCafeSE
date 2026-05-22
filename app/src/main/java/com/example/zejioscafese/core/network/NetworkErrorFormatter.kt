@@ -23,7 +23,11 @@ object NetworkErrorFormatter {
                 "The request timed out. Check your internet connection and try again."
             }
 
-            else -> exception.message?.takeIf(String::isNotBlank) ?: fallbackMessage
+            isRowLevelSecurityFailure(exception) -> {
+                "The database security policy blocked this change. Run the latest database policy update, then try again."
+            }
+
+            else -> safeMessage(exception) ?: fallbackMessage
         }
     }
 
@@ -49,6 +53,29 @@ object NetworkErrorFormatter {
                 message.contains("Request timeout has expired", ignoreCase = true) ||
                 message.contains("timed out after", ignoreCase = true)
         }
+    }
+
+    private fun isRowLevelSecurityFailure(exception: Throwable): Boolean {
+        return anyCauseMatches(exception) { cause ->
+            val message = cause.message.orEmpty()
+            message.contains("row-level security", ignoreCase = true) ||
+                message.contains("violates row level security", ignoreCase = true) ||
+                message.contains("violates row-level security", ignoreCase = true) ||
+                message.contains("42501")
+        }
+    }
+
+    private fun safeMessage(exception: Throwable): String? {
+        return exception.message
+            ?.takeIf(String::isNotBlank)
+            ?.takeUnless { message -> message.containsSensitiveTransportDetails() }
+    }
+
+    private fun String.containsSensitiveTransportDetails(): Boolean {
+        return contains("Authorization", ignoreCase = true) ||
+            contains("Bearer ", ignoreCase = true) ||
+            contains("Headers:", ignoreCase = true) ||
+            contains("URL:", ignoreCase = true)
     }
 
     private fun anyCauseMatches(

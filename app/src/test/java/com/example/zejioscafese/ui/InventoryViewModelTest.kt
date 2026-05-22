@@ -31,17 +31,17 @@ class InventoryViewModelTest {
     private lateinit var viewModel: InventoryViewModel
 
     private val milk = Ingredient(
-        id = "ING-001", name = "Milk", category = "Dairy", unit = "ml",
+        id = "ING-001", name = "Milk", category = "Dairy", unit = "mL",
         currentStock = 5000.0, minimumStock = 1000.0, costPerUnit = 0.05,
         mlPerServing = 250.0, lastRestocked = "2026-05-01"
     )
     private val sugar = Ingredient(
-        id = "ING-002", name = "Sugar", category = "Pantry", unit = "g",
+        id = "ING-002", name = "Sugar", category = "Pantry", unit = "mL",
         currentStock = 2000.0, minimumStock = 500.0, costPerUnit = 0.02,
         mlPerServing = null, lastRestocked = "2026-05-01"
     )
     private val coffee = Ingredient(
-        id = "ING-003", name = "Coffee Beans", category = "Pantry", unit = "g",
+        id = "ING-003", name = "Coffee Beans", category = "Pantry", unit = "mL",
         currentStock = 300.0, minimumStock = 500.0, costPerUnit = 0.30,
         mlPerServing = null, lastRestocked = "2026-05-01"
     ) // low stock: 300 <= 500

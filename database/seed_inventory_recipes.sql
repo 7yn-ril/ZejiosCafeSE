@@ -10,89 +10,89 @@ insert into public.ingredients (
     ingredient_minimum_stock,
     ingredient_cost_per_unit
 ) values
-    ('ING-001', 'Espresso Shot', 'shot', 450, 80, 18.00),
-    ('ING-002', 'Brewed Tea Base', 'ml', 30000, 5000, 0.02),
-    ('ING-003', 'Whole Milk', 'ml', 40000, 8000, 0.06),
-    ('ING-004', 'Oat Milk', 'ml', 10000, 2000, 0.12),
-    ('ING-005', 'Half-and-Half', 'ml', 12000, 2500, 0.10),
-    ('ING-006', 'Condensed Milk', 'ml', 6000, 1200, 0.07),
-    ('ING-007', 'Cream Cheese Foam', 'g', 7000, 1000, 0.18),
-    ('ING-008', 'Sea Salt Cream', 'g', 4000, 700, 0.15),
-    ('ING-009', 'Whipped Cream', 'g', 4000, 600, 0.12),
-    ('ING-010', 'Vanilla Syrup', 'ml', 2500, 400, 0.16),
-    ('ING-011', 'Caramel Syrup', 'ml', 3000, 500, 0.16),
-    ('ING-012', 'Peppermint Syrup', 'ml', 1500, 250, 0.18),
-    ('ING-013', 'White Mocha Sauce', 'ml', 2500, 400, 0.20),
-    ('ING-014', 'Dark Mocha Sauce', 'ml', 3000, 500, 0.18),
-    ('ING-015', 'Salted Caramel Sauce', 'ml', 2000, 300, 0.20),
-    ('ING-016', 'Roasted Almond Syrup', 'ml', 1500, 250, 0.19),
-    ('ING-017', 'Biscoff Spread', 'g', 2500, 400, 0.22),
-    ('ING-018', 'Coconut Syrup', 'ml', 1500, 250, 0.18),
-    ('ING-019', 'Taro Powder', 'g', 5000, 800, 0.45),
-    ('ING-020', 'Okinawa Syrup', 'ml', 2500, 400, 0.16),
-    ('ING-021', 'Chocolate Powder', 'g', 4000, 600, 0.28),
-    ('ING-022', 'Wintermelon Syrup', 'ml', 2500, 400, 0.15),
-    ('ING-023', 'Brown Sugar Syrup', 'ml', 2500, 400, 0.14),
-    ('ING-024', 'Matcha Powder', 'g', 2000, 300, 1.20),
-    ('ING-025', 'Cheesecake Mix', 'g', 2000, 300, 0.40),
-    ('ING-026', 'Oreo Crumbs', 'g', 2500, 300, 0.22),
-    ('ING-027', 'Black Forest Flavor', 'g', 1800, 300, 0.35),
-    ('ING-028', 'Chocolate Chips', 'g', 2000, 300, 0.24),
-    ('ING-029', 'Lemonade Base', 'ml', 18000, 3000, 0.05),
-    ('ING-030', 'Lychee Syrup', 'ml', 2000, 300, 0.17),
-    ('ING-031', 'Strawberry Syrup', 'ml', 2500, 400, 0.16),
-    ('ING-032', 'Blueberry Syrup', 'ml', 2000, 300, 0.18),
-    ('ING-033', 'Green Apple Syrup', 'ml', 2000, 300, 0.17),
-    ('ING-034', 'Raspberry Syrup', 'ml', 1500, 250, 0.18),
+    ('ING-001', 'Espresso Shot', 'mL', 450, 80, 18.00),
+    ('ING-002', 'Brewed Tea Base', 'mL', 30000, 5000, 0.02),
+    ('ING-003', 'Whole Milk', 'mL', 40000, 8000, 0.06),
+    ('ING-004', 'Oat Milk', 'mL', 10000, 2000, 0.12),
+    ('ING-005', 'Half-and-Half', 'mL', 12000, 2500, 0.10),
+    ('ING-006', 'Condensed Milk', 'mL', 6000, 1200, 0.07),
+    ('ING-007', 'Cream Cheese Foam', 'mL', 7000, 1000, 0.18),
+    ('ING-008', 'Sea Salt Cream', 'mL', 4000, 700, 0.15),
+    ('ING-009', 'Whipped Cream', 'mL', 4000, 600, 0.12),
+    ('ING-010', 'Vanilla Syrup', 'mL', 2500, 400, 0.16),
+    ('ING-011', 'Caramel Syrup', 'mL', 3000, 500, 0.16),
+    ('ING-012', 'Peppermint Syrup', 'mL', 1500, 250, 0.18),
+    ('ING-013', 'White Mocha Sauce', 'mL', 2500, 400, 0.20),
+    ('ING-014', 'Dark Mocha Sauce', 'mL', 3000, 500, 0.18),
+    ('ING-015', 'Salted Caramel Sauce', 'mL', 2000, 300, 0.20),
+    ('ING-016', 'Roasted Almond Syrup', 'mL', 1500, 250, 0.19),
+    ('ING-017', 'Biscoff Spread', 'mL', 2500, 400, 0.22),
+    ('ING-018', 'Coconut Syrup', 'mL', 1500, 250, 0.18),
+    ('ING-019', 'Taro Powder', 'mL', 5000, 800, 0.45),
+    ('ING-020', 'Okinawa Syrup', 'mL', 2500, 400, 0.16),
+    ('ING-021', 'Chocolate Powder', 'mL', 4000, 600, 0.28),
+    ('ING-022', 'Wintermelon Syrup', 'mL', 2500, 400, 0.15),
+    ('ING-023', 'Brown Sugar Syrup', 'mL', 2500, 400, 0.14),
+    ('ING-024', 'Matcha Powder', 'mL', 2000, 300, 1.20),
+    ('ING-025', 'Cheesecake Mix', 'mL', 2000, 300, 0.40),
+    ('ING-026', 'Oreo Crumbs', 'mL', 2500, 300, 0.22),
+    ('ING-027', 'Black Forest Flavor', 'mL', 1800, 300, 0.35),
+    ('ING-028', 'Chocolate Chips', 'mL', 2000, 300, 0.24),
+    ('ING-029', 'Lemonade Base', 'mL', 18000, 3000, 0.05),
+    ('ING-030', 'Lychee Syrup', 'mL', 2000, 300, 0.17),
+    ('ING-031', 'Strawberry Syrup', 'mL', 2500, 400, 0.16),
+    ('ING-032', 'Blueberry Syrup', 'mL', 2000, 300, 0.18),
+    ('ING-033', 'Green Apple Syrup', 'mL', 2000, 300, 0.17),
+    ('ING-034', 'Raspberry Syrup', 'mL', 1500, 250, 0.18),
     ('ING-035', 'Banana', 'pcs', 120, 20, 8.00),
-    ('ING-036', 'Peanut Butter', 'g', 2500, 400, 0.12),
-    ('ING-037', 'Tapioca Pearl', 'g', 5000, 800, 0.10),
-    ('ING-038', 'Nata Jelly', 'g', 5000, 800, 0.08),
-    ('ING-039', 'Milk Tea Creamer', 'g', 6000, 1000, 0.18),
-    ('ING-040', 'Ice', 'g', 100000, 20000, 0.005),
+    ('ING-036', 'Peanut Butter', 'mL', 2500, 400, 0.12),
+    ('ING-037', 'Tapioca Pearl', 'mL', 5000, 800, 0.10),
+    ('ING-038', 'Nata Jelly', 'mL', 5000, 800, 0.08),
+    ('ING-039', 'Milk Tea Creamer', 'mL', 6000, 1000, 0.18),
+    ('ING-040', 'Ice', 'mL', 100000, 20000, 0.005),
     ('ING-041', 'Burger Bun', 'pcs', 180, 30, 8.00),
     ('ING-042', 'Beef Patty', 'pcs', 220, 40, 30.00),
     ('ING-043', 'Chicken Fillet', 'pcs', 140, 25, 28.00),
     ('ING-044', 'Pineapple Slice', 'pcs', 150, 20, 4.00),
-    ('ING-045', 'Lettuce', 'g', 8000, 1500, 0.07),
+    ('ING-045', 'Lettuce', 'mL', 8000, 1500, 0.07),
     ('ING-046', 'Tomato Slice', 'pcs', 800, 120, 1.00),
     ('ING-047', 'Cheese Slice', 'pcs', 400, 60, 6.00),
     ('ING-048', 'Bacon Slice', 'pcs', 350, 60, 5.00),
-    ('ING-049', 'Mushroom Sauce', 'ml', 4000, 600, 0.18),
-    ('ING-050', 'Mayo Sauce', 'ml', 4000, 600, 0.10),
-    ('ING-051', 'Burger Sauce', 'ml', 3500, 500, 0.11),
-    ('ING-052', 'Fries', 'g', 30000, 5000, 0.04),
-    ('ING-053', 'Potato Mojos', 'g', 20000, 3000, 0.05),
-    ('ING-054', 'Nacho Chips', 'g', 15000, 2500, 0.07),
-    ('ING-055', 'Ground Beef', 'g', 18000, 3000, 0.30),
-    ('ING-056', 'Cheese Sauce', 'ml', 5000, 800, 0.14),
+    ('ING-049', 'Mushroom Sauce', 'mL', 4000, 600, 0.18),
+    ('ING-050', 'Mayo Sauce', 'mL', 4000, 600, 0.10),
+    ('ING-051', 'Burger Sauce', 'mL', 3500, 500, 0.11),
+    ('ING-052', 'Fries', 'mL', 30000, 5000, 0.04),
+    ('ING-053', 'Potato Mojos', 'mL', 20000, 3000, 0.05),
+    ('ING-054', 'Nacho Chips', 'mL', 15000, 2500, 0.07),
+    ('ING-055', 'Ground Beef', 'mL', 18000, 3000, 0.30),
+    ('ING-056', 'Cheese Sauce', 'mL', 5000, 800, 0.14),
     ('ING-057', 'Quesadilla Tortilla', 'pcs', 150, 20, 6.00),
-    ('ING-058', 'Calamari', 'g', 12000, 2000, 0.24),
+    ('ING-058', 'Calamari', 'mL', 12000, 2000, 0.24),
     ('ING-059', 'Chicken Fingers', 'pcs', 500, 80, 12.00),
     ('ING-060', 'Chicken Wings', 'pcs', 700, 120, 10.00),
-    ('ING-061', 'Honey Garlic Sauce', 'ml', 2500, 400, 0.13),
-    ('ING-062', 'Buffalo Sauce', 'ml', 2500, 400, 0.13),
-    ('ING-063', 'Teriyaki Sauce', 'ml', 2500, 400, 0.12),
-    ('ING-064', 'Fettuccine Pasta', 'g', 10000, 1500, 0.06),
-    ('ING-065', 'Carbonara Sauce', 'ml', 6000, 900, 0.18),
+    ('ING-061', 'Honey Garlic Sauce', 'mL', 2500, 400, 0.13),
+    ('ING-062', 'Buffalo Sauce', 'mL', 2500, 400, 0.13),
+    ('ING-063', 'Teriyaki Sauce', 'mL', 2500, 400, 0.12),
+    ('ING-064', 'Fettuccine Pasta', 'mL', 10000, 1500, 0.06),
+    ('ING-065', 'Carbonara Sauce', 'mL', 6000, 900, 0.18),
     ('ING-066', 'Longganisa', 'pcs', 180, 30, 15.00),
     ('ING-067', 'Hungarian Sausage', 'pcs', 150, 25, 18.00),
-    ('ING-068', 'Rice Serving', 'serving', 320, 50, 10.00),
+    ('ING-068', 'Rice Serving', 'pcs', 320, 50, 10.00),
     ('ING-069', 'Egg', 'pcs', 500, 80, 7.00),
-    ('ING-070', 'Chicken Poppers', 'g', 12000, 1800, 0.18),
-    ('ING-071', 'Pork Sisig', 'g', 12000, 1800, 0.22),
+    ('ING-070', 'Chicken Poppers', 'mL', 12000, 1800, 0.18),
+    ('ING-071', 'Pork Sisig', 'mL', 12000, 1800, 0.22),
     ('ING-072', 'Fish Fillet', 'pcs', 120, 20, 24.00),
-    ('ING-073', 'Dip Sauce', 'ml', 3000, 400, 0.10),
+    ('ING-073', 'Dip Sauce', 'mL', 3000, 400, 0.10),
     ('ING-074', 'Pork Siomai', 'pcs', 350, 50, 6.00),
-    ('ING-075', 'Bottled Water', 'bottle', 200, 30, 12.00),
-    ('ING-076', 'Cucumber Syrup', 'ml', 1500, 200, 0.12),
-    ('ING-077', 'Iced Tea Base', 'ml', 15000, 2500, 0.03),
-    ('ING-078', 'Four Seasons Syrup', 'ml', 1800, 250, 0.14),
-    ('ING-079', 'Toyomansi Sauce', 'ml', 2000, 250, 0.07),
-    ('ING-080', 'Assorted Syrup Portion', 'ml', 2000, 300, 0.15),
-    ('ING-081', 'Assorted Sauce Portion', 'ml', 2000, 300, 0.15),
-    ('ING-082', 'Water', 'ml', 30000, 5000, 0.00),
-    ('ING-083', 'Yakult', 'bottle', 120, 20, 18.00)
+    ('ING-075', 'Bottled Water', 'pcs', 200, 30, 12.00),
+    ('ING-076', 'Cucumber Syrup', 'mL', 1500, 200, 0.12),
+    ('ING-077', 'Iced Tea Base', 'mL', 15000, 2500, 0.03),
+    ('ING-078', 'Four Seasons Syrup', 'mL', 1800, 250, 0.14),
+    ('ING-079', 'Toyomansi Sauce', 'mL', 2000, 250, 0.07),
+    ('ING-080', 'Assorted Syrup Portion', 'mL', 2000, 300, 0.15),
+    ('ING-081', 'Assorted Sauce Portion', 'mL', 2000, 300, 0.15),
+    ('ING-082', 'Water', 'mL', 30000, 5000, 0.00),
+    ('ING-083', 'Yakult', 'pcs', 120, 20, 18.00)
 on conflict (ingredient_id) do update set
     ingredient_name = excluded.ingredient_name,
     ingredient_unit = excluded.ingredient_unit,
@@ -228,8 +228,8 @@ recipe_rows as (
     join public.products p on p.product_id = pv.product_id
     cross join lateral (
         values
-            ('ING-002', case when pv.variant_name = 'Mezzo' then 180 else 240 end::numeric),
-            ('ING-039', case when pv.variant_name = 'Mezzo' then 20 else 26 end::numeric),
+            ('ING-002', case when lower(trim(pv.variant_name)) in ('mezzo', '16oz', '16 oz') then 180 else 240 end::numeric),
+            ('ING-039', case when lower(trim(pv.variant_name)) in ('mezzo', '16oz', '16 oz') then 20 else 26 end::numeric),
             (
                 case
                     when p.product_id = 'PRD-007' then 'ING-019'
@@ -239,15 +239,15 @@ recipe_rows as (
                     when p.product_id = 'PRD-011' then 'ING-023'
                 end,
                 case
-                    when p.product_id = 'PRD-007' and pv.variant_name = 'Mezzo' then 30
+                    when p.product_id = 'PRD-007' and lower(trim(pv.variant_name)) in ('mezzo', '16oz', '16 oz') then 30
                     when p.product_id = 'PRD-007' then 36
-                    when p.product_id = 'PRD-009' and pv.variant_name = 'Mezzo' then 22
+                    when p.product_id = 'PRD-009' and lower(trim(pv.variant_name)) in ('mezzo', '16oz', '16 oz') then 22
                     when p.product_id = 'PRD-009' then 30
-                    when pv.variant_name = 'Mezzo' then 25
+                    when lower(trim(pv.variant_name)) in ('mezzo', '16oz', '16 oz') then 25
                     else 35
                 end::numeric
             ),
-            ('ING-040', case when pv.variant_name = 'Mezzo' then 120 else 180 end::numeric)
+            ('ING-040', case when lower(trim(pv.variant_name)) in ('mezzo', '16oz', '16 oz') then 120 else 180 end::numeric)
     ) x(ingredient_id, required_quantity)
     where p.product_id in ('PRD-007', 'PRD-008', 'PRD-009', 'PRD-010', 'PRD-011')
 
@@ -259,8 +259,8 @@ recipe_rows as (
     join public.products p on p.product_id = pv.product_id
     cross join lateral (
         values
-            ('ING-002', case when pv.variant_name = 'Mezzo' then 180 else 240 end::numeric),
-            ('ING-039', case when pv.variant_name = 'Mezzo' then 20 else 26 end::numeric),
+            ('ING-002', case when lower(trim(pv.variant_name)) in ('mezzo', '16oz', '16 oz') then 180 else 240 end::numeric),
+            ('ING-039', case when lower(trim(pv.variant_name)) in ('mezzo', '16oz', '16 oz') then 20 else 26 end::numeric),
             (
                 case
                     when p.product_id = 'PRD-012' then 'ING-019'
@@ -268,17 +268,17 @@ recipe_rows as (
                     else 'ING-021'
                 end,
                 case
-                    when p.product_id = 'PRD-012' and pv.variant_name = 'Mezzo' then 30
+                    when p.product_id = 'PRD-012' and lower(trim(pv.variant_name)) in ('mezzo', '16oz', '16 oz') then 30
                     when p.product_id = 'PRD-012' then 36
-                    when p.product_id = 'PRD-013' and pv.variant_name = 'Mezzo' then 10
+                    when p.product_id = 'PRD-013' and lower(trim(pv.variant_name)) in ('mezzo', '16oz', '16 oz') then 10
                     when p.product_id = 'PRD-013' then 12
-                    when pv.variant_name = 'Mezzo' then 22
+                    when lower(trim(pv.variant_name)) in ('mezzo', '16oz', '16 oz') then 22
                     else 30
                 end::numeric
             ),
-            ('ING-007', case when pv.variant_name = 'Mezzo' then 35 else 45 end::numeric),
-            ('ING-028', case when p.product_id = 'PRD-014' and pv.variant_name = 'Mezzo' then 12 when p.product_id = 'PRD-014' then 16 else 0 end::numeric),
-            ('ING-040', case when pv.variant_name = 'Mezzo' then 120 else 180 end::numeric)
+            ('ING-007', case when lower(trim(pv.variant_name)) in ('mezzo', '16oz', '16 oz') then 35 else 45 end::numeric),
+            ('ING-028', case when p.product_id = 'PRD-014' and lower(trim(pv.variant_name)) in ('mezzo', '16oz', '16 oz') then 12 when p.product_id = 'PRD-014' then 16 else 0 end::numeric),
+            ('ING-040', case when lower(trim(pv.variant_name)) in ('mezzo', '16oz', '16 oz') then 120 else 180 end::numeric)
     ) x(ingredient_id, required_quantity)
     where p.product_id in ('PRD-012', 'PRD-013', 'PRD-014')
       and x.required_quantity > 0
@@ -291,14 +291,14 @@ recipe_rows as (
     join public.products p on p.product_id = pv.product_id
     cross join lateral (
         values
-            ('ING-002', case when pv.variant_name = 'Mezzo' then 180 else 240 end::numeric),
-            ('ING-039', case when pv.variant_name = 'Mezzo' then 20 else 26 end::numeric),
-            ('ING-025', case when pv.variant_name = 'Mezzo' then 24 else 30 end::numeric),
+            ('ING-002', case when lower(trim(pv.variant_name)) in ('mezzo', '16oz', '16 oz') then 180 else 240 end::numeric),
+            ('ING-039', case when lower(trim(pv.variant_name)) in ('mezzo', '16oz', '16 oz') then 20 else 26 end::numeric),
+            ('ING-025', case when lower(trim(pv.variant_name)) in ('mezzo', '16oz', '16 oz') then 24 else 30 end::numeric),
             (
                 case when p.product_id = 'PRD-015' then 'ING-026' else 'ING-027' end,
-                case when pv.variant_name = 'Mezzo' then 14 else 18 end::numeric
+                case when lower(trim(pv.variant_name)) in ('mezzo', '16oz', '16 oz') then 14 else 18 end::numeric
             ),
-            ('ING-040', case when pv.variant_name = 'Mezzo' then 120 else 180 end::numeric)
+            ('ING-040', case when lower(trim(pv.variant_name)) in ('mezzo', '16oz', '16 oz') then 120 else 180 end::numeric)
     ) x(ingredient_id, required_quantity)
     where p.product_id in ('PRD-015', 'PRD-016')
 

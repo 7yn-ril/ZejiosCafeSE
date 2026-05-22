@@ -14,11 +14,13 @@ import com.example.zejioscafese.pos.data.model.Discount
 import com.example.zejioscafese.pos.data.model.OrderItem
 import com.example.zejioscafese.pos.data.model.Product
 import com.example.zejioscafese.pos.data.model.ProductGroup
+import com.example.zejioscafese.pos.data.model.ProductRecipeRequirement
 import com.example.zejioscafese.pos.data.repository.CategoryRepository
 import com.example.zejioscafese.pos.data.repository.DiscountRepository
 import com.example.zejioscafese.pos.data.repository.ProductRepository
 import java.time.LocalDate
 import java.util.Locale
+import kotlin.math.floor
 import kotlin.math.round
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -41,6 +43,11 @@ class PosViewModel(
         val canGoPrevious: Boolean get() = currentPage > 1
         val canGoNext: Boolean get() = currentPage < totalPages
     }
+
+    data class StockLimitNotice(
+        val productName: String,
+        val message: String
+    )
 
     enum class PaymentMethod {
         CASH,
@@ -121,6 +128,9 @@ class PosViewModel(
 
     private val _menuLoadError = MutableLiveData<String?>(null)
     val menuLoadError: LiveData<String?> = _menuLoadError
+
+    private val _stockLimitNotice = MutableLiveData<StockLimitNotice?>(null)
+    val stockLimitNotice: LiveData<StockLimitNotice?> = _stockLimitNotice
 
     private val _isCheckoutInProgress = MutableLiveData(false)
     val isCheckoutInProgress: LiveData<Boolean> = _isCheckoutInProgress
@@ -327,6 +337,10 @@ class PosViewModel(
         _menuLoadError.value = null
     }
 
+    fun onStockLimitNoticeConsumed() {
+        _stockLimitNotice.value = null
+    }
+
     private fun loadMenuData() {
         if (menuLoadJob?.isActive == true) {
             return
@@ -347,7 +361,7 @@ class PosViewModel(
                         runCatching { discountRepository.fetchActiveDiscounts() }.getOrDefault(emptyList())
                     }
 
-                    val fetchedProducts = productsDeferred.await()
+                    val fetchedProducts = normalizeMenuSizeAliases(productsDeferred.await())
                     val fetchedCategories = categoriesDeferred.await()
                     val fetchedDiscounts = discountsDeferred.await()
 
@@ -509,6 +523,76 @@ class PosViewModel(
         }
     }
 
+    private fun normalizeMenuSizeAliases(products: List<Product>): List<Product> {
+        if (products.isEmpty()) {
+            return emptyList()
+        }
+
+        data class Candidate(
+            val product: Product,
+            val originalVariantName: String,
+            val canonicalVariantName: String?
+        )
+
+        val candidates = products.map { product ->
+            val originalVariantName = product.sourceVariantName.orEmpty()
+            val canonicalVariantName = originalVariantName.toCanonicalBeverageSizeName()
+            val normalizedProduct = canonicalVariantName?.let { canonicalName ->
+                val productName = product.sourceProductName ?: product.name
+                product.copy(
+                    name = formatProductDisplayName(productName, canonicalName),
+                    sourceVariantName = canonicalName
+                )
+            } ?: product
+            Candidate(
+                product = normalizedProduct,
+                originalVariantName = originalVariantName,
+                canonicalVariantName = canonicalVariantName
+            )
+        }
+
+        return candidates
+            .groupBy { candidate ->
+                val productKey = candidate.product.sourceProductId ?: candidate.product.id
+                candidate.canonicalVariantName
+                    ?.let { "$productKey::${it.lowercase(Locale.US)}" }
+                    ?: candidate.product.id
+            }
+            .values
+            .map { duplicateCandidates ->
+                duplicateCandidates
+                    .sortedWith(
+                        compareBy<Candidate> { candidate ->
+                            val original = candidate.originalVariantName.normalizedVariantKey()
+                            val canonical = candidate.canonicalVariantName?.normalizedVariantKey()
+                            if (canonical != null && original == canonical) 0 else 1
+                        }.thenByDescending { it.product.price }
+                    )
+                    .first()
+                    .product
+            }
+    }
+
+    private fun String.toCanonicalBeverageSizeName(): String? {
+        return when (normalizedVariantKey()) {
+            "mezzo", "16oz", "16ounce", "16ounces" -> "16oz"
+            "grande", "dosa", "22oz", "22ounce", "22ounces" -> "22oz"
+            else -> null
+        }
+    }
+
+    private fun String.normalizedVariantKey(): String {
+        return lowercase(Locale.US).replace(Regex("[^a-z0-9]+"), "")
+    }
+
+    private fun formatProductDisplayName(productName: String, variantName: String): String {
+        return when {
+            variantName.equals("standard", ignoreCase = true) -> productName
+            variantName.equals("combo", ignoreCase = true) -> productName
+            else -> "$productName ($variantName)"
+        }
+    }
+
     private fun updateProductPage(targetPageIndex: Int) {
         val totalPages = filteredGroups.pageCount(POS_PAGE_SIZE)
         if (totalPages <= 1) return
@@ -537,18 +621,108 @@ class PosViewModel(
     }
 
     private fun updateQuantity(product: Product, delta: Int) {
-        val stockLimit = product.stockLeft.coerceAtLeast(0)
-        if (stockLimit == 0 && delta > 0) {
-            return
+        val currentProduct = allProducts.firstOrNull { it.id == product.id } ?: product
+        val stockLimit = currentProduct.stockLeft.coerceAtLeast(0)
+
+        if (delta > 0) {
+            val stockLimitNotice = findStockLimitNotice(currentProduct, delta)
+            if (stockLimitNotice != null) {
+                _stockLimitNotice.value = stockLimitNotice
+                return
+            }
         }
 
-        val updatedQuantity = (orderQuantitiesStore[product.id] ?: 0) + delta
+        val updatedQuantity = (orderQuantitiesStore[currentProduct.id] ?: 0) + delta
         if (updatedQuantity <= 0) {
-            orderQuantitiesStore.remove(product.id)
+            orderQuantitiesStore.remove(currentProduct.id)
         } else {
-            orderQuantitiesStore[product.id] = updatedQuantity.coerceAtMost(stockLimit)
+            orderQuantitiesStore[currentProduct.id] = updatedQuantity.coerceAtMost(stockLimit)
         }
         syncOrderState()
+    }
+
+    private fun findStockLimitNotice(product: Product, delta: Int): StockLimitNotice? {
+        val requestedQuantity = (orderQuantitiesStore[product.id] ?: 0) + delta
+        if (requestedQuantity <= 0) return null
+
+        if (product.recipeIngredients.isEmpty()) {
+            return if (requestedQuantity > product.stockLeft.coerceAtLeast(0)) {
+                buildVariantStockNotice(product)
+            } else {
+                null
+            }
+        }
+
+        val candidateQuantities = LinkedHashMap(orderQuantitiesStore)
+        candidateQuantities[product.id] = requestedQuantity
+
+        val targetRequirements = product.recipeIngredients
+            .groupBy(ProductRecipeRequirement::ingredientId)
+            .mapValues { (_, requirements) -> requirements.sumOf(ProductRecipeRequirement::requiredQuantity) }
+
+        val usageByIngredient = linkedMapOf<String, IngredientUsage>()
+        candidateQuantities.forEach { (productId, quantity) ->
+            val cartProduct = if (productId == product.id) {
+                product
+            } else {
+                allProducts.firstOrNull { it.id == productId }
+            } ?: return@forEach
+
+            cartProduct.recipeIngredients.forEach { requirement ->
+                val usage = usageByIngredient.getOrPut(requirement.ingredientId) {
+                    IngredientUsage(
+                        ingredientName = requirement.ingredientName,
+                        currentStock = requirement.currentStock.coerceAtLeast(0.0),
+                        targetRequiredQuantity = targetRequirements[requirement.ingredientId] ?: 0.0
+                    )
+                }
+                usage.requiredQuantity += requirement.requiredQuantity * quantity
+            }
+        }
+
+        val blockingUsage = usageByIngredient.values
+            .filter { it.requiredQuantity > it.currentStock + STOCK_EPSILON }
+            .sortedWith(
+                compareBy<IngredientUsage> { if (it.currentStock <= 0.0) 0 else 1 }
+                    .thenBy { it.ingredientName.lowercase(Locale.US) }
+            )
+            .firstOrNull()
+
+        return blockingUsage?.let { buildIngredientStockNotice(product, it) }
+    }
+
+    private fun buildVariantStockNotice(product: Product): StockLimitNotice {
+        val availableQuantity = product.stockLeft.coerceAtLeast(0)
+        val message = if (availableQuantity == 1) {
+            "Only 1 ${product.name} left."
+        } else {
+            "Only $availableQuantity ${product.name} left."
+        }
+        return StockLimitNotice(productName = product.name, message = message)
+    }
+
+    private fun buildIngredientStockNotice(
+        product: Product,
+        usage: IngredientUsage
+    ): StockLimitNotice {
+        if (usage.currentStock <= 0.0) {
+            return StockLimitNotice(
+                productName = product.name,
+                message = "${usage.ingredientName} is out of stock."
+            )
+        }
+
+        val targetRequired = usage.targetRequiredQuantity.takeIf { it > 0.0 } ?: 1.0
+        val itemCapacity = floor(usage.currentStock / targetRequired).toInt().coerceAtLeast(0)
+        val lead = if (itemCapacity == 1) {
+            "Only 1 ${usage.ingredientName} left."
+        } else {
+            "Only $itemCapacity ${usage.ingredientName} portions left."
+        }
+        return StockLimitNotice(
+            productName = product.name,
+            message = "$lead It is already reserved by the current order."
+        )
     }
 
     private fun syncOrderState() {
@@ -627,6 +801,13 @@ class PosViewModel(
         return ((size + pageSize - 1) / pageSize).coerceAtLeast(1)
     }
 
+    private data class IngredientUsage(
+        val ingredientName: String,
+        val currentStock: Double,
+        val targetRequiredQuantity: Double,
+        var requiredQuantity: Double = 0.0
+    )
+
     private companion object {
         const val TAG = "PosViewModel"
         val ORDER_NUMBER_REGEX = Regex("^#POS-(\\d+)$")
@@ -635,5 +816,6 @@ class PosViewModel(
         const val POS_PAGE_SIZE = 12
         const val MAX_EMPTY_MENU_LOAD_ATTEMPTS = 3
         const val EMPTY_MENU_RETRY_DELAY_MS = 2_500L
+        const val STOCK_EPSILON = 0.0001
     }
 }

@@ -9,7 +9,13 @@
       "Bash(ConvertTo-Json -AsArray)",
       "Bash(Out-String)",
       "Bash(find ~ /c -name \"aapt2*\" 2>/dev/null | head -3)",
-      "Read(//c/Users/Asus-Pc/**)"
+      "Read(//c/Users/Asus-Pc/**)",
+      "Bash(./gradlew :app:assembleDebug)",
+      "Bash(./gradlew :app:testDebugUnitTest)",
+      "Bash(./gradlew :app:testDebugUnitTest --tests \"com.example.zejioscafese.pos.presentation.PosViewModelTest\" -Dorg.gradle.jvmargs=\"-Xmx512m\")",
+      "Bash(./gradlew.bat compileDebugKotlin --quiet)",
+      "Bash(./gradlew.bat compileDebugKotlin --rerun-tasks)",
+      "Bash(./gradlew :app:compileDebugKotlin --console=plain)"
     ]
   }
 }

@@ -7,5 +7,7 @@ data class ProductEditorDraft(
     val productName: String,
     val variantName: String,
     val price: Double,
-    val ingredients: List<ProductRecipeIngredient>
+    val ingredients: List<ProductRecipeIngredient>,
+    val imageUrl: String? = null,
+    val createDefaultBeverageSizes: Boolean = false
 )

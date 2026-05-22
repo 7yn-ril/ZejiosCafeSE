@@ -31,7 +31,7 @@ class IngredientTest {
 
     @Test
     fun isLiquid_unitMl_returnsTrue() =
-        assertTrue(ingredient(unit = "ml").isLiquid)
+        assertTrue(ingredient(unit = "mL").isLiquid)
 
     @Test
     fun isLiquid_unitMLUpperCase_returnsTrue() =
@@ -42,7 +42,12 @@ class IngredientTest {
         assertTrue(ingredient(unit = "  ml  ").isLiquid)
 
     @ParameterizedTest
-    @ValueSource(strings = ["pcs", "kg", "L", "g", "oz", ""])
+    @ValueSource(strings = ["g", "gram", "grams", "kg", "L", "shot"])
+    fun isLiquid_legacyMeasuredUnits_returnsTrue(unit: String) =
+        assertTrue(ingredient(unit = unit).isLiquid)
+
+    @ParameterizedTest
+    @ValueSource(strings = ["pcs", "pc", "piece", "pieces", "bottle", "serving", "oz", ""])
     fun isLiquid_unitNotMl_returnsFalse(unit: String) =
         assertFalse(ingredient(unit = unit).isLiquid)
 
@@ -50,24 +55,24 @@ class IngredientTest {
 
     @Test
     fun totalServings_liquidWithValidMlPerServing_returnsStockDividedByServing() {
-        val ing = ingredient(unit = "ml", currentStock = 500.0, mlPerServing = 50.0)
+        val ing = ingredient(unit = "mL", currentStock = 500.0, mlPerServing = 50.0)
         assertEquals(10.0, ing.totalServings)
     }
 
     @Test
     fun totalServings_liquidWithZeroCurrentStock_returnsZero() {
-        val ing = ingredient(unit = "ml", currentStock = 0.0, mlPerServing = 25.0)
+        val ing = ingredient(unit = "mL", currentStock = 0.0, mlPerServing = 25.0)
         assertEquals(0.0, ing.totalServings)
     }
 
     @Test
     fun totalServings_liquidWithNullMlPerServing_returnsNull() {
-        assertNull(ingredient(unit = "ml", currentStock = 500.0, mlPerServing = null).totalServings)
+        assertNull(ingredient(unit = "mL", currentStock = 500.0, mlPerServing = null).totalServings)
     }
 
     @Test
     fun totalServings_liquidWithZeroMlPerServing_returnsNull() {
-        assertNull(ingredient(unit = "ml", currentStock = 500.0, mlPerServing = 0.0).totalServings)
+        assertNull(ingredient(unit = "mL", currentStock = 500.0, mlPerServing = 0.0).totalServings)
     }
 
     @Test
@@ -77,7 +82,7 @@ class IngredientTest {
 
     @Test
     fun totalServings_fractionalResult_returnsCorrectValue() {
-        val ing = ingredient(unit = "ml", currentStock = 100.0, mlPerServing = 30.0)
+        val ing = ingredient(unit = "mL", currentStock = 100.0, mlPerServing = 30.0)
         assertEquals(100.0 / 30.0, ing.totalServings!!, 1e-9)
     }
 
@@ -85,7 +90,7 @@ class IngredientTest {
 
     @Test
     fun costPerServing_liquidWithValidValues_returnsCostPerUnitTimesServingSize() {
-        val ing = ingredient(unit = "ml", costPerUnit = 0.10, mlPerServing = 30.0)
+        val ing = ingredient(unit = "mL", costPerUnit = 0.10, mlPerServing = 30.0)
         assertEquals(3.0, ing.costPerServing!!, 1e-9)
     }
 
@@ -96,17 +101,51 @@ class IngredientTest {
 
     @Test
     fun costPerServing_liquidWithNullMlPerServing_returnsNull() {
-        assertNull(ingredient(unit = "ml", costPerUnit = 5.0, mlPerServing = null).costPerServing)
+        assertNull(ingredient(unit = "mL", costPerUnit = 5.0, mlPerServing = null).costPerServing)
     }
 
     @Test
     fun costPerServing_liquidWithZeroMlPerServing_returnsNull() {
-        assertNull(ingredient(unit = "ml", costPerUnit = 5.0, mlPerServing = 0.0).costPerServing)
+        assertNull(ingredient(unit = "mL", costPerUnit = 5.0, mlPerServing = 0.0).costPerServing)
     }
 
     @Test
     fun costPerServing_liquidWithZeroCostPerUnit_returnsZero() {
-        val ing = ingredient(unit = "ml", costPerUnit = 0.0, mlPerServing = 20.0)
+        val ing = ingredient(unit = "mL", costPerUnit = 0.0, mlPerServing = 20.0)
         assertEquals(0.0, ing.costPerServing!!, 1e-9)
+    }
+
+    // stockStatus
+
+    @Test
+    fun stockStatus_zeroStock_returnsNoStock() {
+        assertEquals(
+            IngredientStockStatus.NO_STOCK,
+            ingredient(currentStock = 0.0, minimumStock = 10.0).stockStatus
+        )
+    }
+
+    @Test
+    fun stockStatus_equalToMinimum_returnsLowStock() {
+        assertEquals(
+            IngredientStockStatus.LOW_STOCK,
+            ingredient(currentStock = 1.0, minimumStock = 1.0).stockStatus
+        )
+    }
+
+    @Test
+    fun stockStatus_belowMinimum_returnsLowStock() {
+        assertEquals(
+            IngredientStockStatus.LOW_STOCK,
+            ingredient(currentStock = 5.0, minimumStock = 10.0).stockStatus
+        )
+    }
+
+    @Test
+    fun stockStatus_aboveMinimum_returnsInStock() {
+        assertEquals(
+            IngredientStockStatus.IN_STOCK,
+            ingredient(currentStock = 11.0, minimumStock = 10.0).stockStatus
+        )
     }
 }

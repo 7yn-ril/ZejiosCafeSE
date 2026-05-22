@@ -59,6 +59,27 @@ class NetworkErrorFormatterTest {
     }
 
     @Test
+    fun toUserMessage_rowLevelSecurityFailure_returnsSafePolicyMessage() {
+        val ex = RuntimeException(
+            "new row violates row-level security policy for table \"product_variants\"\n" +
+                "URL: 'https://example.supabase.co/rest/v1/product_variants'\n" +
+                "Headers: [Authorization=[Bearer secret-token]]"
+        )
+        val message = NetworkErrorFormatter.toUserMessage(ex, fallback)
+
+        assertTrue(message.contains("security policy", ignoreCase = true))
+        assertFalse(message.contains("Bearer", ignoreCase = true))
+        assertFalse(message.contains("secret-token", ignoreCase = true))
+    }
+
+    @Test
+    fun toUserMessage_transportDetailsWithoutKnownError_returnsFallback() {
+        val ex = RuntimeException("URL: 'https://example.test'\nHeaders: [Authorization=[Bearer token]]")
+        val message = NetworkErrorFormatter.toUserMessage(ex, fallback)
+        assertEquals(fallback, message)
+    }
+
+    @Test
     fun toUserMessage_genericExceptionWithBlankMessage_returnsFallback() {
         val ex = RuntimeException("   ")
         val message = NetworkErrorFormatter.toUserMessage(ex, fallback)

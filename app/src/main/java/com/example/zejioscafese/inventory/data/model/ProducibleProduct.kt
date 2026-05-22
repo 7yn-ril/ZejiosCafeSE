@@ -8,7 +8,9 @@ data class ProducibleProduct(
     val productName: String,
     val variantName: String,
     val price: Double,
-    val availableQuantity: Int
+    val availableQuantity: Int,
+    val imageUrl: String? = null,
+    val isActive: Boolean = true
 ) {
     val name: String
         get() = when {

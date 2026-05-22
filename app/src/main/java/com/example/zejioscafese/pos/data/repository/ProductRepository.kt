@@ -3,12 +3,15 @@ package com.example.zejioscafese.pos.data.repository
 import com.example.zejioscafese.core.supabase.SupabaseProvider
 import com.example.zejioscafese.core.supabase.SupabaseSessionHelper
 import com.example.zejioscafese.pos.data.local.ProductImageResolver
+import com.example.zejioscafese.pos.data.model.IngredientUnits
 import com.example.zejioscafese.pos.data.model.Product
+import com.example.zejioscafese.pos.data.model.ProductRecipeRequirement
 import com.example.zejioscafese.pos.data.remote.dto.ProductVariantStockDto
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import java.util.Locale
+import kotlin.math.floor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -37,35 +40,56 @@ class ProductRepository(
                     .map(ProductVariantStockDto::toProduct)
                     .toList()
 
-                val unavailableReasons = runCatching {
-                    fetchUnavailableReasons(products)
-                }.getOrDefault(emptyMap())
+                val recipeFetch = runCatching {
+                    fetchRecipeAvailability(products)
+                }.getOrDefault(RecipeFetchResult(emptyMap(), emptyMap()))
+                val recipeAvailability = recipeFetch.availability
+                val priceCorrections = recipeFetch.priceCorrections
 
                 products
                     .map { product ->
-                        val productWithAvailability = product.copy(
-                            unavailableReason = unavailableReasons[product.id]
+                        val correctedPrice = priceCorrections[product.id]
+                        val pricedProduct = if (correctedPrice != null && correctedPrice != product.price) {
+                            product.copy(price = correctedPrice)
+                        } else {
+                            product
+                        }
+                        val availability = recipeAvailability[pricedProduct.id]
+                        val stockAwareProduct = availability
+                            ?.let {
+                                pricedProduct.copy(
+                                    stockLeft = it.availableQuantity,
+                                    recipeIngredients = it.requirements
+                                )
+                            }
+                            ?: pricedProduct
+                        val productWithAvailability = stockAwareProduct.copy(
+                            unavailableReason = if (stockAwareProduct.isOrderable) {
+                                null
+                            } else {
+                                availability?.unavailableReason ?: "This item has no sellable stock left."
+                            }
                         )
-                        ProductImageResolver.resolve(
-                            productWithAvailability.sourceProductName ?: productWithAvailability.name
-                        )
-                            ?.let { assetImageUrl ->
-                                productWithAvailability.copy(imageUrl = assetImageUrl)
-                            } ?: productWithAvailability
+                        if (!productWithAvailability.imageUrl.isNullOrBlank()) {
+                            productWithAvailability
+                        } else {
+                            ProductImageResolver.resolve(
+                                productWithAvailability.sourceProductName ?: productWithAvailability.name
+                            )
+                                ?.let { assetImageUrl ->
+                                    productWithAvailability.copy(imageUrl = assetImageUrl)
+                                } ?: productWithAvailability
+                        }
                     }
                     .toList()
             }
         }
     }
 
-    private suspend fun fetchUnavailableReasons(products: List<Product>): Map<String, String> {
-        val unavailableVariantIds = products
-            .asSequence()
-            .filterNot(Product::isOrderable)
-            .map(Product::id)
-            .toSet()
-        if (unavailableVariantIds.isEmpty()) {
-            return emptyMap()
+    private suspend fun fetchRecipeAvailability(products: List<Product>): RecipeFetchResult {
+        val productVariantIds = products.map(Product::id).toSet()
+        if (productVariantIds.isEmpty()) {
+            return RecipeFetchResult(emptyMap(), emptyMap())
         }
 
         val recipeLinks = supabaseClient
@@ -75,8 +99,11 @@ class ProductRepository(
                 order(column = "variant_ingredient_id", order = Order.ASCENDING)
             }
             .decodeList<VariantIngredientStockDto>()
-            .filter { it.productVariantId in unavailableVariantIds }
+            .filter { it.productVariantId in productVariantIds && it.requiredQuantity > 0.0 }
             .groupBy(VariantIngredientStockDto::productVariantId)
+        if (recipeLinks.isEmpty()) {
+            return RecipeFetchResult(emptyMap(), emptyMap())
+        }
 
         val ingredientStocks = supabaseClient
             .from(INGREDIENTS_TABLE)
@@ -86,15 +113,156 @@ class ProductRepository(
             .decodeList<IngredientStockDto>()
             .associateBy(IngredientStockDto::ingredientId)
 
-        return products
-            .filter { it.id in unavailableVariantIds }
-            .mapNotNull { product ->
-                product.id to buildUnavailableReason(
-                    recipeLinks = recipeLinks[product.id].orEmpty(),
+        val scaledRecipeLinks = applyBeverageRecipeScaling(
+            products = products,
+            recipeLinks = recipeLinks,
+            ingredientStocks = ingredientStocks
+        )
+
+        val availability = scaledRecipeLinks
+            .mapValues { (_, links) ->
+                val availableQuantity = computeAvailableQuantity(
+                    recipeLinks = links,
                     ingredientStocks = ingredientStocks
                 )
+                RecipeAvailability(
+                    availableQuantity = availableQuantity,
+                    requirements = buildRecipeRequirements(
+                        recipeLinks = links,
+                        ingredientStocks = ingredientStocks
+                    ),
+                    unavailableReason = if (availableQuantity <= 0) {
+                        buildUnavailableReason(
+                            recipeLinks = links,
+                            ingredientStocks = ingredientStocks
+                        )
+                    } else {
+                        null
+                    }
+                )
             }
-            .toMap()
+
+        val priceCorrections = computePriceCorrections(
+            products = products,
+            recipeLinksByVariant = scaledRecipeLinks,
+            ingredientStocks = ingredientStocks
+        )
+
+        return RecipeFetchResult(availability = availability, priceCorrections = priceCorrections)
+    }
+
+    private fun applyBeverageRecipeScaling(
+        products: List<Product>,
+        recipeLinks: Map<String, List<VariantIngredientStockDto>>,
+        ingredientStocks: Map<String, IngredientStockDto>
+    ): Map<String, List<VariantIngredientStockDto>> {
+        val variantsByProduct = products.groupBy { it.sourceProductId ?: it.id }
+        val result = recipeLinks.toMutableMap()
+
+        products.forEach { product ->
+            val sizeOz = sizeOzForVariant(product.sourceVariantName ?: product.name) ?: return@forEach
+            if (sizeOz == BEVERAGE_BASE_SIZE_OZ) return@forEach
+
+            val parentKey = product.sourceProductId ?: product.id
+            val baseSibling = variantsByProduct[parentKey]
+                ?.firstOrNull { sizeOzForVariant(it.sourceVariantName ?: it.name) == BEVERAGE_BASE_SIZE_OZ }
+                ?: return@forEach
+
+            val myLinks = recipeLinks[product.id].orEmpty()
+            val baseLinks = recipeLinks[baseSibling.id].orEmpty()
+            if (myLinks.isEmpty() || baseLinks.isEmpty()) return@forEach
+            if (!recipesIdentical(myLinks, baseLinks)) return@forEach
+
+            val scaleFactor = sizeOz / BEVERAGE_BASE_SIZE_OZ
+            result[product.id] = myLinks.map { link ->
+                val unit = ingredientStocks[link.ingredientId]?.ingredientUnit ?: ""
+                if (IngredientUnits.isMl(unit)) {
+                    link.copy(requiredQuantity = roundCurrency(link.requiredQuantity * scaleFactor))
+                } else {
+                    link
+                }
+            }
+        }
+        return result
+    }
+
+    private fun recipesIdentical(
+        a: List<VariantIngredientStockDto>,
+        b: List<VariantIngredientStockDto>
+    ): Boolean {
+        if (a.size != b.size) return false
+        val aMap = a.associate { it.ingredientId to it.requiredQuantity }
+        val bMap = b.associate { it.ingredientId to it.requiredQuantity }
+        return aMap == bMap
+    }
+
+    private fun computePriceCorrections(
+        products: List<Product>,
+        recipeLinksByVariant: Map<String, List<VariantIngredientStockDto>>,
+        ingredientStocks: Map<String, IngredientStockDto>
+    ): Map<String, Double> {
+        return products.mapNotNull { product ->
+            val links = recipeLinksByVariant[product.id].orEmpty()
+            if (links.isEmpty()) return@mapNotNull null
+            val price = computeRecipePrice(links, ingredientStocks)
+            if (price <= 0.0) return@mapNotNull null
+            product.id to price
+        }.toMap()
+    }
+
+    private fun computeRecipePrice(
+        links: List<VariantIngredientStockDto>,
+        ingredientStocks: Map<String, IngredientStockDto>
+    ): Double {
+        val cost = links.sumOf { link ->
+            val unitCost = ingredientStocks[link.ingredientId]?.ingredientCostPerUnit ?: 0.0
+            link.requiredQuantity * unitCost
+        }
+        return roundCurrency(cost * MARKUP_MULTIPLIER)
+    }
+
+    private fun roundCurrency(value: Double): Double = kotlin.math.round(value * 100.0) / 100.0
+
+    private fun sizeOzForVariant(variantName: String?): Double? {
+        if (variantName == null) return null
+        val normalized = variantName.trim().lowercase(Locale.US)
+        return when {
+            "22" in normalized -> 22.0
+            "16" in normalized || normalized == "mezzo" -> BEVERAGE_BASE_SIZE_OZ
+            else -> null
+        }
+    }
+
+    private fun computeAvailableQuantity(
+        recipeLinks: List<VariantIngredientStockDto>,
+        ingredientStocks: Map<String, IngredientStockDto>
+    ): Int {
+        return recipeLinks
+            .minOfOrNull { link ->
+                val currentStock = ingredientStocks[link.ingredientId]
+                    ?.ingredientCurrentStock
+                    ?.coerceAtLeast(0.0)
+                    ?: 0.0
+                floor(currentStock / link.requiredQuantity).toInt()
+            }
+            ?.coerceAtLeast(0)
+            ?: 0
+    }
+
+    private fun buildRecipeRequirements(
+        recipeLinks: List<VariantIngredientStockDto>,
+        ingredientStocks: Map<String, IngredientStockDto>
+    ): List<ProductRecipeRequirement> {
+        return recipeLinks.mapNotNull { link ->
+            val ingredient = ingredientStocks[link.ingredientId] ?: return@mapNotNull null
+            ProductRecipeRequirement(
+                ingredientId = ingredient.ingredientId,
+                ingredientName = ingredient.ingredientName,
+                ingredientUnit = IngredientUnits.normalize(ingredient.ingredientUnit),
+                requiredQuantity = link.requiredQuantity,
+                currentStock = ingredient.ingredientCurrentStock
+            )
+        }
     }
 
     private fun buildUnavailableReason(
@@ -114,7 +282,7 @@ class ProductRepository(
                 } else {
                     IngredientShortage(
                         name = ingredient.ingredientName,
-                        unit = ingredient.ingredientUnit,
+                        unit = IngredientUnits.normalize(ingredient.ingredientUnit),
                         requiredQuantity = link.requiredQuantity,
                         currentStock = currentStock
                     )
@@ -154,6 +322,17 @@ class ProductRepository(
         val currentStock: Double
     )
 
+    private data class RecipeAvailability(
+        val availableQuantity: Int,
+        val requirements: List<ProductRecipeRequirement>,
+        val unavailableReason: String?
+    )
+
+    private data class RecipeFetchResult(
+        val availability: Map<String, RecipeAvailability>,
+        val priceCorrections: Map<String, Double>
+    )
+
     @Serializable
     private data class IngredientStockDto(
         @SerialName("ingredient_id")
@@ -163,7 +342,9 @@ class ProductRepository(
         @SerialName("ingredient_unit")
         val ingredientUnit: String,
         @SerialName("ingredient_current_stock")
-        val ingredientCurrentStock: Double
+        val ingredientCurrentStock: Double,
+        @SerialName("ingredient_cost_per_unit")
+        val ingredientCostPerUnit: Double = 0.0
     )
 
     @Serializable
@@ -181,5 +362,7 @@ class ProductRepository(
     private companion object {
         const val INGREDIENTS_TABLE = "ingredients"
         const val VARIANT_INGREDIENTS_TABLE = "variant_ingredients"
+        const val MARKUP_MULTIPLIER = 3.0
+        const val BEVERAGE_BASE_SIZE_OZ = 16.0
     }
 }

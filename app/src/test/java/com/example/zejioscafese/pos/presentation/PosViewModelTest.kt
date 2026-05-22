@@ -7,6 +7,7 @@ import com.example.zejioscafese.orders.model.CafeOrder
 import com.example.zejioscafese.orders.model.CafeOrderStatus
 import com.example.zejioscafese.pos.data.model.Discount
 import com.example.zejioscafese.pos.data.model.Product
+import com.example.zejioscafese.pos.data.model.ProductRecipeRequirement
 import com.example.zejioscafese.pos.data.repository.CategoryRepository
 import com.example.zejioscafese.pos.data.repository.DiscountRepository
 import com.example.zejioscafese.pos.data.repository.ProductRepository
@@ -408,6 +409,88 @@ class PosViewModelTest {
         advanceUntilIdle()
 
         assertEquals(1, viewModel.orderItems.value?.size)
+    }
+
+    @Test
+    fun increaseProduct_sharedRecipeIngredient_blocksSecondProduct() = runTest {
+        val beefPatty = ProductRecipeRequirement(
+            ingredientId = "ING-042",
+            ingredientName = "Beef Patty",
+            ingredientUnit = "pcs",
+            requiredQuantity = 1.0,
+            currentStock = 1.0
+        )
+        val alohaBurger = Product(
+            id = "VAR-071",
+            name = "Aloha Burger",
+            category = "Burgers",
+            price = 160.0,
+            stockLeft = 1,
+            sourceProductId = "PRD-071",
+            sourceProductName = "Aloha Burger",
+            sourceVariantName = "Standard",
+            recipeIngredients = listOf(beefPatty)
+        )
+        val sekaiBurger = Product(
+            id = "VAR-072",
+            name = "A - Sekai Burger",
+            category = "Burgers",
+            price = 100.0,
+            stockLeft = 1,
+            sourceProductId = "PRD-072",
+            sourceProductName = "A - Sekai Burger",
+            sourceVariantName = "Standard",
+            recipeIngredients = listOf(beefPatty)
+        )
+        coEvery { productRepo.fetchProducts() } returns listOf(alohaBurger, sekaiBurger)
+        coEvery { categoryRepo.fetchCategories() } returns listOf("All", "Burgers")
+        viewModel = PosViewModel(productRepo, categoryRepo, orderRepo, discountRepo)
+        advanceUntilIdle()
+
+        viewModel.increaseProduct(alohaBurger)
+        viewModel.increaseProduct(sekaiBurger)
+
+        val items = viewModel.orderItems.value.orEmpty()
+        assertEquals(1, items.size)
+        assertEquals("Aloha Burger", items.single().product.name)
+        assertEquals(1, items.single().quantity)
+        assertTrue(viewModel.stockLimitNotice.value?.message.orEmpty().contains("Beef Patty"))
+    }
+
+    @Test
+    fun increaseProduct_sameRecipeItemPastStock_emitsLimitNotice() = runTest {
+        val beefPatty = ProductRecipeRequirement(
+            ingredientId = "ING-042",
+            ingredientName = "Beef Patty",
+            ingredientUnit = "pcs",
+            requiredQuantity = 1.0,
+            currentStock = 1.0
+        )
+        val alohaBurger = Product(
+            id = "VAR-071",
+            name = "Aloha Burger",
+            category = "Burgers",
+            price = 160.0,
+            stockLeft = 1,
+            sourceProductId = "PRD-071",
+            sourceProductName = "Aloha Burger",
+            sourceVariantName = "Standard",
+            recipeIngredients = listOf(beefPatty)
+        )
+        coEvery { productRepo.fetchProducts() } returns listOf(alohaBurger)
+        coEvery { categoryRepo.fetchCategories() } returns listOf("All", "Burgers")
+        viewModel = PosViewModel(productRepo, categoryRepo, orderRepo, discountRepo)
+        advanceUntilIdle()
+
+        viewModel.increaseProduct(alohaBurger)
+        viewModel.increaseProduct(alohaBurger)
+
+        val item = viewModel.orderItems.value.orEmpty().single()
+        assertEquals(1, item.quantity)
+        assertEquals(
+            "Only 1 Beef Patty left. It is already reserved by the current order.",
+            viewModel.stockLimitNotice.value?.message
+        )
     }
 
     // ── event consumption ─────────────────────────────────────────────────────

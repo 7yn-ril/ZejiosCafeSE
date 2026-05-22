@@ -16,6 +16,8 @@ data class ProducibleProductDto(
     val categoryName: String,
     @SerialName("product_name")
     val productName: String,
+    @SerialName("product_image_url")
+    val productImageUrl: String? = null,
     @SerialName("variant_name")
     val variantName: String,
     @SerialName("variant_price")
@@ -37,7 +39,9 @@ data class ProducibleProductDto(
             productName = productName,
             variantName = variantName,
             price = variantPrice,
-            availableQuantity = variantStockLeft.coerceAtLeast(0)
+            availableQuantity = variantStockLeft.coerceAtLeast(0),
+            imageUrl = productImageUrl,
+            isActive = productIsActive && variantIsActive
         )
     }
 }

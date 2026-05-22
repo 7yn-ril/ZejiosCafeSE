@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:id="@+id/navInventoryIngredients"
-        android:icon="@android:drawable/ic_menu_agenda"
-        android:title="@string/inventory_nav_ingredients" />
+        android:id="@+id/navInventoryItems"
+        android:icon="@drawable/ic_inventory_filled_24"
+        android:title="@string/inventory_nav_items" />
     <item
-        android:id="@+id/navInventoryCanProduce"
-        android:icon="@android:drawable/ic_menu_sort_by_size"
-        android:title="@string/inventory_nav_can_produce" />
+        android:id="@+id/navInventoryProducts"
+        android:icon="@drawable/ic_grid_24"
+        android:title="@string/inventory_nav_products" />
 </menu>

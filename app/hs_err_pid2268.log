@@ -1,0 +1,677 @@
+#
+# There is insufficient memory for the Java Runtime Environment to continue.
+# Native memory allocation (malloc) failed to allocate 2014688 bytes. Error detail: Chunk::new
+# Possible reasons:
+#   The system is out of physical RAM or swap space
+#   This process is running with CompressedOops enabled, and the Java Heap may be blocking the growth of the native heap
+# Possible solutions:
+#   Reduce memory load on the system
+#   Increase physical memory or swap space
+#   Check if swap backing store is full
+#   Decrease Java heap size (-Xmx/-Xms)
+#   Decrease number of Java threads
+#   Decrease Java thread stack sizes (-Xss)
+#   Set larger code cache with -XX:ReservedCodeCacheSize=
+#   JVM is running with Unscaled Compressed Oops mode in which the Java heap is
+#     placed in the first 4GB address space. The Java Heap base address is the
+#     maximum limit for the native heap growth. Please use -XX:HeapBaseMinAddress
+#     to set the Java Heap base and to place the Java Heap above 4GB virtual address.
+# This output file may be truncated or incomplete.
+#
+#  Out of Memory Error (arena.cpp:168), pid=2268, tid=12340
+#
+# JRE version: OpenJDK Runtime Environment (21.0.8) (build 21.0.8+-14018985-b1038.68)
+# Java VM: OpenJDK 64-Bit Server VM (21.0.8+-14018985-b1038.68, mixed mode, tiered, compressed oops, compressed class ptrs, g1 gc, windows-amd64)
+# No core dump will be written. Minidumps are not enabled by default on client versions of Windows
+#
+
+---------------  S U M M A R Y ------------
+
+Command Line: -Djava.awt.headless=true -Djava.library.path=C:\Program Files\Android\Android Studio\jbr\bin;C:\WINDOWS\Sun\Java\bin;C:\WINDOWS\system32;C:\WINDOWS;c:\Users\Asus-Pc\AppData\Roaming\Code\User\globalStorage\github.copilot-chat\debugCommand;c:\Users\Asus-Pc\AppData\Roaming\Code\User\globalStorage\github.copilot-chat\copilotCli;C:\Program Files\Java\jdk-17\bin;C:\Program Files\Common Files\Oracle\Java\javapath;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Program Files\dotnet\;C:\Program Files\PuTTY\;C:\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\;C:\Program Files\nodejs\;C:\Program Files\Docker\Docker\resources\bin;C:\Program Files\Git\cmd;C:\Program Files\Git LFS;C:\Program Files (x86)\cloudflared\;C:\Program Files\Java\jdk-17\bin;C:\Users\Asus-Pc\AppData\Local\Programs\Python\Python312\Scripts\;C:\Users\Asus-Pc\AppData\Local\Programs\Python\Python312\;C:\Users\Asus-Pc\AppData\Local\Programs\Python\Launcher\;C:\Users\Asus-Pc\AppData\Local\Microsoft\WindowsApps;C:\Users\Asus-Pc\.dotnet\tools;C:\Users\Asus-Pc\AppData\Local\Programs\Microsoft VS Code\bin;C:\flutter\bin;C:\Users\Asus-Pc\AppData\Local\Android\Sdk\cmdline-tools\latest\bin;C:\Users\Asus-Pc\AppData\Local\Android\Sdk\platform-tools;C:\Users\Asus-Pc\AppData\Local\Android\Sdk\tools\bin;C:\Users\Asus-Pc\AppData\Local\Pub\Cache\bin;C:\Users\Asus-Pc\AppData\Roaming\npm;C:\Users\Asus-Pc\AppData\Local\GitHubDesktop\bin;C:\Users\Asus-Pc\AppData\Local\Programs\Antigravity\bin;;.;C:\Users\Asus-Pc\Desktop\SoftEng\ZejiosCafeSE\app\src\testDebug\jniLibs;C:\Users\Asus-Pc\Desktop\SoftEng\ZejiosCafeSE\app\src\test\jniLibs -Dorg.gradle.internal.worker.tmpdir=C:\Users\Asus-Pc\Desktop\SoftEng\ZejiosCafeSE\app\build\tmp\testDebugUnitTest\work --add-opens=java.base/java.io=ALL-UNNAMED -Xmx512m -Dfile.encoding=UTF-8 -Duser.country=PH -Duser.language=en -Duser.variant -ea worker.org.gradle.process.internal.worker.GradleWorkerMain 'Gradle Test Executor 6'
+
+Host: 12th Gen Intel(R) Core(TM) i5-1235U, 12 cores, 23G,  Windows 11 , 64 bit Build 26100 (10.0.26100.8115)
+Time: Fri May 22 04:57:57 2026 Malay Peninsula Standard Time elapsed time: 2.642780 seconds (0d 0h 0m 2s)
+
+---------------  T H R E A D  ---------------
+
+Current thread (0x000001df1ae4efa0):  JavaThread "C2 CompilerThread1" daemon [_thread_in_native, id=12340, stack(0x0000004760000000,0x0000004760100000) (1024K)]
+
+
+Current CompileTask:
+C2:2643 2593       4       java.lang.invoke.MethodType::makeImpl (109 bytes)
+
+Stack: [0x0000004760000000,0x0000004760100000]
+Native frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
+V  [jvm.dll+0x6d68d9]
+V  [jvm.dll+0x866693]
+V  [jvm.dll+0x868c4e]
+V  [jvm.dll+0x869333]
+V  [jvm.dll+0x280566]
+V  [jvm.dll+0xc07cd]
+V  [jvm.dll+0xc0d03]
+V  [jvm.dll+0x3b961b]
+V  [jvm.dll+0x385507]
+V  [jvm.dll+0x38497a]
+V  [jvm.dll+0x249252]
+V  [jvm.dll+0x248821]
+V  [jvm.dll+0x1c73a4]
+V  [jvm.dll+0x257f9e]
+V  [jvm.dll+0x2564e6]
+V  [jvm.dll+0x3f4696]
+V  [jvm.dll+0x80eac8]
+V  [jvm.dll+0x6d512d]
+C  [ucrtbase.dll+0x37b0]
+C  [KERNEL32.DLL+0x2e8d7]
+C  [ntdll.dll+0x8c3fc]
+
+
+---------------  P R O C E S S  ---------------
+
+Threads class SMR info:
+_java_thread_list=0x000001df2031ace0, length=16, elements={
+0x000001df04fa2150, 0x000001df1ae0de60, 0x000001df1ae10c50, 0x000001df1ae116b0,
+0x000001df1ae3c820, 0x000001df1ae3d280, 0x000001df1ae3dce0, 0x000001df1ae40b30,
+0x000001df1ae4c2a0, 0x000001df1ae4e8d0, 0x000001df1b0bdc60, 0x000001df1ae4efa0,
+0x000001df20310fc0, 0x000001df1ae4fd40, 0x000001df20a95840, 0x000001df20939570
+}
+
+Java Threads: ( => current thread )
+  0x000001df04fa2150 JavaThread "Test worker"                       [_thread_in_native, id=1476, stack(0x000000475ee00000,0x000000475ef00000) (1024K)]
+  0x000001df1ae0de60 JavaThread "Common-Cleaner"             daemon [_thread_blocked, id=11960, stack(0x000000475f600000,0x000000475f700000) (1024K)]
+  0x000001df1ae10c50 JavaThread "Reference Handler"          daemon [_thread_blocked, id=21236, stack(0x000000475f700000,0x000000475f800000) (1024K)]
+  0x000001df1ae116b0 JavaThread "Finalizer"                  daemon [_thread_blocked, id=18288, stack(0x000000475f800000,0x000000475f900000) (1024K)]
+  0x000001df1ae3c820 JavaThread "Signal Dispatcher"          daemon [_thread_blocked, id=14620, stack(0x000000475f900000,0x000000475fa00000) (1024K)]
+  0x000001df1ae3d280 JavaThread "Attach Listener"            daemon [_thread_blocked, id=11116, stack(0x000000475fa00000,0x000000475fb00000) (1024K)]
+  0x000001df1ae3dce0 JavaThread "Service Thread"             daemon [_thread_blocked, id=17004, stack(0x000000475fb00000,0x000000475fc00000) (1024K)]
+  0x000001df1ae40b30 JavaThread "Monitor Deflation Thread"   daemon [_thread_blocked, id=16568, stack(0x000000475fc00000,0x000000475fd00000) (1024K)]
+  0x000001df1ae4c2a0 JavaThread "C2 CompilerThread0"         daemon [_thread_blocked, id=9660, stack(0x000000475fd00000,0x000000475fe00000) (1024K)]
+  0x000001df1ae4e8d0 JavaThread "C1 CompilerThread0"         daemon [_thread_blocked, id=4108, stack(0x000000475fe00000,0x000000475ff00000) (1024K)]
+  0x000001df1b0bdc60 JavaThread "Notification Thread"        daemon [_thread_blocked, id=18244, stack(0x000000475ff00000,0x0000004760000000) (1024K)]
+=>0x000001df1ae4efa0 JavaThread "C2 CompilerThread1"         daemon [_thread_in_native, id=12340, stack(0x0000004760000000,0x0000004760100000) (1024K)]
+  0x000001df20310fc0 JavaThread "/127.0.0.1:54380 to /127.0.0.1:54379 workers"        [_thread_blocked, id=12956, stack(0x0000004760200000,0x0000004760300000) (1024K)]
+  0x000001df1ae4fd40 JavaThread "C2 CompilerThread2"         daemon [_thread_blocked, id=9208, stack(0x0000004760b00000,0x0000004760c00000) (1024K)]
+  0x000001df20a95840 JavaThread "/127.0.0.1:54380 to /127.0.0.1:54379 workers Thread 2"        [_thread_blocked, id=7652, stack(0x0000004760d00000,0x0000004760e00000) (1024K)]
+  0x000001df20939570 JavaThread "/127.0.0.1:54380 to /127.0.0.1:54379 workers Thread 3"        [_thread_in_native, id=11316, stack(0x0000004760e00000,0x0000004760f00000) (1024K)]
+Total: 16
+
+Other Threads:
+  0x000001df1acbeb90 VMThread "VM Thread"                           [id=20592, stack(0x000000475f500000,0x000000475f600000) (1024K)]
+  0x000001df1aca6b60 WatcherThread "VM Periodic Task Thread"        [id=21552, stack(0x000000475f400000,0x000000475f500000) (1024K)]
+  0x000001df04fc7380 WorkerThread "GC Thread#0"                     [id=8812, stack(0x000000475ef00000,0x000000475f000000) (1024K)]
+  0x000001df204cb050 WorkerThread "GC Thread#1"                     [id=15472, stack(0x0000004760300000,0x0000004760400000) (1024K)]
+  0x000001df204cb3f0 WorkerThread "GC Thread#2"                     [id=19024, stack(0x0000004760400000,0x0000004760500000) (1024K)]
+  0x000001df204bee90 WorkerThread "GC Thread#3"                     [id=20064, stack(0x0000004760500000,0x0000004760600000) (1024K)]
+  0x000001df2031ed80 WorkerThread "GC Thread#4"                     [id=13088, stack(0x0000004760600000,0x0000004760700000) (1024K)]
+  0x000001df2031f120 WorkerThread "GC Thread#5"                     [id=11892, stack(0x0000004760700000,0x0000004760800000) (1024K)]
+  0x000001df2078f480 WorkerThread "GC Thread#6"                     [id=20596, stack(0x0000004760800000,0x0000004760900000) (1024K)]
+  0x000001df202ffe40 WorkerThread "GC Thread#7"                     [id=9188, stack(0x0000004760900000,0x0000004760a00000) (1024K)]
+  0x000001df20300920 WorkerThread "GC Thread#8"                     [id=12212, stack(0x0000004760a00000,0x0000004760b00000) (1024K)]
+  0x000001df20301060 WorkerThread "GC Thread#9"                     [id=12092, stack(0x0000004760c00000,0x0000004760d00000) (1024K)]
+  0x000001df04fcd370 ConcurrentGCThread "G1 Main Marker"            [id=8804, stack(0x000000475f000000,0x000000475f100000) (1024K)]
+  0x000001df04fcde70 WorkerThread "G1 Conc#0"                       [id=1776, stack(0x000000475f100000,0x000000475f200000) (1024K)]
+  0x000001df202ffaa0 WorkerThread "G1 Conc#1"                       [id=11544, stack(0x0000004760f00000,0x0000004761000000) (1024K)]
+  0x000001df203001e0 WorkerThread "G1 Conc#2"                       [id=15792, stack(0x0000004761000000,0x0000004761100000) (1024K)]
+  0x000001df0503e8a0 ConcurrentGCThread "G1 Refine#0"               [id=12112, stack(0x000000475f200000,0x000000475f300000) (1024K)]
+  0x000001df1abfdb20 ConcurrentGCThread "G1 Service"                [id=11468, stack(0x000000475f300000,0x000000475f400000) (1024K)]
+Total: 18
+
+Threads with active compile tasks:
+C2 CompilerThread1  2660 2593       4       java.lang.invoke.MethodType::makeImpl (109 bytes)
+Total: 1
+
+VM state: not at safepoint (normal execution)
+
+VM Mutex/Monitor currently owned by a thread: None
+
+Heap address: 0x00000000e0000000, size: 512 MB, Compressed Oops mode: 32-bit
+
+CDS archive(s) not mapped
+Compressed class space mapped at: 0x0000000100000000-0x0000000140000000, reserved size: 1073741824
+Narrow klass base: 0x0000000000000000, Narrow klass shift: 3, Narrow klass range: 0x140000000
+
+GC Precious Log:
+ CardTable entry size: 512
+ Card Set container configuration: InlinePtr #cards 5 size 8 Array Of Cards #cards 12 size 40 Howl #buckets 4 coarsen threshold 1843 Howl Bitmap #cards 512 size 80 coarsen threshold 460 Card regions per heap region 1 cards per card region 2048
+ CPUs: 12 total, 12 available
+ Memory: 24261M
+ Large Page Support: Disabled
+ NUMA Support: Disabled
+ Compressed Oops: Enabled (32-bit)
+ Heap Region Size: 1M
+ Heap Min Capacity: 8M
+ Heap Initial Capacity: 380M
+ Heap Max Capacity: 512M
+ Pre-touch: Disabled
+ Parallel Workers: 10
+ Concurrent Workers: 3
+ Concurrent Refinement Workers: 10
+ Periodic GC: Disabled
+
+Heap:
+ garbage-first heap   total 65536K, used 30621K [0x00000000e0000000, 0x0000000100000000)
+  region size 1024K, 18 young (18432K), 6 survivors (6144K)
+ Metaspace       used 24584K, committed 24896K, reserved 1114112K
+  class space    used 2815K, committed 2944K, reserved 1048576K
+
+Heap Regions: E=young(eden), S=young(survivor), O=old, HS=humongous(starts), HC=humongous(continues), CS=collection set, F=free, TAMS=top-at-mark-start, PB=parsable bottom
+|   0|0x00000000e0000000, 0x00000000e0100000, 0x00000000e0100000|100%|HS|  |TAMS 0x00000000e0000000| PB 0x00000000e0000000| Complete 
+|   1|0x00000000e0100000, 0x00000000e0200000, 0x00000000e0200000|100%|HS|  |TAMS 0x00000000e0100000| PB 0x00000000e0100000| Complete 
+|   2|0x00000000e0200000, 0x00000000e0300000, 0x00000000e0300000|100%| O|  |TAMS 0x00000000e0200000| PB 0x00000000e0200000| Untracked 
+|   3|0x00000000e0300000, 0x00000000e0400000, 0x00000000e0400000|100%| O|  |TAMS 0x00000000e0300000| PB 0x00000000e0300000| Untracked 
+|   4|0x00000000e0400000, 0x00000000e0500000, 0x00000000e0500000|100%| O|  |TAMS 0x00000000e0400000| PB 0x00000000e0400000| Untracked 
+|   5|0x00000000e0500000, 0x00000000e0600000, 0x00000000e0600000|100%| O|  |TAMS 0x00000000e0500000| PB 0x00000000e0500000| Untracked 
+|   6|0x00000000e0600000, 0x00000000e0700000, 0x00000000e0700000|100%| O|  |TAMS 0x00000000e0600000| PB 0x00000000e0600000| Untracked 
+|   7|0x00000000e0700000, 0x00000000e0800000, 0x00000000e0800000|100%| O|  |TAMS 0x00000000e0700000| PB 0x00000000e0700000| Untracked 
+|   8|0x00000000e0800000, 0x00000000e0900000, 0x00000000e0900000|100%| O|  |TAMS 0x00000000e0800000| PB 0x00000000e0800000| Untracked 
+|   9|0x00000000e0900000, 0x00000000e0a00000, 0x00000000e0a00000|100%| O|  |TAMS 0x00000000e0900000| PB 0x00000000e0900000| Untracked 
+|  10|0x00000000e0a00000, 0x00000000e0b00000, 0x00000000e0b00000|100%| O|  |TAMS 0x00000000e0a00000| PB 0x00000000e0a00000| Untracked 
+|  11|0x00000000e0b00000, 0x00000000e0b00000, 0x00000000e0c00000|  0%| F|  |TAMS 0x00000000e0b00000| PB 0x00000000e0b00000| Untracked 
+|  12|0x00000000e0c00000, 0x00000000e0c00000, 0x00000000e0d00000|  0%| F|  |TAMS 0x00000000e0c00000| PB 0x00000000e0c00000| Untracked 
+|  13|0x00000000e0d00000, 0x00000000e0d00000, 0x00000000e0e00000|  0%| F|  |TAMS 0x00000000e0d00000| PB 0x00000000e0d00000| Untracked 
+|  14|0x00000000e0e00000, 0x00000000e0e00000, 0x00000000e0f00000|  0%| F|  |TAMS 0x00000000e0e00000| PB 0x00000000e0e00000| Untracked 
+|  15|0x00000000e0f00000, 0x00000000e0f00000, 0x00000000e1000000|  0%| F|  |TAMS 0x00000000e0f00000| PB 0x00000000e0f00000| Untracked 
+|  16|0x00000000e1000000, 0x00000000e1100000, 0x00000000e1100000|100%| O|  |TAMS 0x00000000e1000000| PB 0x00000000e1000000| Untracked 
+|  17|0x00000000e1100000, 0x00000000e1200000, 0x00000000e1200000|100%| O|  |TAMS 0x00000000e1100000| PB 0x00000000e1100000| Untracked 
+|  18|0x00000000e1200000, 0x00000000e12e7668, 0x00000000e1300000| 90%| O|Cm|TAMS 0x00000000e1200000| PB 0x00000000e1200000| Complete 
+|  19|0x00000000e1300000, 0x00000000e1300000, 0x00000000e1400000|  0%| F|  |TAMS 0x00000000e1300000| PB 0x00000000e1300000| Untracked 
+|  20|0x00000000e1400000, 0x00000000e1400000, 0x00000000e1500000|  0%| F|  |TAMS 0x00000000e1400000| PB 0x00000000e1400000| Untracked 
+|  21|0x00000000e1500000, 0x00000000e1500000, 0x00000000e1600000|  0%| F|  |TAMS 0x00000000e1500000| PB 0x00000000e1500000| Untracked 
+|  22|0x00000000e1600000, 0x00000000e1600000, 0x00000000e1700000|  0%| F|  |TAMS 0x00000000e1600000| PB 0x00000000e1600000| Untracked 
+|  23|0x00000000e1700000, 0x00000000e1700000, 0x00000000e1800000|  0%| F|  |TAMS 0x00000000e1700000| PB 0x00000000e1700000| Untracked 
+|  24|0x00000000e1800000, 0x00000000e1800000, 0x00000000e1900000|  0%| F|  |TAMS 0x00000000e1800000| PB 0x00000000e1800000| Untracked 
+|  25|0x00000000e1900000, 0x00000000e1900000, 0x00000000e1a00000|  0%| F|  |TAMS 0x00000000e1900000| PB 0x00000000e1900000| Untracked 
+|  26|0x00000000e1a00000, 0x00000000e1a00000, 0x00000000e1b00000|  0%| F|  |TAMS 0x00000000e1a00000| PB 0x00000000e1a00000| Untracked 
+|  27|0x00000000e1b00000, 0x00000000e1b00000, 0x00000000e1c00000|  0%| F|  |TAMS 0x00000000e1b00000| PB 0x00000000e1b00000| Untracked 
+|  28|0x00000000e1c00000, 0x00000000e1c00000, 0x00000000e1d00000|  0%| F|  |TAMS 0x00000000e1c00000| PB 0x00000000e1c00000| Untracked 
+|  29|0x00000000e1d00000, 0x00000000e1d00000, 0x00000000e1e00000|  0%| F|  |TAMS 0x00000000e1d00000| PB 0x00000000e1d00000| Untracked 
+|  30|0x00000000e1e00000, 0x00000000e1e00000, 0x00000000e1f00000|  0%| F|  |TAMS 0x00000000e1e00000| PB 0x00000000e1e00000| Untracked 
+|  31|0x00000000e1f00000, 0x00000000e1f00000, 0x00000000e2000000|  0%| F|  |TAMS 0x00000000e1f00000| PB 0x00000000e1f00000| Untracked 
+|  32|0x00000000e2000000, 0x00000000e2000000, 0x00000000e2100000|  0%| F|  |TAMS 0x00000000e2000000| PB 0x00000000e2000000| Untracked 
+|  33|0x00000000e2100000, 0x00000000e2100000, 0x00000000e2200000|  0%| F|  |TAMS 0x00000000e2100000| PB 0x00000000e2100000| Untracked 
+|  34|0x00000000e2200000, 0x00000000e2200000, 0x00000000e2300000|  0%| F|  |TAMS 0x00000000e2200000| PB 0x00000000e2200000| Untracked 
+|  35|0x00000000e2300000, 0x00000000e2300000, 0x00000000e2400000|  0%| F|  |TAMS 0x00000000e2300000| PB 0x00000000e2300000| Untracked 
+|  36|0x00000000e2400000, 0x00000000e2400000, 0x00000000e2500000|  0%| F|  |TAMS 0x00000000e2400000| PB 0x00000000e2400000| Untracked 
+|  37|0x00000000e2500000, 0x00000000e2500000, 0x00000000e2600000|  0%| F|  |TAMS 0x00000000e2500000| PB 0x00000000e2500000| Untracked 
+|  38|0x00000000e2600000, 0x00000000e2600000, 0x00000000e2700000|  0%| F|  |TAMS 0x00000000e2600000| PB 0x00000000e2600000| Untracked 
+|  39|0x00000000e2700000, 0x00000000e2700000, 0x00000000e2800000|  0%| F|  |TAMS 0x00000000e2700000| PB 0x00000000e2700000| Untracked 
+|  40|0x00000000e2800000, 0x00000000e2800000, 0x00000000e2900000|  0%| F|  |TAMS 0x00000000e2800000| PB 0x00000000e2800000| Untracked 
+|  41|0x00000000e2900000, 0x00000000e2900000, 0x00000000e2a00000|  0%| F|  |TAMS 0x00000000e2900000| PB 0x00000000e2900000| Untracked 
+|  42|0x00000000e2a00000, 0x00000000e2a00000, 0x00000000e2b00000|  0%| F|  |TAMS 0x00000000e2a00000| PB 0x00000000e2a00000| Untracked 
+|  43|0x00000000e2b00000, 0x00000000e2b00000, 0x00000000e2c00000|  0%| F|  |TAMS 0x00000000e2b00000| PB 0x00000000e2b00000| Untracked 
+|  44|0x00000000e2c00000, 0x00000000e2c00000, 0x00000000e2d00000|  0%| F|  |TAMS 0x00000000e2c00000| PB 0x00000000e2c00000| Untracked 
+|  45|0x00000000e2d00000, 0x00000000e2d00000, 0x00000000e2e00000|  0%| F|  |TAMS 0x00000000e2d00000| PB 0x00000000e2d00000| Untracked 
+|  46|0x00000000e2e00000, 0x00000000e2e80000, 0x00000000e2f00000| 50%| E|  |TAMS 0x00000000e2e00000| PB 0x00000000e2e00000| Complete 
+|  47|0x00000000e2f00000, 0x00000000e3000000, 0x00000000e3000000|100%| E|CS|TAMS 0x00000000e2f00000| PB 0x00000000e2f00000| Complete 
+|  48|0x00000000e3000000, 0x00000000e3100000, 0x00000000e3100000|100%| E|CS|TAMS 0x00000000e3000000| PB 0x00000000e3000000| Complete 
+|  49|0x00000000e3100000, 0x00000000e3200000, 0x00000000e3200000|100%| E|CS|TAMS 0x00000000e3100000| PB 0x00000000e3100000| Complete 
+|  50|0x00000000e3200000, 0x00000000e3300000, 0x00000000e3300000|100%| E|CS|TAMS 0x00000000e3200000| PB 0x00000000e3200000| Complete 
+|  51|0x00000000e3300000, 0x00000000e3400000, 0x00000000e3400000|100%| E|CS|TAMS 0x00000000e3300000| PB 0x00000000e3300000| Complete 
+|  52|0x00000000e3400000, 0x00000000e3500000, 0x00000000e3500000|100%| E|  |TAMS 0x00000000e3400000| PB 0x00000000e3400000| Complete 
+|  53|0x00000000e3500000, 0x00000000e3600000, 0x00000000e3600000|100%| E|CS|TAMS 0x00000000e3500000| PB 0x00000000e3500000| Complete 
+|  54|0x00000000e3600000, 0x00000000e3700000, 0x00000000e3700000|100%| E|CS|TAMS 0x00000000e3600000| PB 0x00000000e3600000| Complete 
+|  55|0x00000000e3700000, 0x00000000e3800000, 0x00000000e3800000|100%| E|CS|TAMS 0x00000000e3700000| PB 0x00000000e3700000| Complete 
+|  56|0x00000000e3800000, 0x00000000e3900000, 0x00000000e3900000|100%| E|CS|TAMS 0x00000000e3800000| PB 0x00000000e3800000| Complete 
+| 334|0x00000000f4e00000, 0x00000000f4f00000, 0x00000000f4f00000|100%| S|CS|TAMS 0x00000000f4e00000| PB 0x00000000f4e00000| Complete 
+| 335|0x00000000f4f00000, 0x00000000f5000000, 0x00000000f5000000|100%| S|CS|TAMS 0x00000000f4f00000| PB 0x00000000f4f00000| Complete 
+| 336|0x00000000f5000000, 0x00000000f5100000, 0x00000000f5100000|100%| S|CS|TAMS 0x00000000f5000000| PB 0x00000000f5000000| Complete 
+| 337|0x00000000f5100000, 0x00000000f5200000, 0x00000000f5200000|100%| S|CS|TAMS 0x00000000f5100000| PB 0x00000000f5100000| Complete 
+| 338|0x00000000f5200000, 0x00000000f5300000, 0x00000000f5300000|100%| S|CS|TAMS 0x00000000f5200000| PB 0x00000000f5200000| Complete 
+| 339|0x00000000f5300000, 0x00000000f5400000, 0x00000000f5400000|100%| S|CS|TAMS 0x00000000f5300000| PB 0x00000000f5300000| Complete 
+| 379|0x00000000f7b00000, 0x00000000f7c00000, 0x00000000f7c00000|100%| E|CS|TAMS 0x00000000f7b00000| PB 0x00000000f7b00000| Complete 
+
+Card table byte_map: [0x000001df17720000,0x000001df17820000] _byte_map_base: 0x000001df17020000
+
+Marking Bits: (CMBitMap*) 0x000001df04fc7a80
+ Bits: [0x000001df17820000, 0x000001df18020000)
+
+Polling page: 0x000001df02e50000
+
+Metaspace:
+
+Usage:
+  Non-class:     21.26 MB used.
+      Class:      2.75 MB used.
+       Both:     24.01 MB used.
+
+Virtual space:
+  Non-class space:       64.00 MB reserved,      21.44 MB ( 33%) committed,  1 nodes.
+      Class space:        1.00 GB reserved,       2.88 MB ( <1%) committed,  1 nodes.
+             Both:        1.06 GB reserved,      24.31 MB (  2%) committed. 
+
+Chunk freelists:
+   Non-Class:  9.98 MB
+       Class:  13.04 MB
+        Both:  23.02 MB
+
+MaxMetaspaceSize: unlimited
+CompressedClassSpaceSize: 1.00 GB
+Initial GC threshold: 21.00 MB
+Current GC threshold: 35.25 MB
+CDS: off
+ - commit_granule_bytes: 65536.
+ - commit_granule_words: 8192.
+ - virtual_space_node_default_size: 8388608.
+ - enlarge_chunks_in_place: 1.
+ - use_allocation_guard: 0.
+
+
+Internal statistics:
+
+num_allocs_failed_limit: 3.
+num_arena_births: 214.
+num_arena_deaths: 0.
+num_vsnodes_births: 2.
+num_vsnodes_deaths: 0.
+num_space_committed: 389.
+num_space_uncommitted: 0.
+num_chunks_returned_to_freelist: 3.
+num_chunks_taken_from_freelist: 699.
+num_chunk_merges: 3.
+num_chunk_splits: 432.
+num_chunks_enlarged: 301.
+num_inconsistent_stats: 0.
+
+CodeHeap 'non-profiled nmethods': size=120000Kb used=1355Kb max_used=1355Kb free=118644Kb
+ bounds [0x000001df0fba0000, 0x000001df0fe10000, 0x000001df170d0000]
+CodeHeap 'profiled nmethods': size=120000Kb used=5083Kb max_used=5083Kb free=114916Kb
+ bounds [0x000001df080d0000, 0x000001df085d0000, 0x000001df0f600000]
+CodeHeap 'non-nmethods': size=5760Kb used=1413Kb max_used=1463Kb free=4346Kb
+ bounds [0x000001df0f600000, 0x000001df0f870000, 0x000001df0fba0000]
+CodeCache: size=245760Kb, used=7851Kb, max_used=7901Kb, free=237906Kb
+ total_blobs=3120, nmethods=2600, adapters=424, full_count=0
+Compilation: enabled, stopped_count=0, restarted_count=0
+
+Compilation events (20 events):
+Event: 1.550 Thread 0x000001df1ae4e8d0 nmethod 2584 0x000001df085bb590 code [0x000001df085bb780, 0x000001df085bbc78]
+Event: 1.550 Thread 0x000001df1ae4efa0 2587       4       jdk.internal.org.objectweb.asm.Frame::push (109 bytes)
+Event: 1.550 Thread 0x000001df1ae4e8d0 2586       3       jdk.internal.org.objectweb.asm.Frame::execute (2305 bytes)
+Event: 1.551 Thread 0x000001df1ae4c2a0 2591       4       java.util.Arrays::equals (57 bytes)
+Event: 1.553 Thread 0x000001df1ae4efa0 nmethod 2587 0x000001df0fce3e10 code [0x000001df0fce3fc0, 0x000001df0fce4298]
+Event: 1.553 Thread 0x000001df1ae4efa0 2593       4       java.lang.invoke.MethodType::makeImpl (109 bytes)
+Event: 1.553 Thread 0x000001df1ae4c2a0 nmethod 2591 0x000001df0fce4410 code [0x000001df0fce45a0, 0x000001df0fce4728]
+Event: 1.553 Thread 0x000001df1ae4e8d0 nmethod 2586 0x000001df085bbe10 code [0x000001df085bcc60, 0x000001df085c30b8]
+Event: 1.553 Thread 0x000001df1ae4e8d0 2596       3       jdk.internal.org.objectweb.asm.MethodWriter::visitAnnotation (40 bytes)
+Event: 1.553 Thread 0x000001df1ae4e8d0 nmethod 2596 0x000001df085c4d90 code [0x000001df085c4f60, 0x000001df085c5208]
+Event: 1.553 Thread 0x000001df1ae4e8d0 2588       3       jdk.internal.org.objectweb.asm.MethodWriter::addSuccessorToCurrentBasicBlock (24 bytes)
+Event: 1.554 Thread 0x000001df1ae4e8d0 nmethod 2588 0x000001df085c5310 code [0x000001df085c54c0, 0x000001df085c5808]
+Event: 1.557 Thread 0x000001df1ae4e8d0 2597       3       java.lang.Character::getType (9 bytes)
+Event: 1.557 Thread 0x000001df1ae4e8d0 nmethod 2597 0x000001df085c5910 code [0x000001df085c5ac0, 0x000001df085c5cb0]
+Event: 1.557 Thread 0x000001df1ae4e8d0 2598       3       java.lang.CharacterDataLatin1::getType (11 bytes)
+Event: 1.557 Thread 0x000001df1ae4e8d0 nmethod 2598 0x000001df085c5d90 code [0x000001df085c5f40, 0x000001df085c60e0]
+Event: 1.557 Thread 0x000001df1ae4e8d0 2599       3       java.lang.Character::isLetterOrDigit (5 bytes)
+Event: 1.557 Thread 0x000001df1ae4e8d0 nmethod 2599 0x000001df085c6210 code [0x000001df085c63e0, 0x000001df085c66e8]
+Event: 1.557 Thread 0x000001df1ae4e8d0 2600       3       java.lang.Character::isLetterOrDigit (19 bytes)
+Event: 1.558 Thread 0x000001df1ae4e8d0 nmethod 2600 0x000001df085c6810 code [0x000001df085c69e0, 0x000001df085c6c80]
+
+GC Heap History (6 events):
+Event: 0.718 GC heap before
+{Heap before GC invocations=0 (full 0):
+ garbage-first heap   total 389120K, used 24576K [0x00000000e0000000, 0x0000000100000000)
+  region size 1024K, 23 young (23552K), 0 survivors (0K)
+ Metaspace       used 13824K, committed 13952K, reserved 1114112K
+  class space    used 1494K, committed 1536K, reserved 1048576K
+}
+Event: 0.723 GC heap after
+{Heap after GC invocations=1 (full 0):
+ garbage-first heap   total 389120K, used 12341K [0x00000000e0000000, 0x0000000100000000)
+  region size 1024K, 3 young (3072K), 3 survivors (3072K)
+ Metaspace       used 13824K, committed 13952K, reserved 1114112K
+  class space    used 1494K, committed 1536K, reserved 1048576K
+}
+Event: 0.868 GC heap before
+{Heap before GC invocations=1 (full 0):
+ garbage-first heap   total 389120K, used 38965K [0x00000000e0000000, 0x0000000100000000)
+  region size 1024K, 24 young (24576K), 3 survivors (3072K)
+ Metaspace       used 16089K, committed 16320K, reserved 1114112K
+  class space    used 1724K, committed 1856K, reserved 1048576K
+}
+Event: 0.871 GC heap after
+{Heap after GC invocations=2 (full 0):
+ garbage-first heap   total 389120K, used 17064K [0x00000000e0000000, 0x0000000100000000)
+  region size 1024K, 3 young (3072K), 3 survivors (3072K)
+ Metaspace       used 16089K, committed 16320K, reserved 1114112K
+  class space    used 1724K, committed 1856K, reserved 1048576K
+}
+Event: 1.374 GC heap before
+{Heap before GC invocations=2 (full 0):
+ garbage-first heap   total 389120K, used 57000K [0x00000000e0000000, 0x0000000100000000)
+  region size 1024K, 40 young (40960K), 3 survivors (3072K)
+ Metaspace       used 21351K, committed 21504K, reserved 1114112K
+  class space    used 2461K, committed 2560K, reserved 1048576K
+}
+Event: 1.379 GC heap after
+{Heap after GC invocations=3 (full 0):
+ garbage-first heap   total 389120K, used 19357K [0x00000000e0000000, 0x0000000100000000)
+  region size 1024K, 6 young (6144K), 6 survivors (6144K)
+ Metaspace       used 21351K, committed 21504K, reserved 1114112K
+  class space    used 2461K, committed 2560K, reserved 1048576K
+}
+
+Dll operation events (3 events):
+Event: 0.004 Loaded shared library C:\Program Files\Android\Android Studio\jbr\bin\java.dll
+Event: 0.009 Loaded shared library C:\Program Files\Android\Android Studio\jbr\bin\zip.dll
+Event: 0.228 Loaded shared library C:\Program Files\Android\Android Studio\jbr\bin\verify.dll
+
+Deoptimization events (20 events):
+Event: 1.424 Thread 0x000001df04fa2150 DEOPT PACKING pc=0x000001df0fc83f10 sp=0x000000475eefba00
+Event: 1.424 Thread 0x000001df04fa2150 DEOPT UNPACKING pc=0x000001df0f6546a2 sp=0x000000475eefb990 mode 2
+Event: 1.445 Thread 0x000001df04fa2150 Uncommon trap: trap_request=0xffffff45 fr.pc=0x000001df0fc1b398 relative=0x00000000000004b8
+Event: 1.445 Thread 0x000001df04fa2150 Uncommon trap: reason=unstable_if action=reinterpret pc=0x000001df0fc1b398 method=java.util.jar.Manifest$FastInputStream.readLine([BII)I @ 106 c2
+Event: 1.445 Thread 0x000001df04fa2150 DEOPT PACKING pc=0x000001df0fc1b398 sp=0x000000475eef90e0
+Event: 1.445 Thread 0x000001df04fa2150 DEOPT UNPACKING pc=0x000001df0f6546a2 sp=0x000000475eef9070 mode 2
+Event: 1.461 Thread 0x000001df04fa2150 DEOPT PACKING pc=0x000001df083e2b01 sp=0x000000475eefb160
+Event: 1.461 Thread 0x000001df04fa2150 DEOPT UNPACKING pc=0x000001df0f654e42 sp=0x000000475eefa670 mode 0
+Event: 1.483 Thread 0x000001df04fa2150 Uncommon trap: trap_request=0xffffff45 fr.pc=0x000001df0fc9bdd4 relative=0x00000000000000b4
+Event: 1.483 Thread 0x000001df04fa2150 Uncommon trap: reason=unstable_if action=reinterpret pc=0x000001df0fc9bdd4 method=java.lang.String.hashCode()I @ 20 c2
+Event: 1.483 Thread 0x000001df04fa2150 DEOPT PACKING pc=0x000001df0fc9bdd4 sp=0x000000475eefb2d0
+Event: 1.483 Thread 0x000001df04fa2150 DEOPT UNPACKING pc=0x000001df0f6546a2 sp=0x000000475eefb260 mode 2
+Event: 1.541 Thread 0x000001df04fa2150 Uncommon trap: trap_request=0xffffff45 fr.pc=0x000001df0fbfa55c relative=0x000000000000029c
+Event: 1.541 Thread 0x000001df04fa2150 Uncommon trap: reason=unstable_if action=reinterpret pc=0x000001df0fbfa55c method=java.util.concurrent.ConcurrentHashMap.get(Ljava/lang/Object;)Ljava/lang/Object; @ 76 c2
+Event: 1.541 Thread 0x000001df04fa2150 DEOPT PACKING pc=0x000001df0fbfa55c sp=0x000000475eef93a0
+Event: 1.541 Thread 0x000001df04fa2150 DEOPT UNPACKING pc=0x000001df0f6546a2 sp=0x000000475eef9318 mode 2
+Event: 1.549 Thread 0x000001df04fa2150 Uncommon trap: trap_request=0xffffff45 fr.pc=0x000001df0fca3d8c relative=0x0000000000001bec
+Event: 1.549 Thread 0x000001df04fa2150 Uncommon trap: reason=unstable_if action=reinterpret pc=0x000001df0fca3d8c method=jdk.internal.org.objectweb.asm.Frame.execute(IILjdk/internal/org/objectweb/asm/Symbol;Ljdk/internal/org/objectweb/asm/SymbolTable;)V @ 1 c2
+Event: 1.549 Thread 0x000001df04fa2150 DEOPT PACKING pc=0x000001df0fca3d8c sp=0x000000475eef9fe0
+Event: 1.549 Thread 0x000001df04fa2150 DEOPT UNPACKING pc=0x000001df0f6546a2 sp=0x000000475eef9f48 mode 2
+
+Classes loaded (20 events):
+Event: 1.551 Loading class java/lang/ProcessHandleImpl
+Event: 1.551 Loading class java/lang/ProcessHandleImpl done
+Event: 1.554 Loading class java/util/jar/JarInputStream
+Event: 1.554 Loading class java/util/zip/ZipInputStream
+Event: 1.554 Loading class java/util/zip/ZipInputStream done
+Event: 1.554 Loading class java/util/jar/JarInputStream done
+Event: 1.555 Loading class java/io/PushbackInputStream
+Event: 1.555 Loading class java/io/PushbackInputStream done
+Event: 1.556 Loading class java/lang/ProcessBuilder
+Event: 1.556 Loading class java/lang/ProcessBuilder done
+Event: 1.556 Loading class java/lang/ProcessImpl
+Event: 1.557 Loading class java/lang/Process
+Event: 1.557 Loading class java/lang/Process done
+Event: 1.557 Loading class java/lang/ProcessImpl done
+Event: 1.563 Loading class java/lang/ProcessImpl$2
+Event: 1.563 Loading class java/lang/ProcessImpl$2 done
+Event: 1.563 Loading class java/lang/Process$PipeInputStream
+Event: 1.563 Loading class java/lang/Process$PipeInputStream done
+Event: 1.563 Loading class jdk/internal/event/ProcessStartEvent
+Event: 1.563 Loading class jdk/internal/event/ProcessStartEvent done
+
+Classes unloaded (0 events):
+No events
+
+Classes redefined (0 events):
+No events
+
+Internal exceptions (20 events):
+Event: 1.332 Thread 0x000001df04fa2150 Exception <a 'java/lang/IncompatibleClassChangeError'{0x00000000f5738108}: Found class java.lang.Object, but interface was expected> (0x00000000f5738108) 
+thrown [s\src\hotspot\share\interpreter\linkResolver.cpp, line 851]
+Event: 1.340 Thread 0x000001df04fa2150 Exception <a 'java/lang/NoSuchMethodError'{0x00000000f57b3518}: 'void java.lang.invoke.DirectMethodHandle$Holder.invokeSpecial(java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object)'> (0x00000000f57b3518) 
+thrown [s\src\hotspot\share\interpreter\linkResolver.cpp, line 784]
+Event: 1.351 Thread 0x000001df04fa2150 Exception <a 'java/lang/NoSuchMethodError'{0x00000000f56b5b38}: 'void java.lang.invoke.DirectMethodHandle$Holder.invokeInterface(java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object)'> (0x00000000f56b5b38) 
+thrown [s\src\hotspot\share\interpreter\linkResolver.cpp, line 784]
+Event: 1.351 Thread 0x000001df04fa2150 Exception <a 'java/lang/IncompatibleClassChangeError'{0x00000000f56b9450}: Found class java.lang.Object, but interface was expected> (0x00000000f56b9450) 
+thrown [s\src\hotspot\share\interpreter\linkResolver.cpp, line 851]
+Event: 1.353 Thread 0x000001df04fa2150 Exception <a 'java/lang/NoSuchMethodError'{0x00000000f56d3c90}: 'void java.lang.invoke.DirectMethodHandle$Holder.invokeStatic(java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object)'> (0x00000000f56d3c90) 
+thrown [s\src\hotspot\share\interpreter\linkResolver.cpp, line 784]
+Event: 1.358 Thread 0x000001df04fa2150 Exception <a 'java/lang/NoSuchMethodError'{0x00000000f5537060}: 'java.lang.Object java.lang.invoke.Invokers$Holder.invokeExact_MT(java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object)'> (0x00000000f5537060) 
+thrown [s\src\hotspot\share\interpreter\linkResolver.cpp, line 784]
+Event: 1.359 Thread 0x000001df04fa2150 Exception <a 'java/lang/NoSuchMethodError'{0x00000000f5544a88}: 'int java.lang.invoke.DirectMethodHandle$Holder.invokeStatic(java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object)'> (0x00000000f5544a88) 
+thrown [s\src\hotspot\share\interpreter\linkResolver.cpp, line 784]
+Event: 1.365 Thread 0x000001df04fa2150 Exception <a 'java/lang/NoSuchMethodError'{0x00000000f55c5e40}: 'void java.lang.invoke.DirectMethodHandle$Holder.invokeStaticInit(java.lang.Object)'> (0x00000000f55c5e40) 
+thrown [s\src\hotspot\share\interpreter\linkResolver.cpp, line 784]
+Event: 1.383 Thread 0x000001df04fa2150 Exception <a 'java/lang/NoSuchMethodError'{0x00000000f7b20490}: 'void java.lang.invoke.DirectMethodHandle$Holder.invokeStaticInit(java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object)'> (0x00000000f7b20490) 
+thrown [s\src\hotspot\share\interpreter\linkResolver.cpp, line 784]
+Event: 1.410 Thread 0x000001df04fa2150 Exception <a 'java/lang/NoSuchMethodError'{0x00000000e3709810}: 'java.lang.Object java.lang.invoke.DirectMethodHandle$Holder.newInvokeSpecial(java.lang.Object, java.lang.Object, int)'> (0x00000000e3709810) 
+thrown [s\src\hotspot\share\interpreter\linkResolver.cpp, line 784]
+Event: 1.421 Thread 0x000001df04fa2150 Exception <a 'java/lang/NoSuchMethodError'{0x00000000e37af748}: 'java.lang.Object java.lang.invoke.DirectMethodHandle$Holder.newInvokeSpecial(java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object)'> (0x00000000e37af748) 
+thrown [s\src\hotspot\share\interpreter\linkResolver.cpp, line 784]
+Event: 1.423 Thread 0x000001df04fa2150 Exception <a 'java/lang/NoSuchMethodError'{0x00000000e37bee70}: 'java.lang.Object java.lang.invoke.DirectMethodHandle$Holder.invokeInterface(java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object)'> (0x00000000e37bee70) 
+thrown [s\src\hotspot\share\interpreter\linkResolver.cpp, line 784]
+Event: 1.423 Thread 0x000001df04fa2150 Exception <a 'java/lang/IncompatibleClassChangeError'{0x00000000e37c29b8}: Found class java.lang.Object, but interface was expected> (0x00000000e37c29b8) 
+thrown [s\src\hotspot\share\interpreter\linkResolver.cpp, line 851]
+Event: 1.477 Thread 0x000001df04fa2150 Exception <a 'java/lang/NoSuchMethodError'{0x00000000e33d7660}: 'int java.lang.invoke.DirectMethodHandle$Holder.invokeInterface(java.lang.Object, java.lang.Object)'> (0x00000000e33d7660) 
+thrown [s\src\hotspot\share\interpreter\linkResolver.cpp, line 784]
+Event: 1.481 Thread 0x000001df04fa2150 Exception <a 'java/lang/IncompatibleClassChangeError'{0x00000000e3208bc0}: Found class java.lang.Object, but interface was expected> (0x00000000e3208bc0) 
+thrown [s\src\hotspot\share\interpreter\linkResolver.cpp, line 851]
+Event: 1.511 Thread 0x000001df04fa2150 Exception <a 'java/lang/NoClassDefFoundError'{0x00000000e318f250}: org/slf4j/impl/StaticLoggerBinder> (0x00000000e318f250) 
+thrown [s\src\hotspot\share\classfile\systemDictionary.cpp, line 301]
+Event: 1.542 Thread 0x000001df04fa2150 Exception <a 'java/lang/NoSuchMethodError'{0x00000000e2f82b88}: method resolution failed> (0x00000000e2f82b88) 
+thrown [s\src\hotspot\share\prims\methodHandles.cpp, line 1144]
+Event: 1.549 Thread 0x000001df04fa2150 Exception <a 'java/lang/NoSuchMethodError'{0x00000000e2fc0ed8}: 'int java.lang.invoke.DirectMethodHandle$Holder.invokeSpecial(java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object)'> (0x00000000e2fc0ed8) 
+thrown [s\src\hotspot\share\interpreter\linkResolver.cpp, line 784]
+Event: 1.551 Thread 0x000001df04fa2150 Exception <a 'java/lang/NoSuchMethodError'{0x00000000e2fe3498}: 'long java.lang.invoke.DirectMethodHandle$Holder.invokeInterface(java.lang.Object, java.lang.Object)'> (0x00000000e2fe3498) 
+thrown [s\src\hotspot\share\interpreter\linkResolver.cpp, line 784]
+Event: 1.562 Thread 0x000001df04fa2150 Exception <a 'java/lang/NoSuchMethodError'{0x00000000e2e14398}: 'void java.lang.invoke.DirectMethodHandle$Holder.invokeStatic(java.lang.Object, long)'> (0x00000000e2e14398) 
+thrown [s\src\hotspot\share\interpreter\linkResolver.cpp, line 784]
+
+ZGC Phase Switch (0 events):
+No events
+
+VM Operations (20 events):
+Event: 1.107 Executing VM operation: HandshakeAllThreads (Deoptimize)
+Event: 1.107 Executing VM operation: HandshakeAllThreads (Deoptimize) done
+Event: 1.150 Executing VM operation: HandshakeAllThreads (Deoptimize)
+Event: 1.150 Executing VM operation: HandshakeAllThreads (Deoptimize) done
+Event: 1.150 Executing VM operation: HandshakeAllThreads (Deoptimize)
+Event: 1.150 Executing VM operation: HandshakeAllThreads (Deoptimize) done
+Event: 1.295 Executing VM operation: ICBufferFull
+Event: 1.295 Executing VM operation: ICBufferFull done
+Event: 1.367 Executing VM operation: HandshakeAllThreads (Deoptimize)
+Event: 1.367 Executing VM operation: HandshakeAllThreads (Deoptimize) done
+Event: 1.374 Executing VM operation: CollectForMetadataAllocation (Metadata GC Threshold)
+Event: 1.379 Executing VM operation: CollectForMetadataAllocation (Metadata GC Threshold) done
+Event: 1.383 Executing VM operation: G1PauseRemark
+Event: 1.385 Executing VM operation: G1PauseRemark done
+Event: 1.386 Executing VM operation: G1PauseCleanup
+Event: 1.386 Executing VM operation: G1PauseCleanup done
+Event: 1.426 Executing VM operation: HandshakeAllThreads (Deoptimize)
+Event: 1.426 Executing VM operation: HandshakeAllThreads (Deoptimize) done
+Event: 2.431 Executing VM operation: Cleanup
+Event: 2.431 Executing VM operation: Cleanup done
+
+Memory protections (0 events):
+No events
+
+Nmethod flushes (0 events):
+No events
+
+Events (20 events):
+Event: 0.037 Thread 0x000001df04fa2150 Thread added: 0x000001df1ae116b0
+Event: 0.038 Thread 0x000001df04fa2150 Thread added: 0x000001df1ae3c820
+Event: 0.038 Thread 0x000001df04fa2150 Thread added: 0x000001df1ae3d280
+Event: 0.038 Thread 0x000001df04fa2150 Thread added: 0x000001df1ae3dce0
+Event: 0.038 Thread 0x000001df04fa2150 Thread added: 0x000001df1ae40b30
+Event: 0.038 Thread 0x000001df04fa2150 Thread added: 0x000001df1ae4c2a0
+Event: 0.038 Thread 0x000001df04fa2150 Thread added: 0x000001df1ae4e8d0
+Event: 0.165 Thread 0x000001df04fa2150 Thread added: 0x000001df1b0bdc60
+Event: 0.171 Loaded shared library C:\Program Files\Android\Android Studio\jbr\bin\net.dll
+Event: 0.172 Loaded shared library C:\Program Files\Android\Android Studio\jbr\bin\nio.dll
+Event: 0.178 Loaded shared library C:\Program Files\Android\Android Studio\jbr\bin\zip.dll
+Event: 0.187 Thread 0x000001df1ae4c2a0 Thread added: 0x000001df1ae4efa0
+Event: 0.187 Thread 0x000001df1ae4c2a0 Thread added: 0x000001df1ae4fd40
+Event: 0.233 Loaded shared library C:\Program Files\Android\Android Studio\jbr\bin\jimage.dll
+Event: 0.442 Thread 0x000001df1ae4fd40 Thread exited: 0x000001df1ae4fd40
+Event: 0.675 Loaded shared library C:\Program Files\Android\Android Studio\jbr\bin\extnet.dll
+Event: 0.710 Thread 0x000001df04fa2150 Thread added: 0x000001df20310fc0
+Event: 0.765 Thread 0x000001df1ae4e8d0 Thread added: 0x000001df1ae4fd40
+Event: 1.120 Thread 0x000001df04fa2150 Thread added: 0x000001df20a95840
+Event: 1.120 Thread 0x000001df04fa2150 Thread added: 0x000001df20939570
+
+
+Dynamic libraries:
+0x00007ff7ec400000 - 0x00007ff7ec40a000 	C:\Program Files\Android\Android Studio\jbr\bin\java.exe
+0x00007ff9f5060000 - 0x00007ff9f52c7000 	C:\WINDOWS\SYSTEM32\ntdll.dll
+0x00007ff9f3a50000 - 0x00007ff9f3b19000 	C:\WINDOWS\System32\KERNEL32.DLL
+0x00007ff9f24e0000 - 0x00007ff9f28d4000 	C:\WINDOWS\System32\KERNELBASE.dll
+0x00007ff9f2990000 - 0x00007ff9f2adb000 	C:\WINDOWS\System32\ucrtbase.dll
+0x00007ff9dfbf0000 - 0x00007ff9dfc08000 	C:\Program Files\Android\Android Studio\jbr\bin\jli.dll
+0x00007ff9e01b0000 - 0x00007ff9e01cb000 	C:\Program Files\Android\Android Studio\jbr\bin\VCRUNTIME140.dll
+0x00007ff9f47d0000 - 0x00007ff9f4995000 	C:\WINDOWS\System32\USER32.dll
+0x00007ff9f2dc0000 - 0x00007ff9f2de7000 	C:\WINDOWS\System32\win32u.dll
+0x00007ff9d6fd0000 - 0x00007ff9d7263000 	C:\WINDOWS\WinSxS\amd64_microsoft.windows.common-controls_6595b64144ccf1df_6.0.26100.8115_none_3e075c82e3354f9c\COMCTL32.dll
+0x00007ff9f3b20000 - 0x00007ff9f3b4b000 	C:\WINDOWS\System32\GDI32.dll
+0x00007ff9f38e0000 - 0x00007ff9f3989000 	C:\WINDOWS\System32\msvcrt.dll
+0x00007ff9f21a0000 - 0x00007ff9f22ca000 	C:\WINDOWS\System32\gdi32full.dll
+0x00007ff9f2d10000 - 0x00007ff9f2db3000 	C:\WINDOWS\System32\msvcp_win.dll
+0x00007ff9f3a10000 - 0x00007ff9f3a42000 	C:\WINDOWS\System32\IMM32.DLL
+0x00007ff9e0190000 - 0x00007ff9e019c000 	C:\Program Files\Android\Android Studio\jbr\bin\vcruntime140_1.dll
+0x00007ff9b8bd0000 - 0x00007ff9b8c5d000 	C:\Program Files\Android\Android Studio\jbr\bin\msvcp140.dll
+0x00007ff964160000 - 0x00007ff964df6000 	C:\Program Files\Android\Android Studio\jbr\bin\server\jvm.dll
+0x00007ff9f3d30000 - 0x00007ff9f3de6000 	C:\WINDOWS\System32\ADVAPI32.dll
+0x00007ff9f4690000 - 0x00007ff9f4737000 	C:\WINDOWS\System32\sechost.dll
+0x00007ff9f3e00000 - 0x00007ff9f3f18000 	C:\WINDOWS\System32\RPCRT4.dll
+0x00007ff9f2df0000 - 0x00007ff9f2e70000 	C:\WINDOWS\System32\WS2_32.dll
+0x00007ff9e4ac0000 - 0x00007ff9e4acb000 	C:\WINDOWS\SYSTEM32\VERSION.dll
+0x00007ff9e57d0000 - 0x00007ff9e5806000 	C:\WINDOWS\SYSTEM32\WINMM.dll
+0x00007ff9f1790000 - 0x00007ff9f17ee000 	C:\WINDOWS\SYSTEM32\POWRPROF.dll
+0x00007ff9f1770000 - 0x00007ff9f1784000 	C:\WINDOWS\SYSTEM32\UMPDC.dll
+0x00007ff9f0680000 - 0x00007ff9f069b000 	C:\WINDOWS\SYSTEM32\kernel.appcore.dll
+0x00007ff9dfc40000 - 0x00007ff9dfc4a000 	C:\Program Files\Android\Android Studio\jbr\bin\jimage.dll
+0x00007ff9ef800000 - 0x00007ff9efa42000 	C:\WINDOWS\SYSTEM32\DBGHELP.DLL
+0x00007ff9f2f20000 - 0x00007ff9f32a2000 	C:\WINDOWS\System32\combase.dll
+0x00007ff9f3c50000 - 0x00007ff9f3d27000 	C:\WINDOWS\System32\OLEAUT32.dll
+0x00007ff9d49a0000 - 0x00007ff9d49db000 	C:\WINDOWS\SYSTEM32\dbgcore.DLL
+0x00007ff9f28e0000 - 0x00007ff9f2985000 	C:\WINDOWS\System32\bcryptPrimitives.dll
+0x00007ff9dfbc0000 - 0x00007ff9dfbe0000 	C:\Program Files\Android\Android Studio\jbr\bin\java.dll
+0x00007ff9df990000 - 0x00007ff9df9a8000 	C:\Program Files\Android\Android Studio\jbr\bin\zip.dll
+0x00007ff9f3f20000 - 0x00007ff9f4686000 	C:\WINDOWS\System32\SHELL32.dll
+0x00007ff9f2ba0000 - 0x00007ff9f2d0a000 	C:\WINDOWS\System32\wintypes.dll
+0x00007ff9f1930000 - 0x00007ff9f2195000 	C:\WINDOWS\System32\windows.storage.dll
+0x00007ff9f33d0000 - 0x00007ff9f34c7000 	C:\WINDOWS\System32\SHCORE.dll
+0x00007ff9f3990000 - 0x00007ff9f39f6000 	C:\WINDOWS\System32\shlwapi.dll
+0x00007ff9f1850000 - 0x00007ff9f1879000 	C:\WINDOWS\SYSTEM32\profapi.dll
+0x00007ff9dfbb0000 - 0x00007ff9dfbc0000 	C:\Program Files\Android\Android Studio\jbr\bin\net.dll
+0x00007ff9e90f0000 - 0x00007ff9e921d000 	C:\WINDOWS\SYSTEM32\WINHTTP.dll
+0x00007ff9f0bd0000 - 0x00007ff9f0c3c000 	C:\WINDOWS\system32\mswsock.dll
+0x00007ff9d9ad0000 - 0x00007ff9d9ae6000 	C:\Program Files\Android\Android Studio\jbr\bin\nio.dll
+0x00007ff9dfb10000 - 0x00007ff9dfb20000 	C:\Program Files\Android\Android Studio\jbr\bin\verify.dll
+0x00007ff9d9ab0000 - 0x00007ff9d9ab9000 	C:\Program Files\Android\Android Studio\jbr\bin\extnet.dll
+0x00007ff9c4870000 - 0x00007ff9c4878000 	C:\WINDOWS\system32\wshunix.dll
+0x00007ff9f0fd0000 - 0x00007ff9f0feb000 	C:\WINDOWS\SYSTEM32\CRYPTSP.dll
+0x00007ff9f05e0000 - 0x00007ff9f0619000 	C:\WINDOWS\system32\rsaenh.dll
+0x00007ff9f0c80000 - 0x00007ff9f0cb3000 	C:\WINDOWS\SYSTEM32\USERENV.dll
+0x00007ff9f1820000 - 0x00007ff9f184a000 	C:\WINDOWS\SYSTEM32\bcrypt.dll
+0x00007ff9f0e30000 - 0x00007ff9f0e3c000 	C:\WINDOWS\SYSTEM32\CRYPTBASE.dll
+0x00007ff9f0110000 - 0x00007ff9f0142000 	C:\WINDOWS\SYSTEM32\IPHLPAPI.DLL
+0x00007ff9f3df0000 - 0x00007ff9f3dfa000 	C:\WINDOWS\System32\NSI.dll
+
+JVMTI agents: none
+
+dbghelp: loaded successfully - version: 4.0.5 - missing functions: none
+symbol engine: initialized successfully - sym options: 0x614 - pdb path: .;C:\Program Files\Android\Android Studio\jbr\bin;C:\WINDOWS\SYSTEM32;C:\WINDOWS\WinSxS\amd64_microsoft.windows.common-controls_6595b64144ccf1df_6.0.26100.8115_none_3e075c82e3354f9c;C:\Program Files\Android\Android Studio\jbr\bin\server
+
+VM Arguments:
+jvm_args: -Djava.awt.headless=true -Djava.library.path=C:\Program Files\Android\Android Studio\jbr\bin;C:\WINDOWS\Sun\Java\bin;C:\WINDOWS\system32;C:\WINDOWS;c:\Users\Asus-Pc\AppData\Roaming\Code\User\globalStorage\github.copilot-chat\debugCommand;c:\Users\Asus-Pc\AppData\Roaming\Code\User\globalStorage\github.copilot-chat\copilotCli;C:\Program Files\Java\jdk-17\bin;C:\Program Files\Common Files\Oracle\Java\javapath;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Program Files\dotnet\;C:\Program Files\PuTTY\;C:\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\;C:\Program Files\nodejs\;C:\Program Files\Docker\Docker\resources\bin;C:\Program Files\Git\cmd;C:\Program Files\Git LFS;C:\Program Files (x86)\cloudflared\;C:\Program Files\Java\jdk-17\bin;C:\Users\Asus-Pc\AppData\Local\Programs\Python\Python312\Scripts\;C:\Users\Asus-Pc\AppData\Local\Programs\Python\Python312\;C:\Users\Asus-Pc\AppData\Local\Programs\Python\Launcher\;C:\Users\Asus-Pc\AppData\Local\Microsoft\WindowsApps;C:\Users\Asus-Pc\.dotnet\tools;C:\Users\Asus-Pc\AppData\Local\Programs\Microsoft VS Code\bin;C:\flutter\bin;C:\Users\Asus-Pc\AppData\Local\Android\Sdk\cmdline-tools\latest\bin;C:\Users\Asus-Pc\AppData\Local\Android\Sdk\platform-tools;C:\Users\Asus-Pc\AppData\Local\Android\Sdk\tools\bin;C:\Users\Asus-Pc\AppData\Local\Pub\Cache\bin;C:\Users\Asus-Pc\AppData\Roaming\npm;C:\Users\Asus-Pc\AppData\Local\GitHubDesktop\bin;C:\Users\Asus-Pc\AppData\Local\Programs\Antigravity\bin;;.;C:\Users\Asus-Pc\Desktop\SoftEng\ZejiosCafeSE\app\src\testDebug\jniLibs;C:\Users\Asus-Pc\Desktop\SoftEng\ZejiosCafeSE\app\src\test\jniLibs -Dorg.gradle.internal.worker.tmpdir=C:\Users\Asus-Pc\Desktop\SoftEng\ZejiosCafeSE\app\build\tmp\testDebugUnitTest\work --add-opens=java.base/java.io=ALL-UNNAMED -Xmx512m -Dfile.encoding=UTF-8 -Duser.country=PH -Duser.language=en -Duser.variant -ea 
+java_command: worker.org.gradle.process.internal.worker.GradleWorkerMain 'Gradle Test Executor 6'
+java_class_path (initial): C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\workerMain\\gradle-worker.jar;C:\\Users\\Asus-Pc\\Desktop\\SoftEng\\ZejiosCafeSE\\app\\build\\tmp\\kotlin-classes\\debugUnitTest;C:\\Users\\Asus-Pc\\Desktop\\SoftEng\\ZejiosCafeSE\\app\\build\\intermediates\\java_res\\debugUnitTest\\processDebugUnitTestJavaRes\\out;C:\\Users\\Asus-Pc\\Desktop\\SoftEng\\ZejiosCafeSE\\app\\build\\intermediates\\runtime_app_classes_jar\\debug\\bundleDebugClassesToRuntimeJar\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\io.mockk\\mockk-jvm\\1.13.12\\e2d23511ae297711fd03a46fbe0f718b07f5436e\\mockk-jvm-1.13.12.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.junit.jupiter\\junit-jupiter\\5.10.3\\6686d8fbf251f9bf8ecba413cab57b9e00f9134d\\junit-jupiter-5.10.3.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.junit.jupiter\\junit-jupiter-params\\5.10.3\\4852f4e4af9074d9214213b199751f99efeab8b9\\junit-jupiter-params-5.10.3.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.junit.platform\\junit-platform-launcher\\1.10.3\\2e07e6389624f3e93fb2e87aec2fdc30cc84b069\\junit-platform-launcher-1.10.3.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.junit.jupiter\\junit-jupiter-engine\\5.10.3\\48c14e866bb1a87ca35d24ff068463bb202ada24\\junit-jupiter-engine-5.10.3.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.junit.jupiter\\junit-jupiter-api\\5.10.3\\a22aa91d1d6c69b2020a9aeb6d095ea81132bfa5\\junit-jupiter-api-5.10.3.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.junit.platform\\junit-platform-engine\\1.10.3\\365a320c3cfd47f3346625e541e424e35dc75c42\\junit-platform-engine-1.10.3.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.junit.platform\\junit-platform-commons\\1.10.3\\a353d42a2f13343a7cb80c5228ae66ff64495481\\junit-platform-commons-1.10.3.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.jetbrains.kotlinx\\kotlinx-coroutines-test-jvm\\1.9.0\\7227c0691a604e2b32f525b628014dda862d0eed\\kotlinx-coroutines-test-jvm-1.9.0.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\566e35e4bf8dc0963bd476357e4f44f4\\transformed\\material-1.13.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\973da3a247e11d2d011554e91a57c495\\transformed\\constraintlayout-2.2.1-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\aa7145b9355619950390baa3424ebf0c\\transformed\\appcompat-resources-1.7.1-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\4a0d2330f3936299d843d25b5b3f7393\\transformed\\appcompat-1.7.1-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\fdb56cefa29ad6b50480dfe8a60af08b\\transformed\\recyclerview-1.4.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\3023736e77cae73e68c9d837d4460ac9\\transformed\\viewpager2-1.1.0-beta02-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\58d47fdefec59ef40bdb3d7c71e08903\\transformed\\fragment-1.8.8-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\99624f542db6feefc9c549f7961bc266\\transformed\\fragment-ktx-1.8.8-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\1d25f42d020204230b18c7ffd91f7329\\transformed\\navigationevent-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\9f81104b7b6cc137ef356a79139d0d0d\\transformed\\navigationevent-compose-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\799a9d37d40642387591054587d811ab\\transformed\\material3-release-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\b5b679639e48173de00a4e4737bbf0e0\\transformed\\material-ripple-release-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\26b2be54c2298fb857249411fdd0e2a6\\transformed\\foundation-release-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\ba5eca064f7cde054bfd7bacc172582f\\transformed\\foundation-layout-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\d1d017ad211dddc6217cfecba5c682b1\\transformed\\animation-core-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\51da189da35eb53da4af618d3be7d2c8\\transformed\\animation-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\bb05944d0dd730f12f2ed365b95ee532\\transformed\\ui-tooling-data-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\4f0ac57619fe9cec4295d7ddb9f3457f\\transformed\\ui-geometry-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\4744f6c41cd9106cce6331a36cc8f9ca\\transformed\\ui-tooling-preview-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\38f3d4021843418ad4c2e036552ce941\\transformed\\ui-util-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\45d04224e5821a2f2c6a304d631bb138\\transformed\\ui-unit-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\c746fafb808ff3190972b74a99031a3f\\transformed\\ui-text-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\2c39c4208d84c5d07de99e31aeecb9f3\\transformed\\ui-graphics-release-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\f8707fa984aa9385e5197f30e53e280d\\transformed\\ui-tooling-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\88d9b6fbacd31322d9766101b60ee351\\transformed\\material-release-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\076970828486ac5a82d26942dd57a5e0\\transformed\\material-icons-core-release-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\fd5db6cb59e6f6c13b8be2eb48dd068a\\transformed\\ui-release-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\2c19789583c23d498d453f30a5fed9cd\\transformed\\ui-test-manifest-1.9.2-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\f0ca7b4ecf7acadcf2a791f59155f8ae\\transformed\\activity-1.13.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\0e9db840f729b3a5e2b4ad57ad0930ce\\transformed\\activity-compose-1.13.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\a588c100d0834834546f3ece5dc88b10\\transformed\\activity-ktx-1.13.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\d5fa7f5cdf2b4132230fc4b5ec9dff1a\\transformed\\loader-1.0.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\47891a51adbc1022ed6572c46d83e1e9\\transformed\\customview-poolingcontainer-1.0.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\1a95d79d6bff1f9672181150a201f4b1\\transformed\\graphics-shapes-release-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\androidx.lifecycle\\lifecycle-common-java8\\2.10.0\\86a8e6b9d0ba0c964fdc7223a38b6ce74bcb24dd\\lifecycle-common-java8-2.10.0.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\b37b7740d04db15726b8ced28d1724c1\\transformed\\runtime-annotation-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\ffca05f9d4317f43887c14b8baf56730\\transformed\\savedstate-ktx-1.4.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\eac1359cba7fee63e8d905bde0f9f62b\\transformed\\savedstate-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\3f211ff248988e3116b0f02ddcc224f7\\transformed\\savedstate-compose-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\9f4d1266faffa3016a4e8c5cbaf8a157\\transformed\\runtime-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\1e7b449259948b115dec756508db7d96\\transformed\\runtime-saveable-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\d67058e99e099356eb3d2b9384c43054\\transformed\\lifecycle-runtime-compose-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\a63d48383cc7e8406d8ca33aa48233ef\\transformed\\lifecycle-runtime-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\e1421d7525d5192e974278d002d68fd0\\transformed\\lifecycle-viewmodel-savedstate-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\ef203e717dac032eace8ad6123c2a141\\transformed\\core-ktx-1.18.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\ee8139f787ff247c995d7c727c0d2ffc\\transformed\\drawerlayout-1.1.1-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\2c6743a5b75a227b3534175a3d920988\\transformed\\coordinatorlayout-1.1.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\dee26a1d16fd5b98e452308b86c32e00\\transformed\\transition-1.5.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\225d91db883b49b57d6b8bcdd86dae45\\transformed\\dynamicanimation-1.1.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\88352fcc845b2e9e91af5759180b30e3\\transformed\\vectordrawable-animated-1.1.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\ca6e334c96329fa4ce3a7c87931828ba\\transformed\\vectordrawable-1.1.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\95235ad409b0ea29e2fec465be3fa993\\transformed\\viewpager-1.0.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\732629f33e03ece9c1b69cb5d2ec6a26\\transformed\\customview-1.1.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\264a29210772d678f818e51cb824659c\\transformed\\postgrest-kt-debug-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\a0656f0066e6e59b83b46f1ed6d3f594\\transformed\\gotrue-kt-debug-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\30cf802d014e4a449a927a3d0f4b78bd\\transformed\\browser-1.8.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\4e22bfe58469517421f7aa1c16805364\\transformed\\autofill-1.0.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\49074d9e6d85e410fb2768b73207012d\\transformed\\graphics-path-1.0.1-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\1cac7f660cd9369e5b382bc649d8a133\\transformed\\emoji2-views-helper-1.4.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\67f9dad88df7ee59ffccbb5ffce2668f\\transformed\\emoji2-1.4.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\203a3aa493216018b8db8314fd16c9ce\\transformed\\core-1.18.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\androidx.lifecycle\\lifecycle-common-jvm\\2.10.0\\2b7a92c746f3339efc533a2da0024e596760f816\\lifecycle-common-jvm-2.10.0.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\032e3f01484804109bee5c02b0cc2bc9\\transformed\\lifecycle-viewmodel-2.10.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\eb38ae409b7ec18fe813f564a6f4d047\\transformed\\lifecycle-viewmodel-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\ee813b567a1ec781de4c781e91454f1a\\transformed\\lifecycle-livedata-core-2.10.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\d0774303ff5db0f0523e38817a741374\\transformed\\supabase-kt-debug-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\b908ea7c4753fd531f77a6dc41ada8fb\\transformed\\lifecycle-process-2.10.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\3edab0d950ec9adaacd8b6c81a8713b6\\transformed\\lifecycle-livedata-2.10.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\8b37dd4f5a2591f0a0bd83a5a8c81b09\\transformed\\lifecycle-livedata-core-ktx-2.10.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\f3977c6fecc75c8a33dd32e39a4d2814\\transformed\\lifecycle-runtime-ktx-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\9f96ed91593d9e3dc5c637bd9158233b\\transformed\\lifecycle-livedata-ktx-2.10.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\54dbc0474cabbfa6139c0dc551554762\\transformed\\lifecycle-viewmodel-ktx-2.10.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.jetbrains.kotlinx\\kotlinx-coroutines-android\\1.9.0\\6cf3b8df5a2ce8c6b0dffe55657a827c405ee2fe\\kotlinx-coroutines-android-1.9.0.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\io.ktor\\ktor-client-android-jvm\\2.3.12\\feb107b7aea2a267d68c2cad89a08d3d8c32d0e2\\ktor-client-android-jvm-2.3.12.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\io.ktor\\ktor-client-content-negotiation-jvm\\2.3.12\\3272464ff169ce8452cf59f953b8ae664d0bb716\\ktor-client-content-negotiation-jvm-2.3.12.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\io.ktor\\ktor-client-core-jvm\\2.3.12\\28fa076d837aa890661d28030d45b548af375980\\ktor-client-core-jvm-2.3.12.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\io.ktor\\ktor-events-jvm\\2.3.12\\d8f19c13700f04027436fb42ac5458e305b81423\\ktor-events-jvm-2.3.12.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\io.ktor\\ktor-websocket-serialization-jvm\\2.3.12\\24dfd8568e5e9625632b0cb5ea89dbfdce975994\\ktor-websocket-serialization-jvm-2.3.12.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\io.ktor\\ktor-serialization-kotlinx-json-jvm\\2.3.12\\117872a523a3cf53df558200678158d21a8208ed\\ktor-serialization-kotlinx-json-jvm-2.3.12.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\io.ktor\\ktor-serialization-kotlinx-jvm\\2.3.12\\301a562aa286cf23b80831ba599bcb45ad0ba01b\\ktor-serialization-kotlinx-jvm-2.3.12.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\io.ktor\\ktor-serialization-jvm\\2.3.12\\81e9bbd2417193ff23b0e2a89e383e78083fbad0\\ktor-serialization-jvm-2.3.12.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\io.ktor\\ktor-websockets-jvm\\2.3.12\\39a56f99eab9e067b8f7e67bc849b1f790575a28\\ktor-websockets-jvm-2.3.12.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\io.ktor\\ktor-http-jvm\\2.3.12\\2f3ac4d5a075b69fcd57073b8cd4fdfb725f1e00\\ktor-http-jvm-2.3.12.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\io.ktor\\ktor-utils-jvm\\2.3.12\\7cb89952751d184b60f9c312b70842e75c01bf44\\ktor-utils-jvm-2.3.12.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\io.ktor\\ktor-io-jvm\\2.3.12\\dea94306b4bd351f6e32ac3fbfb196db58f955f\\ktor-io-jvm-2.3.12.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.jetbrains.kotlinx\\kotlinx-coroutines-jdk8\\1.9.0\\8290370427d17b921573534e14a37b659b5d3ab5\\kotlinx-coroutines-jdk8-1.9.0.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\io.mockk\\mockk-dsl-jvm\\1.13.12\\c0fc097d96f8a76fe7fd195f91b2f96d75739609\\mockk-dsl-jvm-1.13.12.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.jetbrains.kotlinx\\kotlinx-coroutines-slf4j\\1.9.0\\17b86b2f6eb84441a53621ca7c593161e1696c4e\\kotlinx-coroutines-slf4j-1.9.0.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\8673885bcaf4cf10f6641c3d2ccc509b\\transformed\\multiplatform-settings-coroutines-debug-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.jetbrains.kotlinx\\kotlinx-coroutines-core-jvm\\1.9.0\\9beade4c1c1569e4f36cbd2c37e02e3e41502601\\kotlinx-coroutines-core-jvm-1.9.0.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\a6b6a58ee1e635e75dbe83be6040e8d8\\transformed\\core-testing-2.2.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.robolectric\\robolectric\\4.13\\8fb54d67fe046127c20b491acfde2cc6a5260fa0\\robolectric-4.13.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\6648509f7e5de111a54c27552bcc15dd\\transformed\\viewbinding-8.13.2-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\a9f39ecb65c5b093c1fe5bfa8428b08a\\transformed\\core-splashscreen-1.0.1-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.jetbrains.kotlinx\\kotlinx-serialization-core-jvm\\1.7.3\\1f226780b845ff9206474c05159245d861556249\\kotlinx-serialization-core-jvm-1.7.3.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.jetbrains.kotlinx\\kotlinx-serialization-json-jvm\\1.7.3\\6701e8c68d9e82387ce72ee96e8ddf058208d58f\\kotlinx-serialization-json-jvm-1.7.3.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\ac9d548b749c1c9862caf4e56d17840c\\transformed\\annotation-experimental-1.4.1-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\2b3672376cf3d7f95df9c80fb9851c0b\\transformed\\core-viewtree-1.0.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\1b03e3ff730fe2003757c257e2ee1bf0\\transformed\\MPAndroidChart-v3.1.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\c2ece5c235d33ef10bc443bb99e010e0\\transformed\\core-runtime-2.2.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\0867b8af86100c18e61b78ea54e1da34\\transformed\\cursoradapter-1.0.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\androidx.resourceinspection\\resourceinspection-annotation\\1.0.1\\8c21f8ff5d96d5d52c948707f7e4d6ca6773feef\\resourceinspection-annotation-1.0.1.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\d38b1fd48ef82c7120898a13103523cc\\transformed\\cardview-1.0.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\e947874ef2c8b2ebb33adb2f3a9100c2\\transformed\\profileinstaller-1.4.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\androidx.constraintlayout\\constraintlayout-core\\1.1.1\\f7ab6170b99b9421bd4942846426ff820b552f7d\\constraintlayout-core-1.1.1.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\androidx.arch.core\\core-common\\2.2.0\\5e1b8b81dfd5f52c56a8d53b18ca759c19a301f3\\core-common-2.2.0.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\e239bb23fc22e9656dfd5660ff34a6e5\\transformed\\interpolator-1.0.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\37a69a3b84ddd5da1c971d9677279223\\transformed\\multiplatform-settings-no-arg-debug-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\a755e1c1e5fc42b09fe4eff44b71d6cd\\transformed\\startup-runtime-1.1.1-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\afd537c48d221c93388c168322c95c7f\\transformed\\tracing-1.2.0-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\601283a8ce8e6d81f00aa0848d873498\\transformed\\versionedparcelable-1.1.1-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\androidx.concurrent\\concurrent-futures\\1.1.0\\50b7fb98350d5f42a4e49704b03278542293ba48\\concurrent-futures-1.1.0.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\androidx.collection\\collection-ktx\\1.5.0\\27c78a926a16a1bf792b2285cf2834e8caae4a07\\collection-ktx-1.5.0.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\androidx.collection\\collection-jvm\\1.5.0\\7ba2c69414d46ebc2dd76598bdd0a75c54281a57\\collection-jvm-1.5.0.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\androidx.annotation\\annotation-jvm\\1.9.1\\b17951747e38bf3986a24431b9ba0d039958aa5f\\annotation-jvm-1.9.1.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\io.mockk\\mockk-agent-jvm\\1.13.12\\58dd7d1c0e9726d16a7d6f15f38f436d84c9d360\\mockk-agent-jvm-1.13.12.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\io.mockk\\mockk-core-jvm\\1.13.12\\37d5fb596d2a3560f960e5e5bdd2f4d86a45bfe9\\mockk-core-jvm-1.13.12.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.jetbrains.kotlin\\kotlin-reflect\\2.0.10\\6b4bbabe20bdb258246f711da4bd87263391a292\\kotlin-reflect-2.0.10.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\io.mockk\\mockk-agent-api-jvm\\1.13.12\\2149adf5a1d176fe0bbcfb8b19c92662401453b4\\mockk-agent-api-jvm-1.13.12.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\8fc449aff78260604a8922c2b2a50828\\transformed\\krypto-debug-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.jetbrains.kotlin\\kotlin-stdlib-jdk8\\1.9.0\\e000bd084353d84c9e888f6fb341dc1f5b79d948\\kotlin-stdlib-jdk8-1.9.0.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\360660efa35525178504ebf6b2cb0a5d\\transformed\\multiplatform-settings-debug-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.jetbrains.kotlin\\kotlin-stdlib-jdk7\\1.9.0\\f320478990d05e0cfaadd74f9619fd6027adbf37\\kotlin-stdlib-jdk7-1.9.0.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.jetbrains.kotlinx\\kotlinx-datetime-jvm\\0.6.0\\a6362032556c0fa4a06be6105a21e944f120fd2d\\kotlinx-datetime-jvm-0.6.0.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\43e1b86e4a3a8cc2b3cd93f691dbf0ce\\transformed\\kermit-debug-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.jetbrains.kotlinx\\atomicfu-jvm\\0.25.0\\c8686b7f79a65516610b1ce4965bb450084075f2\\atomicfu-jvm-0.25.0.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\d7215e52336f05a2eaa13ad919746b4e\\transformed\\kermit-core-debug-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.jetbrains.kotlin\\kotlin-stdlib\\2.1.20\\aa8ca79cd50578314f6d1180c47cbe14c0fee567\\kotlin-stdlib-2.1.20.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\junit\\junit\\4.13.2\\8ac9e16d933b6fb43bc7f576336b8f4d7eb5ba12\\junit-4.13.2.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.mockito\\mockito-core\\2.25.0\\1fcf2f6944d69b6f39cd579718d8b5395a97836b\\mockito-core-2.25.0.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.conscrypt\\conscrypt-openjdk-uber\\2.5.2\\d858f142ea189c62771c505a6548d8606ac098fe\\conscrypt-openjdk-uber-2.5.2.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\bdd4fa76e049dca138fe7d8df9ba1ad8\\transformed\\espresso-idling-resource-3.6.1-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.robolectric\\junit\\4.13\\773b7122ad642110b009aadfd9ac9b9a18e93d2a\\junit-4.13.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.robolectric\\shadows-framework\\4.13\\f37f6a20295b6b21164998b610a221dbb2bb7c81\\shadows-framework-4.13.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.robolectric\\resources\\4.13\\3f89df602a7bbc4532f678a18e697f0456256d0d\\resources-4.13.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.robolectric\\sandbox\\4.13\\af9a4d64c6bd4f513eea9f3dac0bb5e775f4e617\\sandbox-4.13.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.robolectric\\nativeruntime\\4.13\\9e110c91100092fd4f73e579f1b95bbb3ae712c1\\nativeruntime-4.13.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.robolectric\\utils-reflector\\4.13\\99f92eb72e7f7d87361a06c2002ac31feb965913\\utils-reflector-4.13.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.robolectric\\plugins-maven-dependency-resolver\\4.13\\eae1824f0088be596220186ee96effb72998d68a\\plugins-maven-dependency-resolver-4.13.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.robolectric\\shadowapi\\4.13\\b78efbf9d3d341c3371514ceb8288f26d68a2d3f\\shadowapi-4.13.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.robolectric\\utils\\4.13\\47f61b1a3cf0b5646f68d3c4961ccf11c2f31463\\utils-4.13.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.robolectric\\pluginapi\\4.13\\7310a12eb06941ceec5e2a37a6cbcb7fae97824f\\pluginapi-4.13.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.robolectric\\annotations\\4.13\\714fb8aacd7be8c497325dad2bb1b3754e6b2a34\\annotations-4.13.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\javax.inject\\javax.inject\\1\\6975da39a7040257bd51d21a231b76c915872d38\\javax.inject-1.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\javax.annotation\\javax.annotation-api\\1.3.2\\934c04d3cfef185a8008e7bf34331b79730a9d43\\javax.annotation-api-1.3.2.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.bouncycastle\\bcprov-jdk18on\\1.78.1\\39e9e45359e20998eb79c1828751f94a818d25f8\\bcprov-jdk18on-1.78.1.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\4ad6246fd13af9ffe5cc3f173c3f7e5b\\transformed\\monitor-1.7.1-runtime.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.jetbrains\\annotations\\23.0.0\\8cc20c07506ec18e0834947b84a864bfc094484e\\annotations-23.0.0.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\com.google.errorprone\\error_prone_annotation\\2.19.1\\17821e9d8b169d7ebf12e6885599c4e6fb33a316\\error_prone_annotation-2.19.1.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\com.google.guava\\guava\\31.1-jre\\60458f877d055d0c9114d9e1a2efb737b4bc282c\\guava-31.1-jre.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\com.google.errorprone\\error_prone_annotations\\2.15.0\\38c8485a652f808c8c149150da4e5c2b0bd17f9a\\error_prone_annotations-2.15.0.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.hamcrest\\hamcrest-core\\1.3\\42a25dc3219429f0e5d060061f71acb49bf010a0\\hamcrest-core-1.3.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.objenesis\\objenesis\\3.3\\1049c09f1de4331e8193e579448d0916d75b7631\\objenesis-3.3.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\com.google.auto.value\\auto-value-annotations\\1.11.0\\f0d047931d07cfbc6fa4079854f181ff62891d6f\\auto-value-annotations-1.11.0.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.ow2.asm\\asm-commons\\9.7\\e86dda4696d3c185fcc95d8d311904e7ce38a53f\\asm-commons-9.7.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.ow2.asm\\asm-util\\9.7\\c0655519f24d92af2202cb681cd7c1569df6ead6\\asm-util-9.7.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.ow2.asm\\asm-analysis\\9.7\\e4a258b7eb96107106c0599f0061cfc1832fe07a\\asm-analysis-9.7.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.ow2.asm\\asm-tree\\9.7\\e446a17b175bfb733b87c5c2560ccb4e57d69f1a\\asm-tree-9.7.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.ow2.asm\\asm\\9.7\\73d7b3086e14beb604ced229c302feff6449723\\asm-9.7.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\com.almworks.sqlite4java\\sqlite4java\\1.0.392\\d6234e08ff4e1607ff5321da2579571f05ff778d\\sqlite4java-1.0.392.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\com.ibm.icu\\icu4j\\75.1\\e8f8dcc2967f5ec2cfae185172293adfa5599b78\\icu4j-75.1.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.opentest4j\\opentest4j\\1.3.0\\152ea56b3a72f655d4fd677fc0ef2596c3dd5e6e\\opentest4j-1.3.0.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\com.google.guava\\listenablefuture\\9999.0-empty-to-avoid-conflict-with-guava\\b421526c5f297295adef1c886e5246c39d4ac629\\listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.jspecify\\jspecify\\1.0.0\\7425a601c1c7ec76645a78d22b8c6a627edee507\\jspecify-1.0.0.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.slf4j\\slf4j-api\\1.7.36\\6c62681a2f655b49963a5983b8b0950a6120ae14\\slf4j-api-1.7.36.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\com.google.guava\\failureaccess\\1.0.1\\1dcf1de382a0bf95a3d8b0849546c88bac1292c9\\failureaccess-1.0.1.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\com.google.code.findbugs\\jsr305\\3.0.2\\25ea2e8b0c338a877313bd4672d3fe056ea78f0d\\jsr305-3.0.2.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.checkerframework\\checker-qual\\3.12.0\\d5692f0526415fcc6de94bb5bfbd3afd9dd3b3e5\\checker-qual-3.12.0.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\com.google.j2objc\\j2objc-annotations\\1.3\\ba035118bc8bac37d7eff77700720999acd9986d\\j2objc-annotations-1.3.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\org.robolectric\\nativeruntime-dist-compat\\1.0.12\\bb5ab24e0f465ae280d6f72ced8623fbd8f33fb2\\nativeruntime-dist-compat-1.0.12.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\net.bytebuddy\\byte-buddy\\1.14.17\\a8d08f3c1e75ecc7f38a8cfd7e9fa47919096373\\byte-buddy-1.14.17.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\modules-2\\files-2.1\\net.bytebuddy\\byte-buddy-agent\\1.14.17\\e3c251a39dc90badaf71c83427ba46840f219d8d\\byte-buddy-agent-1.14.17.jar;C:\\Users\\Asus-Pc\\Desktop\\SoftEng\\ZejiosCafeSE\\app\\build\\intermediates\\java_res\\debug\\processDebugJavaRes\\out;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\2f15643da52d2d2d182f394c31d7db10\\transformed\\material-1.13.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\af969f49f7c7f722646f62a6329aa2cf\\transformed\\constraintlayout-2.2.1\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\c5cdae3fae907a99635ade591eb5b6f6\\transformed\\appcompat-resources-1.7.1\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\536325e05967770ac8ec5b6b5b1fb8b8\\transformed\\appcompat-1.7.1\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\e9fbc700aed462479c303c05db310d0a\\transformed\\recyclerview-1.4.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\68782b0ad593f2317bd24914db1b1327\\transformed\\viewpager2-1.1.0-beta02\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\c1d96f1cb74fecb97ea03d4d8b258414\\transformed\\fragment-1.8.8\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\7bc1bdb77652ca89aa2fd41ff07f4266\\transformed\\fragment-ktx-1.8.8\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\8666745818e9e4c959bcc19297dd044a\\transformed\\navigationevent\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\c69c3e26975b96d621e06976f4b8028a\\transformed\\navigationevent-compose\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\d8b54522f9f2ffaed20ca6ef3d8484e2\\transformed\\material3-release\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\67108ee0b8c25e6f0a6b04580ec2727c\\transformed\\material-ripple-release\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\46359dd89bc9507bbbd2b60b82546853\\transformed\\foundation-release\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\866ffce6331206d2365835199264d487\\transformed\\foundation-layout\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\e9fd907de8cf5250e01912aebf3fe901\\transformed\\animation-core\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\7163f29d94c56bf30cd625d65c3ea3f2\\transformed\\animation\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\32d4ba09d0958aff33068ee85f28ee10\\transformed\\ui-tooling-data\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\4c691250e20ed3142d1c7c91432d5b50\\transformed\\ui-geometry\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\0e1f6f79a053bc3046c8cf2c7766e595\\transformed\\ui-tooling-preview\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\59e2b9bc58260342c09fd3cf6873054e\\transformed\\ui-util\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\a9363d5d50d3efaeccd69d66d83a8f85\\transformed\\ui-unit\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\32e30cdef1c8ec74a60420541f8ab936\\transformed\\ui-text\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\322a46c81f7eae97239528adea1b0484\\transformed\\ui-graphics-release\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\c31b2a9b737b56a846e21150f395d996\\transformed\\ui-tooling\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\e573aef3380edf872ebae0c0acb1bcb1\\transformed\\material-release\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\7abb087b8f0337c2d02f8d4d2ce2ff73\\transformed\\material-icons-core-release\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\daea4e8b629310009772ba49270a67f3\\transformed\\ui-release\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\942fb413d9ff85a9331b15013cd5277e\\transformed\\ui-test-manifest-1.9.2\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\3320c7db1519e0c3303dc83fd8513c40\\transformed\\activity-1.13.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\4d7fc1b6a899eafbb7507cbb6ccc6e38\\transformed\\activity-compose-1.13.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\68ab67589b4322f4e1749a57f6d1fbac\\transformed\\activity-ktx-1.13.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\6bc3a787ed2f1409523fef0041d82f60\\transformed\\loader-1.0.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\2e825a2fd7aadf2d0052cdb7d2f2b19b\\transformed\\customview-poolingcontainer-1.0.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\582bb794693aa36e672211f18ee82aaa\\transformed\\graphics-shapes-release\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\a6ed59192be77a85b48f4ddf40f7b308\\transformed\\runtime-annotation\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\0e999e6046271ec4556dcc4b2013e2f7\\transformed\\savedstate-ktx-1.4.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\a7b76c783c96b98407ca3103fcbd4c6c\\transformed\\savedstate\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\3438d32c4ae993bad8ec435f84e5d51b\\transformed\\savedstate-compose\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\20e750368044374d22cc1f0b3bc0b8cd\\transformed\\runtime\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\052ea5dbcaf0d9533e9a048b04d95f51\\transformed\\runtime-saveable\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\b6e8fbc05351aba6a544579313813a5b\\transformed\\lifecycle-runtime-compose\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\2c10bc6789ed6300df06d440b3f444d8\\transformed\\lifecycle-runtime\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\4fed25d03b50d708a1eea4c86d2c3da2\\transformed\\lifecycle-viewmodel-savedstate\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\da4c4ee2cf5a540bb90d85443dc6d206\\transformed\\core-ktx-1.18.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\d7d94a056b13f9e962d60c06c5c03142\\transformed\\drawerlayout-1.1.1\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\33b7fc874faf26245334475176af8eb1\\transformed\\coordinatorlayout-1.1.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\a9a753a09389e71be69e2fd2cd60ce94\\transformed\\transition-1.5.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\ae0de0f79e2748a561cd367eb8094d47\\transformed\\dynamicanimation-1.1.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\fb0090f3f9cba20fd1dd7f68053899fc\\transformed\\vectordrawable-animated-1.1.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\7d9a478606d2a11af46bc612fc3f41bd\\transformed\\vectordrawable-1.1.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\9d1bb2e9600f1891c9e90add3ae48825\\transformed\\viewpager-1.0.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\f2de9102aff23a50fb41e542ea9179e4\\transformed\\customview-1.1.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\2608722c624b61f0b9ec0d25180bbcd8\\transformed\\postgrest-kt-debug\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\791c9203c3d55f8ddc8e6d6e037e3a53\\transformed\\gotrue-kt-debug\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\89b9c18123aa8af344eff219601ad642\\transformed\\browser-1.8.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\245dfec8283df21741f9d263fba2c6a1\\transformed\\autofill-1.0.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\a067229196f179da222d4516904106c1\\transformed\\graphics-path-1.0.1\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\05fce6047427ac842fa8df43b25892ed\\transformed\\emoji2-views-helper-1.4.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\0c2dbf9e32d1aca0d74edf4c8d9c7e42\\transformed\\emoji2-1.4.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\0c2dbf9e32d1aca0d74edf4c8d9c7e42\\transformed\\emoji2-1.4.0\\jars\\libs\\repackaged.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\bcbc6eed93e48bbe53fd3a135dc5442d\\transformed\\core-1.18.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\b6587d8cdf281814d4dd34745c16320d\\transformed\\lifecycle-viewmodel-2.10.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\19c47b44143796831a26e24bd2de0c8c\\transformed\\lifecycle-viewmodel\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\7561fc31472e587827ac5ad88701f3ec\\transformed\\lifecycle-livedata-core-2.10.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\8cd89ae68bfc4acd9cfd6f163bb2067f\\transformed\\supabase-kt-debug\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\0faf16efa18e3e926f177ad568bd88af\\transformed\\lifecycle-process-2.10.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\90e960adfec56b540b5900a289e96869\\transformed\\lifecycle-livedata-2.10.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\6ce135c9a3193f7ff6dada8391c14cb3\\transformed\\lifecycle-livedata-core-ktx-2.10.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\bca339b0f666246ee661e8d8f9fe7c0f\\transformed\\lifecycle-runtime-ktx\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\9f25a030c74c4c661f0983854e68ef8b\\transformed\\lifecycle-livedata-ktx-2.10.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\b48116b1891b83508d61b3e3c2bf1ec1\\transformed\\lifecycle-viewmodel-ktx-2.10.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\ba24827e0f8a0390090ad753164c3200\\transformed\\multiplatform-settings-coroutines-debug\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\532d866bf17a9a63dee7c6e2f135f539\\transformed\\core-testing-2.2.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\22ce87fa183512435dd7f2c3aacae089\\transformed\\viewbinding-8.13.2\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\54447f4c76ae1725fe9da56f33dcd109\\transformed\\core-splashscreen-1.0.1\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\e32b8c6002cbac38d7f1cde72c33aeca\\transformed\\annotation-experimental-1.4.1\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\a46ad0681a39986b0223067ab06d5249\\transformed\\core-viewtree-1.0.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\d2630352ecda6df9d5271199398b8cae\\transformed\\MPAndroidChart-v3.1.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\f5c50f25005fb4e6daa02d211bd92b19\\transformed\\core-runtime-2.2.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\53aaa90985a505ca07a63cfec0c3bc32\\transformed\\cursoradapter-1.0.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\e17192b232587ec8f89763a72afefd0e\\transformed\\cardview-1.0.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\5c1f3ae41dc6f55c17edfb84ee5adeb8\\transformed\\profileinstaller-1.4.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\346fb4b8cf15ff2d35e0b8098483cc05\\transformed\\interpolator-1.0.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\e6b4c99e66847255782bb64a3726fe2b\\transformed\\multiplatform-settings-no-arg-debug\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\3e856c4cb67afdaa6ac92bcab0f7acb1\\transformed\\startup-runtime-1.1.1\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\af971e1b484cc94fbb54f4577b30b591\\transformed\\tracing-1.2.0\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\111c48569105e54829469e994e77466e\\transformed\\versionedparcelable-1.1.1\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\a317d9375dc4955c7fe7c5c6a16f8099\\transformed\\krypto-debug\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\c8ff7d725a676f5a3e63ba58505de145\\transformed\\multiplatform-settings-debug\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\ed8816523587cbd3ce163cb1eff2e0e6\\transformed\\kermit-debug\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\6d1ccd8ac395ea938fc49a53a8a10cdf\\transformed\\kermit-core-debug\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\cd686c9beda547aaa846cd7405b315bb\\transformed\\espresso-idling-resource-3.6.1\\jars\\classes.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\218f923e3742d311c94b8c9fb176d216\\transformed\\monitor-1.7.1\\jars\\classes.jar;C:\\Users\\Asus-Pc\\Desktop\\SoftEng\\ZejiosCafeSE\\app\\build\\intermediates\\compile_and_runtime_not_namespaced_r_class_jar\\debug\\processDebugResources\\R.jar;C:\\Users\\Asus-Pc\\.gradle\\caches\\8.13\\transforms\\9b414dae3a1bcd7dcf08a4dd88c3f749\\transformed\\android.jar
+Launcher Type: SUN_STANDARD
+
+[Global flags]
+     intx CICompilerCount                          = 4                                         {product} {ergonomic}
+     uint ConcGCThreads                            = 3                                         {product} {ergonomic}
+     uint G1ConcRefinementThreads                  = 10                                        {product} {ergonomic}
+   size_t G1HeapRegionSize                         = 1048576                                   {product} {ergonomic}
+    uintx GCDrainStackTargetSize                   = 64                                        {product} {ergonomic}
+   size_t InitialHeapSize                          = 398458880                                 {product} {ergonomic}
+   size_t MarkStackSize                            = 4194304                                   {product} {ergonomic}
+   size_t MaxHeapSize                              = 536870912                                 {product} {command line}
+   size_t MaxNewSize                               = 321912832                                 {product} {ergonomic}
+   size_t MinHeapDeltaBytes                        = 1048576                                   {product} {ergonomic}
+   size_t MinHeapSize                              = 8388608                                   {product} {ergonomic}
+    uintx NonNMethodCodeHeapSize                   = 5839372                                {pd product} {ergonomic}
+    uintx NonProfiledCodeHeapSize                  = 122909434                              {pd product} {ergonomic}
+    uintx ProfiledCodeHeapSize                     = 122909434                              {pd product} {ergonomic}
+    uintx ReservedCodeCacheSize                    = 251658240                              {pd product} {ergonomic}
+     bool SegmentedCodeCache                       = true                                      {product} {ergonomic}
+   size_t SoftMaxHeapSize                          = 536870912                              {manageable} {ergonomic}
+     bool UseCompressedOops                        = true                           {product lp64_product} {ergonomic}
+     bool UseG1GC                                  = true                                      {product} {ergonomic}
+     bool UseLargePagesIndividualAllocation        = false                                  {pd product} {ergonomic}
+
+Logging:
+Log output configuration:
+ #0: stdout all=warning uptime,level,tags foldmultilines=false
+ #1: stderr all=off uptime,level,tags foldmultilines=false
+
+Environment Variables:
+JAVA_HOME=C:\Program Files\Java\jdk-17
+PATH=C:\Users\Asus-Pc\bin;C:\Program Files\Git\mingw64\bin;C:\Program Files\Git\usr\local\bin;C:\Program Files\Git\usr\bin;C:\Program Files\Git\usr\bin;C:\Program Files\Git\mingw64\bin;C:\Program Files\Git\usr\bin;C:\Users\Asus-Pc\bin;C:\Users\Asus-Pc\AppData\Local\Programs\Python\Python312\Scripts;C:\Program Files\Java\jdk-17\bin;C:\Program Files\Common Files\Oracle\Java\javapath;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0;C:\WINDOWS\System32\OpenSSH;C:\Program Files\dotnet;C:\Program Files\PuTTY;C:\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit;C:\Program Files\nodejs;C:\Program Files\Docker\Docker\resources\bin;C:\Program Files\Git\cmd;C:\Program Files\Git LFS;C:\Program Files (x86)\cloudflared;C:\Program Files\Java\jdk-17\bin;C:\Users\Asus-Pc\AppData\Local\Programs\Python\Python312\Scripts;C:\Users\Asus-Pc\AppData\Local\Programs\Python\Python312;C:\Users\Asus-Pc\AppData\Local\Programs\Python\Launcher;C:\Users\Asus-Pc\AppData\Local\Microsoft\WindowsApps;C:\Users\Asus-Pc\.dotnet\tools;C:\Users\Asus-Pc\AppData\Local\Programs\Microsoft VS Code\bin;C:\flutter\bin;C:\Users\Asus-Pc\AppData\Local\Android\Sdk\cmdline-tools\latest\bin;C:\Users\Asus-Pc\AppData\Local\Android\Sdk\platform-tools;C:\Users\Asus-Pc\AppData\Local\Android\Sdk\tools\bin;C:\Users\Asus-Pc\AppData\Local\Pub\Cache\bin;C:\Users\Asus-Pc\AppData\Roaming\npm;C:\Users\Asus-Pc\AppData\Local\GitHubDesktop\bin;C:\Users\Asus-Pc\AppData\Local\Programs\Antigravity\bin;C:\Program Files\Git\usr\bin\vendor_perl;C:\Program Files\Git\usr\bin\core_perl
+USERNAME=Yandra
+SHELL=C:\Program Files\Git\usr\bin\bash.exe
+TERM=xterm-256color
+OS=Windows_NT
+PROCESSOR_IDENTIFIER=Intel64 Family 6 Model 154 Stepping 4, GenuineIntel
+TMP=C:\Users\Asus-Pc\AppData\Local\Temp
+TEMP=C:\Users\Asus-Pc\AppData\Local\Temp
+
+
+
+
+Periodic native trim disabled
+
+JNI global refs:
+JNI global refs: 17, weak refs: 0
+
+JNI global refs memory usage: 835, weak refs: 201
+
+Process memory usage:
+Resident Set Size: 147784K (0% of 24843772K total physical memory with 6556344K free physical memory)
+
+OOME stack traces (most recent first):
+Classloader memory used:
+Loader bootstrap                                                                       : 16177K
+Loader jdk.internal.loader.ClassLoaders$AppClassLoader                                 : 6392K
+Loader java.net.URLClassLoader                                                         : 1851K
+Loader jdk.internal.loader.ClassLoaders$PlatformClassLoader                            : 115K
+Loader jdk.internal.reflect.DelegatingClassLoader                                      : 48256B
+
+Classes loaded by more than one classloader:
+Class org.slf4j.ILoggerFactory                                                        : loaded 2 times (x 70B)
+Class org.slf4j.Logger                                                                : loaded 2 times (x 70B)
+Class org.slf4j.event.LoggingEvent                                                    : loaded 2 times (x 70B)
+Class org.slf4j.helpers.NOPLoggerFactory                                              : loaded 2 times (x 75B)
+Class org.slf4j.helpers.SubstituteLoggerFactory                                       : loaded 2 times (x 81B)
+Class org.slf4j.LoggerFactory                                                         : loaded 2 times (x 71B)
+Class org.slf4j.helpers.Util                                                          : loaded 2 times (x 71B)
+
+---------------  S Y S T E M  ---------------
+
+OS:
+ Windows 11 , 64 bit Build 26100 (10.0.26100.8115)
+OS uptime: 0 days 1:18 hours
+Hyper-V role detected
+
+CPU: total 12 (initial active 12) (6 cores per cpu, 2 threads per core) family 6 model 154 stepping 4 microcode 0x432, cx8, cmov, fxsr, ht, mmx, 3dnowpref, sse, sse2, sse3, ssse3, sse4.1, sse4.2, popcnt, lzcnt, tsc, tscinvbit, avx, avx2, aes, erms, clmul, bmi1, bmi2, adx, sha, fma, vzeroupper, clflush, clflushopt, clwb, hv, serialize, rdtscp, rdpid, fsrm, f16c, cet_ibt, cet_ss
+Processor Information for processor 0
+  Max Mhz: 1300, Current Mhz: 1300, Mhz Limit: 1300
+Processor Information for processor 1
+  Max Mhz: 1300, Current Mhz: 1300, Mhz Limit: 1300
+Processor Information for processor 2
+  Max Mhz: 1300, Current Mhz: 1300, Mhz Limit: 1300
+Processor Information for processor 3
+  Max Mhz: 1300, Current Mhz: 1300, Mhz Limit: 1300
+Processor Information for processor 4
+  Max Mhz: 1300, Current Mhz: 900, Mhz Limit: 897
+Processor Information for processor 5
+  Max Mhz: 1300, Current Mhz: 900, Mhz Limit: 897
+Processor Information for processor 6
+  Max Mhz: 1300, Current Mhz: 900, Mhz Limit: 897
+Processor Information for processor 7
+  Max Mhz: 1300, Current Mhz: 900, Mhz Limit: 897
+Processor Information for processor 8
+  Max Mhz: 1300, Current Mhz: 900, Mhz Limit: 897
+Processor Information for processor 9
+  Max Mhz: 1300, Current Mhz: 900, Mhz Limit: 897
+Processor Information for processor 10
+  Max Mhz: 1300, Current Mhz: 900, Mhz Limit: 897
+Processor Information for processor 11
+  Max Mhz: 1300, Current Mhz: 900, Mhz Limit: 897
+
+Memory: 4k page, system-wide physical 24261M (6402M free)
+TotalPageFile size 24261M (AvailPageFile size 14M)
+current process WorkingSet (physical memory assigned to process): 144M, peak: 160M
+current process commit charge ("private bytes"): 213M, peak: 516M
+
+vm_info: OpenJDK 64-Bit Server VM (21.0.8+-14018985-b1038.68) for windows-amd64 JRE (21.0.8+-14018985-b1038.68), built on 2025-08-29T19:56:34Z by "builder" with MS VC++ 16.10 / 16.11 (VS2019)
+
+END.

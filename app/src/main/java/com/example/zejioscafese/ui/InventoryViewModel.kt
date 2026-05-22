@@ -3,17 +3,22 @@ package com.example.zejioscafese.ui
 import com.example.zejioscafese.inventory.data.model.ProductCategoryOption
 import com.example.zejioscafese.inventory.data.model.ProductEditorDraft
 import com.example.zejioscafese.inventory.data.model.ProductRecipeIngredient
+import com.example.zejioscafese.inventory.data.model.RecipePricing
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.zejioscafese.core.network.NetworkErrorFormatter
 import com.example.zejioscafese.inventory.data.model.ProducibleProduct
+import com.example.zejioscafese.inventory.data.remote.dto.ProductRecipeLinkDto
 import com.example.zejioscafese.inventory.data.repository.InventoryRepository
 import com.example.zejioscafese.pos.data.model.Ingredient
+import com.example.zejioscafese.pos.data.model.IngredientStockStatus
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.abs
+import kotlin.math.floor
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Job
@@ -83,11 +88,18 @@ class InventoryViewModel(
     private var searchQuery = ""
     private var selectedCategory = ALL_CATEGORY
     private var sortMode = SortMode.NAME
+    private var sortDirection = SortDirection.ASCENDING
     private var refreshJob: Job? = null
     private var lastSuccessfulRefreshAt: Long = 0L
     private var categoryOrderRanks: Map<String, Int> = emptyMap()
+    private var pendingPriceCorrections: Map<String, Double> = emptyMap()
+    private var pendingRecipeScaling: List<RecipeScalingUpdate> = emptyList()
+
+    private val _sortDirection = MutableLiveData(sortDirection)
+    val sortDirectionLive: LiveData<SortDirection> = _sortDirection
 
     enum class SortMode { NAME, STOCK_LEVEL, VALUE }
+    enum class SortDirection { ASCENDING, DESCENDING }
     enum class ScreenMode { INGREDIENTS, PRODUCTION }
 
     init {
@@ -137,6 +149,20 @@ class InventoryViewModel(
     fun setSortMode(mode: SortMode) {
         sortMode = mode
         applyFilters(resetActivePage = true)
+    }
+
+    fun setSortDirection(direction: SortDirection) {
+        if (sortDirection == direction) return
+        sortDirection = direction
+        _sortDirection.value = direction
+        applyFilters(resetActivePage = true)
+    }
+
+    fun toggleSortDirection() {
+        setSortDirection(
+            if (sortDirection == SortDirection.ASCENDING) SortDirection.DESCENDING
+            else SortDirection.ASCENDING
+        )
     }
 
     fun setScreenMode(mode: ScreenMode) {
@@ -270,8 +296,10 @@ class InventoryViewModel(
     }
 
     fun softDeleteProduct(product: ProducibleProduct) {
-        allProducibleProducts.removeAll { it.id == product.id }
-        productRecipeMap.remove(product.id)
+        val index = allProducibleProducts.indexOfFirst { it.id == product.id }
+        if (index >= 0) {
+            allProducibleProducts[index] = product.copy(isActive = false)
+        }
         applyFilters(resetActivePage = false)
 
         viewModelScope.launch {
@@ -289,6 +317,28 @@ class InventoryViewModel(
         }
     }
 
+    fun restoreProduct(product: ProducibleProduct) {
+        val index = allProducibleProducts.indexOfFirst { it.id == product.id }
+        if (index >= 0) {
+            allProducibleProducts[index] = product.copy(isActive = true)
+        }
+        applyFilters(resetActivePage = false)
+
+        viewModelScope.launch {
+            try {
+                inventoryRepository.restoreProduct(product)
+                syncInventoryFromRemote()
+                _inventoryError.value = null
+            } catch (exception: Exception) {
+                _inventoryError.value = NetworkErrorFormatter.toUserMessage(
+                    exception = exception,
+                    fallbackMessage = "Failed to restore product."
+                )
+                syncInventorySafely()
+            }
+        }
+    }
+
     fun generateId(): String {
         val maxNum = allIngredients
             .mapNotNull { it.id.removePrefix(INGREDIENT_ID_PREFIX).toIntOrNull() }
@@ -299,16 +349,26 @@ class InventoryViewModel(
     fun getCategories(): List<String> {
         val categories = when (_screenMode.value ?: ScreenMode.INGREDIENTS) {
             ScreenMode.INGREDIENTS -> allIngredients.map(Ingredient::category)
-            ScreenMode.PRODUCTION -> allProducibleProducts.map(ProducibleProduct::category)
+            ScreenMode.PRODUCTION -> allProducibleProducts
+                .filter(ProducibleProduct::isActive)
+                .map(ProducibleProduct::category)
         }
 
-        return listOf(ALL_CATEGORY) + categories
+        val baseCategories = listOf(ALL_CATEGORY) + categories
             .filter(String::isNotBlank)
             .distinct()
             .sortedWith(
                 compareByDescending<String> { categoryOrderRanks[it] ?: 0 }
                     .thenBy { it }
             )
+        val hasDeletedProducts = (_screenMode.value ?: ScreenMode.INGREDIENTS) == ScreenMode.PRODUCTION &&
+            allProducibleProducts.any { !it.isActive }
+
+        return if (hasDeletedProducts) {
+            baseCategories + DELETED_CATEGORY
+        } else {
+            baseCategories
+        }
     }
 
     fun getIngredientOptionsForEditor(): List<Ingredient> {
@@ -327,6 +387,12 @@ class InventoryViewModel(
 
     fun getProductCategoriesForEditor(): List<ProductCategoryOption> {
         return productCategories.toList()
+    }
+
+    fun hasProductWithName(name: String): Boolean {
+        val normalized = name.trim()
+        if (normalized.isBlank()) return false
+        return allProducibleProducts.any { it.productName.equals(normalized, ignoreCase = true) }
     }
 
     fun getRecipeForProduct(productVariantId: String): List<ProductRecipeIngredient> {
@@ -352,15 +418,53 @@ class InventoryViewModel(
             val ingredients = ingredientsDeferred.await().distinctBy(Ingredient::id)
             val ingredientDirectory = ingredients.associateBy(Ingredient::id)
             val recipeLinks = recipeLinksDeferred.await()
-            val producibleProducts = producibleDeferred.await().distinctBy(ProducibleProduct::id)
+            val rawRecipeLinksByVariant = recipeLinks.groupBy(ProductRecipeLinkDto::productVariantId)
+            val rawProducibleProducts = producibleDeferred.await()
+                .distinctBy(ProducibleProduct::id)
+
+            val scaledRecipeLinksByVariant = applyBeverageRecipeScaling(
+                products = rawProducibleProducts,
+                recipeLinksByVariant = rawRecipeLinksByVariant,
+                ingredientDirectory = ingredientDirectory
+            )
+            pendingRecipeScaling = collectRecipeScalingUpdates(
+                originals = rawRecipeLinksByVariant,
+                scaled = scaledRecipeLinksByVariant
+            )
+
+            val producibleProductsWithAvailability = rawProducibleProducts.map { product ->
+                val availableQuantity = computeRecipeAvailableQuantity(
+                    recipeLinks = scaledRecipeLinksByVariant[product.id].orEmpty(),
+                    ingredientDirectory = ingredientDirectory
+                )
+                if (availableQuantity == null) {
+                    product
+                } else {
+                    product.copy(availableQuantity = availableQuantity)
+                }
+            }
+            val rawProducibleProductsScaled = producibleProductsWithAvailability
+
+            val priceCorrections = computePriceCorrections(
+                products = rawProducibleProductsScaled,
+                recipeLinksByVariant = scaledRecipeLinksByVariant,
+                ingredientDirectory = ingredientDirectory
+            )
+            pendingPriceCorrections = priceCorrections
+            val producibleProducts = if (priceCorrections.isEmpty()) {
+                rawProducibleProductsScaled
+            } else {
+                rawProducibleProductsScaled.map { product ->
+                    priceCorrections[product.id]?.let { product.copy(price = it) } ?: product
+                }
+            }
             val variantCounts = variantCountsDeferred.await()
 
             InventorySnapshot(
                 ingredients = ingredients,
                 producibleProducts = producibleProducts,
                 productCategories = categoriesDeferred.await().distinctBy(ProductCategoryOption::id),
-                productRecipes = recipeLinks
-                    .groupBy { it.productVariantId }
+                productRecipes = scaledRecipeLinksByVariant
                     .mapValues { (_, links) ->
                         links.mapNotNull { link ->
                             ingredientDirectory[link.ingredientId]?.let { ingredient ->
@@ -389,7 +493,9 @@ class InventoryViewModel(
         productRecipeMap.clear()
         productRecipeMap.putAll(snapshot.productRecipes)
 
-        val variantIdToCategory = allProducibleProducts.associate { it.id to it.category }
+        val variantIdToCategory = allProducibleProducts
+            .filter(ProducibleProduct::isActive)
+            .associate { it.id to it.category }
         categoryOrderRanks = snapshot.variantOrderCounts.entries
             .groupBy({ variantIdToCategory[it.key].orEmpty() }, { it.value })
             .mapValues { (_, counts) -> counts.sum() }
@@ -401,7 +507,136 @@ class InventoryViewModel(
 
         applyFilters(resetActivePage = false)
         lastSuccessfulRefreshAt = System.currentTimeMillis()
+
+        flushPendingRecipeScaling()
+        flushPendingPriceCorrections()
     }
+
+    private fun flushPendingRecipeScaling() {
+        val updates = pendingRecipeScaling
+        if (updates.isEmpty()) return
+        pendingRecipeScaling = emptyList()
+
+        viewModelScope.launch {
+            updates.forEach { update ->
+                runCatching {
+                    inventoryRepository.updateVariantIngredientQuantity(
+                        productVariantId = update.variantId,
+                        ingredientId = update.ingredientId,
+                        newRequiredQuantity = update.newRequiredQuantity
+                    )
+                }
+            }
+        }
+    }
+
+    private fun flushPendingPriceCorrections() {
+        val corrections = pendingPriceCorrections
+        if (corrections.isEmpty()) return
+        pendingPriceCorrections = emptyMap()
+
+        viewModelScope.launch {
+            corrections.forEach { (variantId, newPrice) ->
+                runCatching {
+                    inventoryRepository.updateProductVariantPrice(variantId, newPrice)
+                }
+            }
+        }
+    }
+
+    private fun computePriceCorrections(
+        products: List<ProducibleProduct>,
+        recipeLinksByVariant: Map<String, List<ProductRecipeLinkDto>>,
+        ingredientDirectory: Map<String, Ingredient>
+    ): Map<String, Double> {
+        return products.mapNotNull { product ->
+            val links = recipeLinksByVariant[product.id].orEmpty()
+            if (links.isEmpty()) return@mapNotNull null
+            val expectedPrice = RecipePricing.computePriceFromLinks(links, ingredientDirectory)
+            if (expectedPrice <= 0.0) return@mapNotNull null
+            if (abs(product.price - expectedPrice) < 0.01) return@mapNotNull null
+            product.id to expectedPrice
+        }.toMap()
+    }
+
+    private fun sizeOzForVariant(variantName: String): Double? {
+        val normalized = variantName.trim().lowercase(Locale.US)
+        return when {
+            "22" in normalized -> 22.0
+            "16" in normalized || normalized == "mezzo" -> BEVERAGE_BASE_SIZE_OZ
+            else -> null
+        }
+    }
+
+    private fun applyBeverageRecipeScaling(
+        products: List<ProducibleProduct>,
+        recipeLinksByVariant: Map<String, List<ProductRecipeLinkDto>>,
+        ingredientDirectory: Map<String, Ingredient>
+    ): Map<String, List<ProductRecipeLinkDto>> {
+        val variantsByProduct = products.groupBy(ProducibleProduct::productId)
+        val result = recipeLinksByVariant.toMutableMap()
+
+        products.forEach { product ->
+            val sizeOz = sizeOzForVariant(product.variantName) ?: return@forEach
+            if (sizeOz == BEVERAGE_BASE_SIZE_OZ) return@forEach
+
+            val baseSibling = variantsByProduct[product.productId]
+                ?.firstOrNull { sizeOzForVariant(it.variantName) == BEVERAGE_BASE_SIZE_OZ }
+                ?: return@forEach
+
+            val myLinks = recipeLinksByVariant[product.id].orEmpty()
+            val baseLinks = recipeLinksByVariant[baseSibling.id].orEmpty()
+            if (myLinks.isEmpty() || baseLinks.isEmpty()) return@forEach
+            if (!recipesIdentical(myLinks, baseLinks)) return@forEach
+
+            val scaleFactor = sizeOz / BEVERAGE_BASE_SIZE_OZ
+            result[product.id] = myLinks.map { link ->
+                val isMl = ingredientDirectory[link.ingredientId]
+                    ?.unit
+                    ?.let { com.example.zejioscafese.pos.data.model.IngredientUnits.isMl(it) }
+                    ?: false
+                if (isMl) {
+                    link.copy(requiredQuantity = RecipePricing.roundCurrency(link.requiredQuantity * scaleFactor))
+                } else {
+                    link
+                }
+            }
+        }
+        return result
+    }
+
+    private fun recipesIdentical(
+        a: List<ProductRecipeLinkDto>,
+        b: List<ProductRecipeLinkDto>
+    ): Boolean {
+        if (a.size != b.size) return false
+        val aMap = a.associate { it.ingredientId to it.requiredQuantity }
+        val bMap = b.associate { it.ingredientId to it.requiredQuantity }
+        return aMap == bMap
+    }
+
+    private fun collectRecipeScalingUpdates(
+        originals: Map<String, List<ProductRecipeLinkDto>>,
+        scaled: Map<String, List<ProductRecipeLinkDto>>
+    ): List<RecipeScalingUpdate> {
+        val updates = mutableListOf<RecipeScalingUpdate>()
+        scaled.forEach { (variantId, scaledLinks) ->
+            val originalById = originals[variantId].orEmpty().associate { it.ingredientId to it.requiredQuantity }
+            scaledLinks.forEach { link ->
+                val original = originalById[link.ingredientId] ?: return@forEach
+                if (abs(original - link.requiredQuantity) >= 0.01) {
+                    updates.add(RecipeScalingUpdate(variantId, link.ingredientId, link.requiredQuantity))
+                }
+            }
+        }
+        return updates
+    }
+
+    private data class RecipeScalingUpdate(
+        val variantId: String,
+        val ingredientId: String,
+        val newRequiredQuantity: Double
+    )
 
     private suspend fun syncInventorySafely() {
         runCatching { syncInventoryFromRemote() }
@@ -423,14 +658,18 @@ class InventoryViewModel(
                     }
                 }
 
-                filtered = when (sortMode) {
-                    SortMode.NAME -> filtered.sortedBy { it.name.lowercase(Locale.getDefault()) }
-                    SortMode.STOCK_LEVEL -> filtered.sortedBy { ingredient ->
+                val ingredientComparator: Comparator<Ingredient> = when (sortMode) {
+                    SortMode.NAME -> compareBy { it.name.lowercase(Locale.getDefault()) }
+                    SortMode.STOCK_LEVEL -> compareBy { ingredient ->
                         if (ingredient.minimumStock <= 0.0) Double.MAX_VALUE
                         else ingredient.currentStock / ingredient.minimumStock
                     }
-                    SortMode.VALUE -> filtered.sortedByDescending { it.currentStock * it.costPerUnit }
+                    SortMode.VALUE -> compareBy { it.currentStock * it.costPerUnit }
                 }
+                filtered = filtered.sortedWith(
+                    if (sortDirection == SortDirection.ASCENDING) ingredientComparator
+                    else ingredientComparator.reversed()
+                )
 
                 filteredIngredients = filtered
                 if (resetActivePage) {
@@ -442,7 +681,13 @@ class InventoryViewModel(
             ScreenMode.PRODUCTION -> {
                 var filtered = allProducibleProducts.toList()
 
-                if (selectedCategory != ALL_CATEGORY) {
+                if (selectedCategory == DELETED_CATEGORY) {
+                    filtered = filtered.filter { !it.isActive }
+                } else {
+                    filtered = filtered.filter(ProducibleProduct::isActive)
+                }
+
+                if (selectedCategory != ALL_CATEGORY && selectedCategory != DELETED_CATEGORY) {
                     filtered = filtered.filter { it.category == selectedCategory }
                 }
 
@@ -452,11 +697,15 @@ class InventoryViewModel(
                     }
                 }
 
-                filtered = when (sortMode) {
-                    SortMode.NAME -> filtered.sortedBy { it.name.lowercase(Locale.getDefault()) }
-                    SortMode.STOCK_LEVEL -> filtered.sortedByDescending { it.availableQuantity }
-                    SortMode.VALUE -> filtered.sortedByDescending { it.estimatedValue }
+                val productComparator: Comparator<ProducibleProduct> = when (sortMode) {
+                    SortMode.NAME -> compareBy { it.name.lowercase(Locale.getDefault()) }
+                    SortMode.STOCK_LEVEL -> compareBy { it.availableQuantity }
+                    SortMode.VALUE -> compareBy { it.estimatedValue }
                 }
+                filtered = filtered.sortedWith(
+                    if (sortDirection == SortDirection.ASCENDING) productComparator
+                    else productComparator.reversed()
+                )
 
                 filteredProducibleProducts = filtered
                 if (resetActivePage) {
@@ -514,16 +763,37 @@ class InventoryViewModel(
     }
 
     private fun refreshDerived() {
-        _lowStockIngredients.value = allIngredients.filter { it.currentStock <= it.minimumStock }
+        _lowStockIngredients.value = allIngredients.filter {
+            it.stockStatus != IngredientStockStatus.IN_STOCK
+        }
         _totalInventoryValue.value = allIngredients.sumOf { it.currentStock * it.costPerUnit }
         _totalIngredientCount.value = allIngredients.size
-        _outOfStockProducts.value = allProducibleProducts.filter { it.availableQuantity <= 0 }
-        _averageProduciblePrice.value = allProducibleProducts
+        val activeProducts = allProducibleProducts.filter(ProducibleProduct::isActive)
+        _outOfStockProducts.value = activeProducts.filter { it.availableQuantity <= 0 }
+        _averageProduciblePrice.value = activeProducts
             .map(ProducibleProduct::price)
             .average()
             .takeUnless(Double::isNaN)
             ?: 0.0
-        _totalProducibleProductCount.value = allProducibleProducts.size
+        _totalProducibleProductCount.value = activeProducts.size
+    }
+
+    private fun computeRecipeAvailableQuantity(
+        recipeLinks: List<ProductRecipeLinkDto>,
+        ingredientDirectory: Map<String, Ingredient>
+    ): Int? {
+        val requiredLinks = recipeLinks.filter { it.requiredQuantity > 0.0 }
+        if (requiredLinks.isEmpty()) return null
+
+        return requiredLinks
+            .minOfOrNull { link ->
+                val currentStock = ingredientDirectory[link.ingredientId]
+                    ?.currentStock
+                    ?.coerceAtLeast(0.0)
+                    ?: 0.0
+                floor(currentStock / link.requiredQuantity).toInt()
+            }
+            ?.coerceAtLeast(0)
     }
 
     private fun currentDate(): String {
@@ -537,10 +807,12 @@ class InventoryViewModel(
 
     private companion object {
         const val ALL_CATEGORY = "All"
+        const val DELETED_CATEGORY = "Deleted"
         const val INGREDIENT_ID_PREFIX = "ING-"
         const val INVENTORY_PAGE_SIZE = 8
         const val INVENTORY_REFRESH_INTERVAL_MS = 60_000L
         const val RESTOCK_QUANTITY_ERROR = "Restock quantity must be greater than zero."
+        const val BEVERAGE_BASE_SIZE_OZ = 16.0
         val DEFAULT_INGREDIENT_CATEGORIES = listOf(
             "Beverages",
             "Dairy",

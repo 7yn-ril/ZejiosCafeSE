@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.zejioscafese.R
 import com.example.zejioscafese.pos.data.model.Ingredient
+import com.example.zejioscafese.pos.data.model.IngredientStockStatus
 import java.util.Locale
 import kotlin.math.floor
 
@@ -47,7 +48,7 @@ class IngredientAdapter(
         private val btnRowActions: ImageButton = itemView.findViewById(R.id.btnRowActions)
 
         // UI CHANGE: bind() now renders the seven required columns and never
-        // exposes raw ml/L/kg/g. Liquid ingredients are surfaced via their
+        // exposes raw legacy units. mL ingredients are surfaced via their
         // backend-computed servings figures so the user only ever sees
         // "{N} piece" / "PHP X / piece".
         fun bind(ingredient: Ingredient) {
@@ -64,10 +65,7 @@ class IngredientAdapter(
             tvCostPerUnit.text = String.format(Locale.getDefault(), "PHP %,.2f", pricePerPiece)
             tvTotalValue.text = String.format(Locale.getDefault(), "PHP %,.2f", totalValue)
 
-            // UI CHANGE: Stock Level badge — ≤10 servings remaining flips the
-            // pill into the red "Low Stock" state. Toast notification is
-            // fired once per refresh by InventoryFragment, not per row.
-            applyStockStatusBadge(servingsRemaining)
+            applyStockStatusBadge(ingredient.stockStatus)
 
             btnRowActions.setOnClickListener { anchor ->
                 PopupMenu(anchor.context, anchor).apply {
@@ -87,17 +85,24 @@ class IngredientAdapter(
             }
         }
 
-        private fun applyStockStatusBadge(servingsRemaining: Double) {
+        private fun applyStockStatusBadge(status: IngredientStockStatus) {
             val ctx = itemView.context
-            val isLow = servingsRemaining <= LOW_STOCK_THRESHOLD
-            if (isLow) {
-                tvStockStatus.text = ctx.getString(R.string.inventory_status_low_stock)
-                tvStockStatus.setBackgroundResource(R.drawable.bg_status_low_stock)
-                tvStockStatus.setTextColor(ContextCompat.getColor(ctx, R.color.stock_critical))
-            } else {
-                tvStockStatus.text = ctx.getString(R.string.inventory_status_in_stock)
-                tvStockStatus.setBackgroundResource(R.drawable.bg_status_in_stock)
-                tvStockStatus.setTextColor(ContextCompat.getColor(ctx, R.color.stock_good))
+            when (status) {
+                IngredientStockStatus.NO_STOCK -> {
+                    tvStockStatus.text = ctx.getString(R.string.inventory_status_no_stock)
+                    tvStockStatus.setBackgroundResource(R.drawable.bg_status_no_stock)
+                    tvStockStatus.setTextColor(ContextCompat.getColor(ctx, R.color.white))
+                }
+                IngredientStockStatus.LOW_STOCK -> {
+                    tvStockStatus.text = ctx.getString(R.string.inventory_status_low_stock)
+                    tvStockStatus.setBackgroundResource(R.drawable.bg_status_low_stock)
+                    tvStockStatus.setTextColor(ContextCompat.getColor(ctx, R.color.stock_critical))
+                }
+                IngredientStockStatus.IN_STOCK -> {
+                    tvStockStatus.text = ctx.getString(R.string.inventory_status_in_stock)
+                    tvStockStatus.setBackgroundResource(R.drawable.bg_status_in_stock)
+                    tvStockStatus.setTextColor(ContextCompat.getColor(ctx, R.color.stock_good))
+                }
             }
         }
 
@@ -123,7 +128,7 @@ class IngredientAdapter(
             return ingredient.mlPerServing?.takeIf { it > 0.0 } ?: 1.0
         }
 
-        // Liquids store cost as PHP/ml, so we re-derive the per-serving (per
+        // mL ingredients store cost as PHP/mL, so we re-derive the per-serving (per
         // piece) cost. Solids already price by piece.
         private fun pricePerPiece(ingredient: Ingredient): Double {
             return ingredient.costPerServing ?: ingredient.costPerUnit
@@ -139,10 +144,6 @@ class IngredientAdapter(
                     .trimEnd('.')
             }
             return itemView.context.getString(R.string.inventory_value_pieces, displayValue)
-        }
-
-        private companion object {
-            const val LOW_STOCK_THRESHOLD = 10.0
         }
     }
 

@@ -1,5 +1,6 @@
 package com.example.zejioscafese.ui
 
+import android.content.res.ColorStateList
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,11 +11,13 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.zejioscafese.R
 import com.example.zejioscafese.inventory.data.model.ProducibleProduct
+import com.google.android.material.button.MaterialButton
 
 class ProducibleProductAdapter(
     private val onViewIngredientsClick: (ProducibleProduct) -> Unit,
     private val onEditClick: (ProducibleProduct) -> Unit,
-    private val onDeleteClick: (ProducibleProduct) -> Unit
+    private val onDeleteClick: (ProducibleProduct) -> Unit,
+    private val onRestoreClick: (ProducibleProduct) -> Unit
 ) :
     ListAdapter<ProducibleProduct, ProducibleProductAdapter.ProducibleProductViewHolder>(DiffCallback) {
 
@@ -25,7 +28,8 @@ class ProducibleProductAdapter(
             itemView = view,
             onViewIngredientsClick = onViewIngredientsClick,
             onEditClick = onEditClick,
-            onDeleteClick = onDeleteClick
+            onDeleteClick = onDeleteClick,
+            onRestoreClick = onRestoreClick
         )
     }
 
@@ -37,7 +41,8 @@ class ProducibleProductAdapter(
         itemView: View,
         private val onViewIngredientsClick: (ProducibleProduct) -> Unit,
         private val onEditClick: (ProducibleProduct) -> Unit,
-        private val onDeleteClick: (ProducibleProduct) -> Unit
+        private val onDeleteClick: (ProducibleProduct) -> Unit,
+        private val onRestoreClick: (ProducibleProduct) -> Unit
     ) : RecyclerView.ViewHolder(itemView) {
 
         private val tvCategory: TextView = itemView.findViewById(R.id.tvProducibleCategory)
@@ -50,7 +55,7 @@ class ProducibleProductAdapter(
         private val btnViewIngredients: View =
             itemView.findViewById(R.id.btnViewProductIngredients)
         private val btnEdit: View = itemView.findViewById(R.id.btnEditProduct)
-        private val btnDelete: View = itemView.findViewById(R.id.btnDeleteProduct)
+        private val btnDelete: MaterialButton = itemView.findViewById(R.id.btnDeleteProduct)
 
         fun bind(product: ProducibleProduct) {
             val context = itemView.context
@@ -72,28 +77,61 @@ class ProducibleProductAdapter(
                 R.string.inventory_estimated_value,
                 context.getString(R.string.currency_format, product.estimatedValue)
             )
-            tvQuantity.text = context.getString(
-                R.string.inventory_can_make_format,
-                product.availableQuantity
-            )
 
+            val isHidden = !product.isActive
             val isOutOfStock = product.availableQuantity <= 0
-            tvStatus.text = if (isOutOfStock) {
+            tvStatus.text = if (isHidden) {
+                context.getString(R.string.inventory_hidden_from_pos)
+            } else if (isOutOfStock) {
                 context.getString(R.string.inventory_out_of_stock)
             } else {
                 context.getString(R.string.inventory_can_make_format, product.availableQuantity)
             }
+            tvQuantity.text = if (isHidden) {
+                context.getString(R.string.inventory_hidden_product_quantity)
+            } else {
+                context.getString(
+                    R.string.inventory_can_make_format,
+                    product.availableQuantity
+                )
+            }
 
             val statusColor = ContextCompat.getColor(
                 context,
-                if (isOutOfStock) R.color.stock_critical else R.color.stock_good
+                when {
+                    isHidden -> R.color.pos_warning
+                    isOutOfStock -> R.color.stock_critical
+                    else -> R.color.stock_good
+                }
             )
             tvStatus.setTextColor(statusColor)
             tvQuantity.setTextColor(statusColor)
 
             btnViewIngredients.setOnClickListener { onViewIngredientsClick(product) }
+            btnEdit.visibility = if (isHidden) View.GONE else View.VISIBLE
             btnEdit.setOnClickListener { onEditClick(product) }
-            btnDelete.setOnClickListener { onDeleteClick(product) }
+
+            if (isHidden) {
+                btnDelete.contentDescription = context.getString(R.string.inventory_restore_product)
+                btnDelete.setIconResource(R.drawable.ic_check_circle_24)
+                btnDelete.iconTint = ColorStateList.valueOf(
+                    ContextCompat.getColor(context, R.color.pos_secondary)
+                )
+                btnDelete.backgroundTintList = ColorStateList.valueOf(
+                    ContextCompat.getColor(context, R.color.pos_success_soft)
+                )
+                btnDelete.setOnClickListener { onRestoreClick(product) }
+            } else {
+                btnDelete.contentDescription = context.getString(R.string.inventory_soft_delete_product)
+                btnDelete.setIconResource(android.R.drawable.ic_menu_delete)
+                btnDelete.iconTint = ColorStateList.valueOf(
+                    ContextCompat.getColor(context, R.color.stock_critical)
+                )
+                btnDelete.backgroundTintList = ColorStateList.valueOf(
+                    ContextCompat.getColor(context, R.color.pos_critical_soft)
+                )
+                btnDelete.setOnClickListener { onDeleteClick(product) }
+            }
         }
     }
 

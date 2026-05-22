@@ -1,6 +1,7 @@
 package com.example.zejioscafese.inventory.data.remote.dto
 
 import com.example.zejioscafese.pos.data.model.Ingredient
+import com.example.zejioscafese.pos.data.model.IngredientUnits
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
@@ -37,7 +38,7 @@ data class IngredientDto(
             id = ingredientId,
             name = ingredientName,
             category = ingredientCategory?.takeIf(String::isNotBlank) ?: deriveCategory(),
-            unit = ingredientUnit,
+            unit = IngredientUnits.normalize(ingredientUnit),
             currentStock = ingredientCurrentStock,
             minimumStock = ingredientMinimumStock,
             costPerUnit = ingredientCostPerUnit,

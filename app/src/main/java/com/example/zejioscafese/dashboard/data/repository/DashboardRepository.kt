@@ -13,7 +13,10 @@ import com.example.zejioscafese.dashboard.model.DashboardRecentOrder
 import com.example.zejioscafese.dashboard.model.DashboardRecentOrderItem
 import com.example.zejioscafese.dashboard.model.DashboardSnapshot
 import com.example.zejioscafese.dashboard.model.DashboardTopItem
+import com.example.zejioscafese.dashboard.model.InventoryStockNotice
+import com.example.zejioscafese.dashboard.model.InventoryStockStatus
 import com.example.zejioscafese.pos.data.local.ProductImageResolver
+import com.example.zejioscafese.pos.data.model.IngredientUnits
 import com.example.zejioscafese.pos.data.remote.dto.ProductVariantStockDto
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
@@ -137,11 +140,37 @@ class DashboardRepository(
 
         val alerts = lowStockIngredients.map { ingredient ->
             val isCritical = ingredient.currentStock <= ingredient.minimumStock * CRITICAL_THRESHOLD_RATIO
+            val unit = IngredientUnits.normalize(ingredient.ingredientUnit)
             DashboardAlert(
                 title = "Low stock: ${ingredient.ingredientName}",
-                detail = "Only ${formatStock(ingredient.currentStock)} ${ingredient.ingredientUnit} left. Minimum target is ${formatStock(ingredient.minimumStock)} ${ingredient.ingredientUnit}.",
+                detail = "Only ${formatStock(ingredient.currentStock)} $unit left. Minimum target is ${formatStock(ingredient.minimumStock)} $unit.",
                 level = if (isCritical) AlertLevel.CRITICAL else AlertLevel.WARNING
             )
+        }
+
+        // Structured notices for the system notification layer. Includes
+        // truly out-of-stock items even when the dashboard alerts list omits
+        // ingredients with a zero minimum threshold.
+        val inventoryNotices = rawData.ingredients.mapNotNull { ingredient ->
+            when {
+                ingredient.currentStock <= 0.0 -> InventoryStockNotice(
+                    ingredientId = ingredient.ingredientId,
+                    ingredientName = ingredient.ingredientName,
+                    unit = IngredientUnits.normalize(ingredient.ingredientUnit),
+                    currentStock = ingredient.currentStock,
+                    minimumStock = ingredient.minimumStock,
+                    status = InventoryStockStatus.OUT
+                )
+                ingredient.minimumStock > 0.0 && ingredient.currentStock <= ingredient.minimumStock -> InventoryStockNotice(
+                    ingredientId = ingredient.ingredientId,
+                    ingredientName = ingredient.ingredientName,
+                    unit = IngredientUnits.normalize(ingredient.ingredientUnit),
+                    currentStock = ingredient.currentStock,
+                    minimumStock = ingredient.minimumStock,
+                    status = InventoryStockStatus.LOW
+                )
+                else -> null
+            }
         }
 
         val topItems = monthOrderItems
@@ -208,6 +237,12 @@ class DashboardRepository(
             .take(MAX_RECENT_ORDERS)
             .map { record ->
                 val items = itemsByOrderId[record.id].orEmpty()
+                val itemSubtotal = items.sumOf(OrderItemRowDto::lineTotal)
+                val subtotal = when {
+                    record.subtotal != null && record.subtotal > 0.0 -> record.subtotal
+                    itemSubtotal > 0.0 -> itemSubtotal
+                    else -> record.total + record.discountAmount
+                }
                 DashboardRecentOrder(
                     orderNumber = record.orderNumber,
                     customerName = record.customerName,
@@ -220,6 +255,9 @@ class DashboardRepository(
                             lineTotal = row.lineTotal
                         )
                     },
+                    subtotal = subtotal,
+                    discountLabel = record.discountLabel,
+                    discountAmount = record.discountAmount,
                     total = record.total,
                     status = formatStatusLabel(record.status)
                 )
@@ -269,7 +307,8 @@ class DashboardRepository(
             topItems = topItems,
             alerts = alerts,
             charts = charts,
-            recentOrders = recentOrders
+            recentOrders = recentOrders,
+            inventoryNotices = inventoryNotices
         )
     }
 
@@ -359,12 +398,20 @@ class DashboardRepository(
             ?: DEFAULT_CUSTOMER_NAME
 
         return zonedDateTime?.let { parsedTime ->
+            val discountAmount = (orderDiscountAmount ?: 0.0).coerceAtLeast(0.0)
+            val discountLabel = orderDiscountLabel
+                ?.trim()
+                ?.takeIf(String::isNotBlank)
+                ?.takeIf { discountAmount > 0.0 }
             OrderRecord(
                 id = orderId,
                 orderNumber = orderNumber,
                 customerName = resolvedCustomer,
                 createdAt = parsedTime,
                 localDate = parsedTime.toLocalDate(),
+                subtotal = orderSubtotal?.takeIf { it > 0.0 },
+                discountLabel = discountLabel,
+                discountAmount = discountAmount,
                 total = orderTotal,
                 status = orderStatus.trim().lowercase(Locale.US),
                 isCompleted = orderStatus.trim().equals(STATUS_COMPLETED, ignoreCase = true),
@@ -549,6 +596,9 @@ class DashboardRepository(
         val customerName: String,
         val createdAt: java.time.ZonedDateTime,
         val localDate: LocalDate,
+        val subtotal: Double?,
+        val discountLabel: String?,
+        val discountAmount: Double,
         val total: Double,
         val status: String,
         val isCompleted: Boolean,
@@ -567,6 +617,12 @@ class DashboardRepository(
         val createdAt: String,
         @SerialName("order_total")
         val orderTotal: Double,
+        @SerialName("order_subtotal")
+        val orderSubtotal: Double? = null,
+        @SerialName("order_discount_label")
+        val orderDiscountLabel: String? = null,
+        @SerialName("order_discount_amount")
+        val orderDiscountAmount: Double? = null,
         @SerialName("order_status")
         val orderStatus: String
     )

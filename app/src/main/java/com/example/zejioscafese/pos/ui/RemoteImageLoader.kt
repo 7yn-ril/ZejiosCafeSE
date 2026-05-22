@@ -2,6 +2,7 @@ package com.example.zejioscafese.pos.ui
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
 import android.util.LruCache
 import android.widget.ImageView
 import androidx.annotation.DrawableRes
@@ -13,6 +14,8 @@ import java.util.concurrent.Executors
 object RemoteImageLoader {
 
     private const val ASSET_PREFIX = "asset:///"
+    private const val CONTENT_PREFIX = "content://"
+    private const val FILE_PREFIX = "file://"
     private val executor = Executors.newFixedThreadPool(4)
     private val cache = object : LruCache<String, Bitmap>(cacheSizeInKb()) {
         override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount / 1024
@@ -45,6 +48,10 @@ object RemoteImageLoader {
             val bitmap = when {
                 normalizedUrl.startsWith(ASSET_PREFIX) -> {
                     normalizedUrl.removePrefix(ASSET_PREFIX).loadAssetBitmap(imageView)
+                }
+                normalizedUrl.startsWith(CONTENT_PREFIX) ||
+                    normalizedUrl.startsWith(FILE_PREFIX) -> {
+                    normalizedUrl.loadUriBitmap(imageView)
                 }
                 else -> normalizedUrl.downloadBitmap()
             } ?: return@execute
@@ -89,6 +96,14 @@ object RemoteImageLoader {
     private fun String.loadAssetBitmap(imageView: ImageView): Bitmap? {
         return runCatching {
             imageView.context.assets.open(this).use(BitmapFactory::decodeStream)
+        }.getOrNull()
+    }
+
+    private fun String.loadUriBitmap(imageView: ImageView): Bitmap? {
+        return runCatching {
+            imageView.context.contentResolver
+                .openInputStream(Uri.parse(this))
+                ?.use(BitmapFactory::decodeStream)
         }.getOrNull()
     }
 

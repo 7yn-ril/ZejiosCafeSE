@@ -21,6 +21,211 @@
         android:orientation="vertical"
         android:padding="20dp">
 
+        <!-- Sales tracking KPIs (portrait): three tiles side-by-side. Same
+             cards as the landscape layout — landscape and portrait must
+             share IDs so MainActivity binding code is orientation-agnostic. -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardOrdersTotalSales"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                app:cardBackgroundColor="@color/pos_surface_header"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/pos_border"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="118dp"
+                    android:orientation="vertical"
+                    android:padding="14dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/orders_metric_total_sales"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
+                        android:textColor="@color/pos_text_secondary" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:src="@drawable/ic_reports_24"
+                            app:tint="@color/pos_secondary" />
+
+                        <TextView
+                            android:id="@+id/tvOrdersTotalSalesValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="PHP 0.00"
+                            android:textAppearance="@style/TextAppearance.ZejiosCafe.KpiValue"
+                            android:textColor="@color/pos_secondary"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:ellipsize="end"
+                        android:maxLines="2"
+                        android:text="@string/orders_metric_total_sales_subtitle"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
+                        android:textColor="@color/pos_text_secondary" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <Space
+                android:layout_width="@dimen/content_inline_gap"
+                android:layout_height="1dp" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardOrdersCashSales"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                app:cardBackgroundColor="@color/pos_surface_header"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/pos_border"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="118dp"
+                    android:orientation="vertical"
+                    android:padding="14dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/orders_metric_cash_sales"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
+                        android:textColor="@color/pos_text_secondary" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:src="@drawable/ic_orders_24"
+                            app:tint="@color/pos_primary" />
+
+                        <TextView
+                            android:id="@+id/tvOrdersCashSalesValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="PHP 0.00"
+                            android:textAppearance="@style/TextAppearance.ZejiosCafe.KpiValue"
+                            android:textColor="@color/pos_primary"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:ellipsize="end"
+                        android:maxLines="2"
+                        android:text="@string/orders_metric_cash_sales_subtitle"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
+                        android:textColor="@color/pos_text_secondary" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <Space
+                android:layout_width="@dimen/content_inline_gap"
+                android:layout_height="1dp" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardOrdersGcashSales"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                app:cardBackgroundColor="@color/pos_surface_header"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/pos_border"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="118dp"
+                    android:orientation="vertical"
+                    android:padding="14dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/orders_metric_gcash_sales"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
+                        android:textColor="@color/pos_text_secondary" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:src="@drawable/ic_pos_24"
+                            app:tint="@color/pos_secondary" />
+
+                        <TextView
+                            android:id="@+id/tvOrdersGcashSalesValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="PHP 0.00"
+                            android:textAppearance="@style/TextAppearance.ZejiosCafe.KpiValue"
+                            android:textColor="@color/pos_secondary"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:ellipsize="end"
+                        android:maxLines="2"
+                        android:text="@string/orders_metric_gcash_sales_subtitle"
+                        android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
+                        android:textColor="@color/pos_text_secondary" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+
+        <Space
+            android:layout_width="1dp"
+            android:layout_height="@dimen/content_section_gap" />
+
         <!-- Action bar: search on top, secondary actions below -->
         <LinearLayout
             android:layout_width="match_parent"
