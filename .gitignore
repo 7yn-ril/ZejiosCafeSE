@@ -32,3 +32,4 @@
 /tmp_*.png
 /tmp_*.xml
 /null
+node_modules/

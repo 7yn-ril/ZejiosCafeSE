@@ -52,7 +52,8 @@ class PosViewModel(
     enum class PaymentMethod {
         CASH,
         GCASH,
-        MAYA
+        MAYA,
+        PAYMONGO
     }
 
     enum class OrderType {
@@ -252,7 +253,10 @@ class PosViewModel(
         customerName: String? = null,
         discountLabel: String? = null,
         discountAmount: Double = 0.0,
-        finalTotal: Double? = null
+        finalTotal: Double? = null,
+        paymentReference: String? = null,
+        paymentProvider: String? = null,
+        paymentStatus: String? = null
     ) {
         val itemsToCheckout = _orderItems.value.orEmpty()
         if (itemsToCheckout.isEmpty() || _isCheckoutInProgress.value == true) {
@@ -297,6 +301,9 @@ class PosViewModel(
                         discountId = activeDiscount?.id,
                         discountPercent = activeDiscount?.percent,
                         paymentMethod = (_selectedPaymentMethod.value ?: PaymentMethod.CASH).name.lowercase(Locale.US),
+                        paymentProvider = paymentProvider?.trim()?.takeIf(String::isNotBlank),
+                        paymentReference = paymentReference?.trim()?.takeIf(String::isNotBlank),
+                        paymentStatus = paymentStatus?.trim()?.takeIf(String::isNotBlank),
                         status = "preparing",
                         items = buildCheckoutLines(itemsToCheckout),
                         orderType = when (_selectedOrderType.value ?: OrderType.DINE_IN) {
@@ -323,6 +330,13 @@ class PosViewModel(
                 _isCheckoutInProgress.value = false
             }
         }
+    }
+
+    fun completeExternalCheckout(savedOrderNumber: String) {
+        clearOrder()
+        _selectedDiscount.value = null
+        _discountAmount.value = 0.0
+        setNextOrderNumberAfter(savedOrderNumber)
     }
 
     fun onCheckoutEventConsumed() {

@@ -334,6 +334,33 @@ class PosViewModelTest {
     }
 
     @Test
+    fun checkout_payMongo_passesGatewayMetadata() = runTest {
+        advanceUntilIdle()
+        val payloadSlot = slot<CheckoutOrderPayload>()
+        val savedOrder = CafeOrder(
+            id = "#POS-1025", customerName = "Walk-in Customer",
+            itemsSummary = "Americano", itemCount = 1,
+            timeLabel = "10:00 AM", status = CafeOrderStatus.PREPARING,
+            total = 90.0, initials = "WC"
+        )
+        coEvery { orderRepo.saveCheckoutOrder(capture(payloadSlot), any()) } returns savedOrder
+
+        viewModel.increaseProduct(coffeeA)
+        viewModel.setPaymentMethod(PosViewModel.PaymentMethod.PAYMONGO)
+        viewModel.checkout(
+            paymentReference = "cs_test_1025",
+            paymentProvider = "paymongo",
+            paymentStatus = "paid"
+        )
+        advanceUntilIdle()
+
+        assertEquals("paymongo", payloadSlot.captured.paymentMethod)
+        assertEquals("paymongo", payloadSlot.captured.paymentProvider)
+        assertEquals("paid", payloadSlot.captured.paymentStatus)
+        assertEquals("cs_test_1025", payloadSlot.captured.paymentReference)
+    }
+
+    @Test
     fun setOrderType_updatesSelectedOrderType() = runTest {
         advanceUntilIdle()
         viewModel.setOrderType(PosViewModel.OrderType.TAKE_AWAY)

@@ -5,14 +5,17 @@ import android.animation.ValueAnimator
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.app.DatePickerDialog
+import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.BitmapFactory
+import android.net.Uri
 import android.graphics.Rect
 import android.graphics.Typeface
 import android.os.Bundle
 import android.text.InputType
+import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -71,7 +74,11 @@ import com.example.zejioscafese.orders.model.CafeOrder
 import com.example.zejioscafese.orders.model.CafeOrderLine
 import com.example.zejioscafese.orders.model.CafeOrderStatus
 import com.example.zejioscafese.orders.ui.OrderManagementAdapter
+import com.example.zejioscafese.payments.data.PayMongoCheckoutLine
+import com.example.zejioscafese.payments.data.PayMongoCheckoutRepository
+import com.example.zejioscafese.payments.data.PayMongoCheckoutSession
 import com.example.zejioscafese.pos.data.model.Discount
+import com.example.zejioscafese.pos.data.model.OrderItem
 import com.example.zejioscafese.pos.data.model.Product
 import com.example.zejioscafese.pos.data.repository.DiscountRepository
 import com.example.zejioscafese.pos.presentation.PosViewModel
@@ -109,6 +116,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 class MainActivity : AppCompatActivity(), NavigationHost {
 
@@ -157,6 +168,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         var address: String
     )
 
+    @Serializable
     private data class ReceiptLine(
         val label: String,
         val quantity: Int,
@@ -172,8 +184,48 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val total: Double,
         val lines: List<ReceiptLine>,
         val discountLabel: String? = null,
-        val discountAmount: Double = 0.0
+        val discountAmount: Double = 0.0,
+        val paymentReference: String? = null
     )
+
+    @Serializable
+    private data class PendingPayMongoCheckout(
+        val orderNumber: String,
+        val sessionId: String,
+        val checkoutUrl: String,
+        val referenceNumber: String?,
+        val status: String?,
+        val customerName: String?,
+        val subtotal: Double,
+        val tax: Double,
+        val total: Double,
+        val discountLabel: String?,
+        val discountAmount: Double,
+        val discountId: String?,
+        val discountPercent: Double?,
+        val orderType: String,
+        val items: List<CheckoutOrderLine>,
+        val receiptLines: List<ReceiptLine>,
+        val createdAtMillis: Long = System.currentTimeMillis()
+    ) {
+        fun toSession() = PayMongoCheckoutSession(
+            id = sessionId,
+            checkoutUrl = checkoutUrl,
+            referenceNumber = referenceNumber,
+            status = status
+        )
+
+        fun toReceipt(paymentReference: String?) = PendingCheckoutReceipt(
+            customerName = customerName,
+            cashReceived = total,
+            subtotal = subtotal,
+            total = total,
+            lines = receiptLines,
+            discountLabel = discountLabel,
+            discountAmount = discountAmount,
+            paymentReference = paymentReference
+        )
+    }
 
     // CHANGE: Discounts — replaces the legacy NONE/10/20/50 enum. The
     // checkout dialog renders three radio options (None / Built-in /
@@ -210,6 +262,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     // indices (positions in CafeOrder.orderedItems) that are completed.
     private val orderItemCompletion = mutableMapOf<String, MutableSet<Int>>()
     private val orderRepository = OrderRepository()
+    private val payMongoCheckoutRepository = PayMongoCheckoutRepository()
     private var selectedOrderStatus: CafeOrderStatus? = null
     private var orderSearchQuery: String = ""
     private var isOrdersLoading: Boolean = false
@@ -231,6 +284,11 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private var hasCheckoutItems: Boolean = false
     private var isCheckoutSaving: Boolean = false
     private var pendingCheckoutReceipt: PendingCheckoutReceipt? = null
+    private val paymentPersistenceJson = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+    }
+    private var isPayMongoVerificationRunning: Boolean = false
     private var dashboardSnapshot: DashboardSnapshot = DashboardSnapshot.empty()
     private var selectedDashboardPeriod: DashboardPeriod = DashboardPeriod.DAILY
     private var hasRenderedDashboardChart: Boolean = false
@@ -267,6 +325,13 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         private const val POS_PAGE_SIZE = 12
         private const val ORDERS_PAGE_SIZE = 10
         private const val ORDERS_REFRESH_INTERVAL_MS = 30_000L
+        private const val PAYMENT_PREFS_NAME = "zejios_payments"
+        private const val KEY_PENDING_PAYMONGO_CHECKOUT = "pending_paymongo_checkout"
+        private const val PAYMONGO_RETURN_SCHEME = "zejioscafe"
+        private const val PAYMONGO_RETURN_HOST = "paymongo"
+        private const val PAYMONGO_RETURN_PATH = "/checkout-return"
+        private const val PAYMONGO_RETURN_VERIFY_DELAY_MS = 1_500L
+        private const val TAG = "MainActivity"
     }
 
     private val sidebarExpandedOnlyViews by lazy {
@@ -348,6 +413,13 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         renderSection(initialSection)
         loadSidebarLogo()
         applySidebarState(isSidebarExpanded, animate = false)
+        handlePayMongoReturn(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handlePayMongoReturn(intent)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -744,7 +816,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             total = order.total,
             lines = order.toReceiptLines(),
             discountLabel = order.discountLabel,
-            discountAmount = order.discountAmount
+            discountAmount = order.discountAmount,
+            paymentReference = order.paymentReference
         )
 
         showReceiptDialog(order, receipt)
@@ -803,6 +876,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         return when (paymentMethod.trim().lowercase(Locale.US)) {
             "gcash" -> getString(R.string.receipt_paid_via_gcash)
             "maya" -> getString(R.string.maya)
+            "paymongo" -> getString(R.string.paymongo)
             else -> getString(R.string.cash)
         }
     }
@@ -1418,7 +1492,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         // Payment method selector (moved from cart to modal)
         content.addView(createSectionLabel(getString(R.string.payment_method)))
         val paymentMethodGroup = RadioGroup(this).apply {
-            orientation = RadioGroup.HORIZONTAL
+            orientation = RadioGroup.VERTICAL
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -1438,12 +1512,16 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
             textSize = 13f
         }
-        // CHANGE: Payment — Card option removed from checkout. Backend
-        // payment_method column accepts free text, so any historical
-        // 'maya' / 'card' rows remain readable; new orders will only ever
-        // be 'cash' or 'gcash'.
+        val rbPaymongo = RadioButton(this).apply {
+            id = View.generateViewId()
+            text = getString(R.string.paymongo_checkout_method)
+            isChecked = (viewModel.selectedPaymentMethod.value ?: PosViewModel.PaymentMethod.CASH) == PosViewModel.PaymentMethod.PAYMONGO
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
+            textSize = 13f
+        }
         paymentMethodGroup.addView(rbCash)
         paymentMethodGroup.addView(rbGcash)
+        paymentMethodGroup.addView(rbPaymongo)
         content.addView(paymentMethodGroup)
 
         val customerNameInput = createDialogInput(
@@ -1578,7 +1656,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             hint = getString(R.string.checkout_cash_received_hint),
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
         )
-        content.addView(createSectionLabel(getString(R.string.cash)))
+        val paymentTenderLabel = createSectionLabel(getString(R.string.cash))
+        content.addView(paymentTenderLabel)
         content.addView(paymentInput)
 
         val paymentHelper = createDialogText(
@@ -1672,12 +1751,30 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             ) View.VISIBLE else View.GONE
         }
 
+        fun selectedPaymentMethod(): PosViewModel.PaymentMethod {
+            return when (paymentMethodGroup.checkedRadioButtonId) {
+                rbGcash.id -> PosViewModel.PaymentMethod.GCASH
+                rbPaymongo.id -> PosViewModel.PaymentMethod.PAYMONGO
+                else -> PosViewModel.PaymentMethod.CASH
+            }
+        }
+
         fun refreshPaymentState() {
             val discount = resolveDiscount()
             val finalTotal = total - discount.amount
-            val cashReceived = paymentInput.text?.toString().orEmpty().toCashAmount()
+            val method = selectedPaymentMethod()
+            val needsCashTender = method != PosViewModel.PaymentMethod.PAYMONGO
+            val cashReceived = if (needsCashTender) {
+                paymentInput.text?.toString().orEmpty().toCashAmount()
+            } else {
+                finalTotal
+            }
             val change = cashReceived?.minus(finalTotal)
-            val isValid = cashReceived != null && change != null && change >= 0
+            val isValid = if (needsCashTender) {
+                cashReceived != null && change != null && change >= 0
+            } else {
+                finalTotal >= 0
+            }
 
             // Keep the ViewModel in sync so discountId/percent ride along to
             // the saved order. Calling setDiscount on every change is cheap
@@ -1693,11 +1790,22 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             } else {
                 ""
             }
+            paymentTenderLabel.visibility = if (needsCashTender) View.VISIBLE else View.GONE
+            paymentInput.visibility = if (needsCashTender) View.VISIBLE else View.GONE
+            confirmButton.text = if (method == PosViewModel.PaymentMethod.PAYMONGO) {
+                getString(R.string.checkout_continue_paymongo)
+            } else {
+                getString(R.string.checkout_confirm_payment)
+            }
             confirmButton.isEnabled = isValid && !isCheckoutSaving
-            paymentHelper.text = when {
-                cashReceived == null -> getString(R.string.checkout_change_due_pending)
-                change == null || change < 0 -> getString(R.string.checkout_cash_required)
-                else -> getString(R.string.checkout_change_due, formatCurrency(change))
+            paymentHelper.text = if (needsCashTender) {
+                when {
+                    cashReceived == null -> getString(R.string.checkout_change_due_pending)
+                    change == null || change < 0 -> getString(R.string.checkout_cash_required)
+                    else -> getString(R.string.checkout_change_due, formatCurrency(change))
+                }
+            } else {
+                getString(R.string.checkout_paymongo_pending)
             }
         }
 
@@ -1706,6 +1814,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         // RadioButtons (which fire BEFORE the group state changes, causing
         // resolveDiscount to read the previous selection).
         discountTypeGroup.setOnCheckedChangeListener { _, _ -> refreshPaymentState() }
+        paymentMethodGroup.setOnCheckedChangeListener { _, _ -> refreshPaymentState() }
         customDiscountSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 if (discountTypeGroup.checkedRadioButtonId == rbDiscountOther.id) {
@@ -1733,44 +1842,373 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         }
 
         confirmButton.setOnClickListener {
-            // CHANGE: Payment — discount math comes from resolveDiscount();
-            // Card option no longer offered so the selectedMethod fallback
-            // is just GCash vs Cash.
             val discount = resolveDiscount()
             val finalTotal = total - discount.amount
+            val selectedMethod = selectedPaymentMethod()
+
+            fun savePaidCheckout(cashReceived: Double, paymentReference: String? = null) {
+                viewModel.setPaymentMethod(selectedMethod)
+
+                pendingCheckoutReceipt = PendingCheckoutReceipt(
+                    customerName = customerNameInput.text?.toString()?.trim()?.takeIf(String::isNotBlank),
+                    cashReceived = cashReceived,
+                    subtotal = subtotal,
+                    total = finalTotal,
+                    lines = receiptLines,
+                    discountLabel = discount.label,
+                    discountAmount = discount.amount,
+                    paymentReference = paymentReference
+                )
+
+                dialog.dismiss()
+                viewModel.checkout(
+                    customerName = customerNameInput.text?.toString(),
+                    discountLabel = discount.label,
+                    discountAmount = discount.amount,
+                    finalTotal = finalTotal,
+                    paymentReference = paymentReference,
+                    paymentProvider = if (selectedMethod == PosViewModel.PaymentMethod.PAYMONGO) "paymongo" else null,
+                    paymentStatus = if (selectedMethod == PosViewModel.PaymentMethod.PAYMONGO) "paid" else null
+                )
+            }
+
+            if (selectedMethod == PosViewModel.PaymentMethod.PAYMONGO) {
+                confirmButton.isEnabled = false
+                lifecycleScope.launch {
+                    try {
+                        val orderNumber = viewModel.orderNumber.value.orEmpty()
+                        val checkoutLines = viewModel.orderItems.value.orEmpty().toCheckoutOrderLines()
+                        val checkoutSession = payMongoCheckoutRepository.createCheckoutSession(
+                            orderNumber = orderNumber,
+                            customerName = customerNameInput.text?.toString()?.trim(),
+                            amount = finalTotal,
+                            lines = receiptLines.map { line ->
+                                PayMongoCheckoutLine(
+                                    name = line.label,
+                                    quantity = line.quantity,
+                                    lineTotal = line.lineTotal
+                                )
+                            }
+                        )
+                        val pending = PendingPayMongoCheckout(
+                            orderNumber = orderNumber,
+                            sessionId = checkoutSession.id,
+                            checkoutUrl = checkoutSession.checkoutUrl,
+                            referenceNumber = checkoutSession.referenceNumber,
+                            status = checkoutSession.status,
+                            customerName = customerNameInput.text?.toString()?.trim()?.takeIf(String::isNotBlank),
+                            subtotal = subtotal,
+                            tax = viewModel.tax.value ?: 0.0,
+                            total = finalTotal,
+                            discountLabel = discount.label,
+                            discountAmount = discount.amount,
+                            discountId = discount.discount?.id,
+                            discountPercent = discount.discount?.percent,
+                            orderType = viewModel.selectedOrderType.value.toDatabaseOrderType(),
+                            items = checkoutLines,
+                            receiptLines = receiptLines
+                        )
+                        savePendingPayMongoCheckout(pending)
+                        dialog.dismiss()
+                        confirmButton.isEnabled = !isCheckoutSaving
+                        showPayMongoCheckoutDialog(pending)
+                    } catch (exception: Exception) {
+                        confirmButton.isEnabled = !isCheckoutSaving
+                        showErrorDialog(
+                            this@MainActivity,
+                            getString(
+                                R.string.paymongo_checkout_create_failed,
+                                NetworkErrorFormatter.toUserMessage(
+                                    exception = exception,
+                                    fallbackMessage = getString(R.string.try_again)
+                                )
+                            )
+                        )
+                    }
+                }
+                return@setOnClickListener
+            }
 
             val cashReceived = paymentInput.text?.toString().orEmpty().toCashAmount()
             if (cashReceived == null || cashReceived < finalTotal) {
                 refreshPaymentState()
                 return@setOnClickListener
             }
-
-            val selectedMethod = when (paymentMethodGroup.checkedRadioButtonId) {
-                rbGcash.id -> PosViewModel.PaymentMethod.GCASH
-                else -> PosViewModel.PaymentMethod.CASH
-            }
-            viewModel.setPaymentMethod(selectedMethod)
-
-            pendingCheckoutReceipt = PendingCheckoutReceipt(
-                customerName = customerNameInput.text?.toString()?.trim()?.takeIf(String::isNotBlank),
-                cashReceived = cashReceived,
-                subtotal = subtotal,
-                total = finalTotal,
-                lines = receiptLines,
-                discountLabel = discount.label,
-                discountAmount = discount.amount
-            )
-
-            dialog.dismiss()
-            viewModel.checkout(
-                customerName = customerNameInput.text?.toString(),
-                discountLabel = discount.label,
-                discountAmount = discount.amount,
-                finalTotal = finalTotal
-            )
+            savePaidCheckout(cashReceived = cashReceived)
         }
 
         dialog.show()
+    }
+
+    private fun showPayMongoCheckoutDialog(pending: PendingPayMongoCheckout) {
+        val session = pending.toSession()
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(8.dp(), 8.dp(), 8.dp(), 0)
+        }
+
+        content.addView(
+            createDialogText(
+                text = getString(R.string.paymongo_checkout_message),
+                textSizeSp = 13f,
+                textColorRes = R.color.pos_text_secondary
+            )
+        )
+        content.addView(
+            createDialogText(
+                text = getString(R.string.paymongo_amount_format, formatCurrency(pending.total)),
+                textSizeSp = 14f,
+                typeface = Typeface.DEFAULT_BOLD,
+                topMarginDp = 12
+            )
+        )
+        content.addView(
+            createDialogText(
+                text = getString(R.string.paymongo_session_format, session.id),
+                textSizeSp = 13f,
+                typeface = Typeface.MONOSPACE,
+                topMarginDp = 4
+            )
+        )
+        session.status?.let { status ->
+            content.addView(
+                createDialogText(
+                    text = getString(R.string.paymongo_status_format, status),
+                    textSizeSp = 13f,
+                    textColorRes = R.color.pos_text_secondary,
+                    topMarginDp = 4
+                )
+            )
+        }
+
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.paymongo_checkout_title)
+            .setView(content)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.paymongo_open_checkout, null)
+            .setNeutralButton(R.string.paymongo_verify_payment, null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(session.checkoutUrl)))
+            }
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener { verifyButton ->
+                verifyButton.isEnabled = false
+                lifecycleScope.launch {
+                    val saved = verifyAndSavePayMongoCheckout(
+                        pending = pending,
+                        delayBeforeVerify = false,
+                        showPendingDialog = false
+                    )
+                    if (saved) {
+                        dialog.dismiss()
+                    } else {
+                        verifyButton.isEnabled = true
+                    }
+                }
+            }
+        }
+        dialog.show()
+    }
+
+    private fun handlePayMongoReturn(intent: Intent?) {
+        val uri = intent?.data ?: return
+        if (!uri.isPayMongoReturnUri()) return
+
+        val pending = loadPendingPayMongoCheckout()
+
+        if (pending == null) {
+            showInfoDialog(this, getString(R.string.paymongo_return_missing))
+            return
+        }
+
+        val result = uri.getQueryParameter("result").orEmpty()
+        if (result.equals("cancel", ignoreCase = true)) {
+            showInfoDialog(this, getString(R.string.paymongo_payment_cancelled))
+            showPayMongoCheckoutDialog(pending)
+            return
+        }
+
+        lifecycleScope.launch {
+            verifyAndSavePayMongoCheckout(
+                pending = pending,
+                delayBeforeVerify = true,
+                showPendingDialog = true
+            )
+        }
+    }
+
+    private suspend fun verifyAndSavePayMongoCheckout(
+        pending: PendingPayMongoCheckout,
+        delayBeforeVerify: Boolean,
+        showPendingDialog: Boolean
+    ): Boolean {
+        if (isPayMongoVerificationRunning) return false
+        isPayMongoVerificationRunning = true
+        updateCheckoutButtonState()
+
+        return try {
+            if (delayBeforeVerify) {
+                delay(PAYMONGO_RETURN_VERIFY_DELAY_MS)
+            }
+
+            val status = try {
+                payMongoCheckoutRepository.retrieveCheckoutSession(pending.sessionId)
+            } catch (exception: Exception) {
+                Log.e(TAG, "PayMongo verification request failed.", exception)
+                throw exception
+            }
+            if (!status.isPaid) {
+                showInfoDialog(
+                    this,
+                    getString(
+                        R.string.paymongo_payment_not_paid,
+                        status.status ?: getString(R.string.paymongo_status_unknown)
+                    )
+                )
+                if (showPendingDialog) {
+                    showPayMongoCheckoutDialog(pending.copy(status = status.status))
+                }
+                false
+            } else {
+                val paymentReference = status.paymentReference
+                    ?: pending.referenceNumber
+                    ?: status.id
+                val savedOrder = try {
+                    orderRepository.saveCheckoutOrder(
+                        payload = pending.toCheckoutPayload(paymentReference),
+                        suggestedOrderNumber = pending.orderNumber
+                    )
+                } catch (exception: Exception) {
+                    Log.e(TAG, "PayMongo payment verified, but saving the paid order failed.", exception)
+                    throw IllegalStateException(
+                        getString(
+                            R.string.paymongo_order_save_failed,
+                            NetworkErrorFormatter.toUserMessage(
+                                exception = exception,
+                                fallbackMessage = getString(R.string.try_again)
+                            )
+                        ),
+                        exception
+                    )
+                }
+                finishPayMongoCheckout(savedOrder, pending, paymentReference)
+                true
+            }
+        } catch (exception: Exception) {
+            Log.e(TAG, "PayMongo checkout verification flow failed.", exception)
+            showErrorDialog(
+                this,
+                getString(
+                    R.string.paymongo_verify_failed,
+                    NetworkErrorFormatter.toUserMessage(
+                        exception = exception,
+                        fallbackMessage = getString(R.string.try_again)
+                    )
+                )
+            )
+            if (showPendingDialog) {
+                showPayMongoCheckoutDialog(pending)
+            }
+            false
+        } finally {
+            isPayMongoVerificationRunning = false
+            updateCheckoutButtonState()
+        }
+    }
+
+    private fun finishPayMongoCheckout(
+        savedOrder: CafeOrder,
+        pending: PendingPayMongoCheckout,
+        paymentReference: String
+    ) {
+        clearPendingPayMongoCheckout()
+        viewModel.completeExternalCheckout(savedOrder.id)
+        addOrReplaceOrder(savedOrder, reveal = true)
+        loadOrdersFromSupabase(
+            showError = false,
+            force = true,
+            orderToKeepVisible = savedOrder
+        )
+        viewModel.refreshMenu()
+        dashboardViewModel.refreshDashboard(force = true)
+        showReceiptDialog(savedOrder, pending.toReceipt(paymentReference))
+        setCheckoutExpanded(expanded = false, animate = true)
+    }
+
+    private fun PendingPayMongoCheckout.toCheckoutPayload(paymentReference: String): CheckoutOrderPayload {
+        return CheckoutOrderPayload(
+            customerName = customerName,
+            subtotal = subtotal,
+            tax = tax,
+            total = total,
+            discountLabel = discountLabel,
+            discountAmount = discountAmount,
+            discountId = discountId,
+            discountPercent = discountPercent,
+            paymentMethod = "paymongo",
+            paymentProvider = "paymongo",
+            paymentStatus = "paid",
+            paymentReference = paymentReference,
+            status = "preparing",
+            items = items,
+            orderType = orderType
+        )
+    }
+
+    private fun savePendingPayMongoCheckout(pending: PendingPayMongoCheckout) {
+        getSharedPreferences(PAYMENT_PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_PENDING_PAYMONGO_CHECKOUT, paymentPersistenceJson.encodeToString(pending))
+            .apply()
+    }
+
+    private fun loadPendingPayMongoCheckout(): PendingPayMongoCheckout? {
+        val prefs = getSharedPreferences(PAYMENT_PREFS_NAME, Context.MODE_PRIVATE)
+        val raw = prefs.getString(KEY_PENDING_PAYMONGO_CHECKOUT, null) ?: return null
+        return runCatching {
+            paymentPersistenceJson.decodeFromString<PendingPayMongoCheckout>(raw)
+        }.getOrElse {
+            prefs.edit().remove(KEY_PENDING_PAYMONGO_CHECKOUT).apply()
+            null
+        }
+    }
+
+    private fun clearPendingPayMongoCheckout() {
+        getSharedPreferences(PAYMENT_PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .remove(KEY_PENDING_PAYMONGO_CHECKOUT)
+            .apply()
+    }
+
+    private fun Uri.isPayMongoReturnUri(): Boolean {
+        return scheme.equals(PAYMONGO_RETURN_SCHEME, ignoreCase = true) &&
+            host.equals(PAYMONGO_RETURN_HOST, ignoreCase = true) &&
+            path.equals(PAYMONGO_RETURN_PATH, ignoreCase = true)
+    }
+
+    private fun List<OrderItem>.toCheckoutOrderLines(): List<CheckoutOrderLine> {
+        return map { item ->
+            val product = item.product
+            CheckoutOrderLine(
+                productVariantId = product.id,
+                sourceProductId = product.sourceProductId
+                    ?: throw IllegalStateException("Missing product ID for ${product.name}. Refresh the menu and try again."),
+                sourceProductName = product.sourceProductName ?: product.name,
+                sourceVariantName = product.sourceVariantName ?: "Standard",
+                unitPrice = product.price,
+                quantity = item.quantity
+            )
+        }
+    }
+
+    private fun PosViewModel.OrderType?.toDatabaseOrderType(): String {
+        return when (this ?: PosViewModel.OrderType.DINE_IN) {
+            PosViewModel.OrderType.DINE_IN -> "dine_in"
+            PosViewModel.OrderType.TAKE_AWAY -> "takeout"
+            PosViewModel.OrderType.DELIVERY -> "delivery"
+        }
     }
 
     private fun showReceiptDialog(order: CafeOrder, receipt: PendingCheckoutReceipt) {
@@ -1784,6 +2222,14 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         receiptBinding.tvReceiptCustomer.text = customerName
         receiptBinding.tvReceiptOrderType.text = formatOrderType(order.orderType)
         receiptBinding.tvReceiptPayment.text = formatPaymentMethod(order.paymentMethod)
+        val paymentReference = receipt.paymentReference
+            ?: order.paymentReference?.trim()?.takeIf(String::isNotBlank)
+        if (paymentReference.isNullOrBlank()) {
+            receiptBinding.receiptPaymentReferenceRow.visibility = View.GONE
+        } else {
+            receiptBinding.receiptPaymentReferenceRow.visibility = View.VISIBLE
+            receiptBinding.tvReceiptPaymentReference.text = paymentReference
+        }
         receiptBinding.tvReceiptSubtotal.text = formatCurrency(receipt.subtotal)
         // CHANGE: Payment — surface the resolved discount on the receipt
         // when one was applied; otherwise the row stays collapsed.
@@ -1795,8 +2241,19 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             receiptBinding.receiptDiscountRow.visibility = View.GONE
         }
         receiptBinding.tvReceiptTotal.text = formatCurrency(receipt.total)
+        val isCashPayment = order.paymentMethod.equals("cash", ignoreCase = true)
+        receiptBinding.tvReceiptTenderLabel.text = if (isCashPayment) {
+            getString(R.string.receipt_cash_received_label)
+        } else {
+            getString(R.string.receipt_amount_paid_label)
+        }
+        receiptBinding.tvReceiptChangeLabel.text = if (isCashPayment) {
+            getString(R.string.receipt_change_label)
+        } else {
+            getString(R.string.receipt_balance_label)
+        }
         receiptBinding.tvReceiptCashReceived.text = formatCurrency(receipt.cashReceived)
-        receiptBinding.tvReceiptChange.text = formatCurrency(change)
+        receiptBinding.tvReceiptChange.text = formatCurrency(if (isCashPayment) change else 0.0)
 
         receiptBinding.receiptItemsContainer.removeAllViews()
         receipt.lines.forEachIndexed { index, line ->
@@ -2160,7 +2617,9 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val countable = orders.filter { it.status == CafeOrderStatus.COMPLETED }
         val totalSales = countable.sumOf { it.total }
         val gcashSales = countable.filter { it.isGcash }.sumOf { it.total }
-        val cashSales = totalSales - gcashSales
+        val cashSales = countable
+            .filter { it.paymentMethod.equals("cash", ignoreCase = true) }
+            .sumOf { it.total }
 
         binding.ordersContent.tvOrdersTotalSalesValue.text = formatCurrency(totalSales)
         binding.ordersContent.tvOrdersCashSalesValue.text = formatCurrency(cashSales)
@@ -4658,7 +5117,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     }
 
     private fun updateCheckoutButtonState() {
-        val isEnabled = hasCheckoutItems && !isCheckoutSaving
+        val isEnabled = hasCheckoutItems && !isCheckoutSaving && !isPayMongoVerificationRunning
         binding.btnCheckout.isEnabled = isEnabled
         binding.btnCheckout.alpha = if (isEnabled) 1f else 0.6f
     }

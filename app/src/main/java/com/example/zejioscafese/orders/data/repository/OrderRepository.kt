@@ -42,6 +42,9 @@ data class CheckoutOrderPayload(
     val discountId: String? = null,
     val discountPercent: Double? = null,
     val paymentMethod: String,
+    val paymentProvider: String? = null,
+    val paymentStatus: String? = null,
+    val paymentReference: String? = null,
     val status: String,
     val items: List<CheckoutOrderLine>,
     val orderType: String = "dine_in"
@@ -126,6 +129,7 @@ class OrderRepository(
 
                 applyCheckoutTotals(rpcResult.orderId, payload)
                 tagOrderTypeBestEffort(rpcResult.orderId, payload.orderType)
+                tagPaymentGatewayBestEffort(rpcResult.orderId, payload)
 
                 payload.toCafeOrder(rpcResult)
             }
@@ -198,6 +202,9 @@ class OrderRepository(
                     // so the list UI can render the Take Out badge and
                     // apply the GCash / Take Out filters.
                     paymentMethod = row.orderPaymentMethod.orEmpty().ifBlank { "cash" }.lowercase(Locale.US),
+                    paymentProvider = row.orderPaymentProvider,
+                    paymentStatus = row.orderPaymentStatus,
+                    paymentReference = row.orderPaymentReference,
                     orderType = row.orderType.orEmpty().ifBlank { "dine_in" }.lowercase(Locale.US),
                     subtotal = subtotal,
                     tax = tax,
@@ -445,6 +452,29 @@ class OrderRepository(
         }
     }
 
+    private suspend fun tagPaymentGatewayBestEffort(orderId: String, payload: CheckoutOrderPayload) {
+        val provider = payload.paymentProvider?.trim()?.takeIf(String::isNotBlank)
+        val status = payload.paymentStatus?.trim()?.takeIf(String::isNotBlank)
+        val reference = payload.paymentReference?.trim()?.takeIf(String::isNotBlank)
+        if (provider == null && status == null && reference == null) return
+
+        // Optional payment gateway columns. Older databases simply skip
+        // this tag while the order itself remains saved.
+        runCatching {
+            supabaseClient
+                .from(ORDERS_TABLE)
+                .update(
+                    {
+                        set("order_payment_provider", provider)
+                        set("order_payment_status", status)
+                        set("order_payment_reference", reference)
+                    }
+                ) {
+                    filter { eq("order_id", orderId) }
+                }
+        }
+    }
+
     private fun CheckoutOrderPayload.toCafeOrder(
         rpcResult: ProcessCheckoutRpcResultDto
     ): CafeOrder {
@@ -476,6 +506,9 @@ class OrderRepository(
             // order type onto the in-memory CafeOrder so the list reflects
             // them immediately without a refetch.
             paymentMethod = paymentMethod.trim().lowercase(Locale.US),
+            paymentProvider = paymentProvider?.trim()?.takeIf(String::isNotBlank),
+            paymentStatus = paymentStatus?.trim()?.takeIf(String::isNotBlank),
+            paymentReference = paymentReference?.trim()?.takeIf(String::isNotBlank),
             orderType = orderType.trim().lowercase(Locale.US),
             subtotal = subtotal,
             tax = tax,
@@ -641,6 +674,12 @@ class OrderRepository(
         val orderStatus: String,
         @SerialName("order_payment_method")
         val orderPaymentMethod: String? = null,
+        @SerialName("order_payment_provider")
+        val orderPaymentProvider: String? = null,
+        @SerialName("order_payment_status")
+        val orderPaymentStatus: String? = null,
+        @SerialName("order_payment_reference")
+        val orderPaymentReference: String? = null,
         @SerialName("order_type")
         val orderType: String? = null,
         @SerialName("order_completed_at")
@@ -709,7 +748,7 @@ class OrderRepository(
         const val PROCESS_CHECKOUT_RPC = "process_checkout_order"
         const val COMPLETE_ORDER_RPC = "complete_order"
         const val MAX_CAUSE_DEPTH = 5
-        val VALID_PAYMENT_METHODS = setOf("cash", "gcash", "maya")
+        val VALID_PAYMENT_METHODS = setOf("cash", "gcash", "maya", "paymongo")
         val VALID_ORDER_STATUSES = setOf("pending", "preparing", "completed")
         val VALID_ORDER_TYPES = setOf("dine_in", "takeout", "delivery")
     }

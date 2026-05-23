@@ -79,6 +79,17 @@ object SupabaseSessionHelper {
         }
     }
 
+    suspend fun accessToken(
+        client: SupabaseClient,
+        signInErrorMessage: String = DEFAULT_SIGN_IN_ERROR_MESSAGE
+    ): String = withContext(Dispatchers.IO) {
+        ensureValidSession(client, signInErrorMessage)
+        val auth = client.pluginManager.getPlugin(Auth)
+        auth.awaitInitialization()
+        auth.currentSessionOrNull()?.accessToken
+            ?: throw IllegalStateException("Supabase authentication did not return an access token.")
+    }
+
     /**
      * Clears the cached session only if we have not already replaced it for another
      * concurrent caller. Without this dedup, every parallel repository request would

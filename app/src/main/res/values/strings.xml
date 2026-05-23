@@ -380,6 +380,8 @@
     <string name="gcash">GCash</string>
     <string name="card">Card</string>
     <string name="maya">Maya</string>
+    <string name="paymongo">PayMongo</string>
+    <string name="paymongo_checkout_method">PayMongo</string>
     <string name="clear">Clear</string>
     <string name="checkout">Checkout</string>
     <string name="checkout_requires_items">Add at least one item before checkout.</string>
@@ -391,9 +393,25 @@
     <string name="checkout_customer_name_hint">Customer name for call-out (optional)</string>
     <string name="checkout_cash_received_hint">Cash received (PHP)</string>
     <string name="checkout_confirm_payment">Confirm Payment</string>
+    <string name="checkout_continue_paymongo">Continue to PayMongo</string>
     <string name="checkout_cash_required">Cash received must be at least the total amount.</string>
     <string name="checkout_change_due">Change: %1$s</string>
     <string name="checkout_change_due_pending">Enter a cash amount equal to or greater than the total.</string>
+    <string name="checkout_paymongo_pending">PayMongo checkout will open in the browser. The order is saved after payment is verified.</string>
+    <string name="paymongo_checkout_title">PayMongo Checkout</string>
+    <string name="paymongo_checkout_message">A real PayMongo checkout session was created. Open the hosted checkout page, complete a test payment, then verify it here.</string>
+    <string name="paymongo_amount_format">Amount: %1$s</string>
+    <string name="paymongo_session_format">Session: %1$s</string>
+    <string name="paymongo_status_format">Status: %1$s</string>
+    <string name="paymongo_open_checkout">Open Checkout</string>
+    <string name="paymongo_verify_payment">Verify Payment</string>
+    <string name="paymongo_payment_not_paid">PayMongo has not marked this session as paid yet. Current status: %1$s</string>
+    <string name="paymongo_verify_failed">Could not verify PayMongo payment. %1$s</string>
+    <string name="paymongo_order_save_failed">Payment was verified, but the order could not be saved. %1$s</string>
+    <string name="paymongo_checkout_create_failed">Could not create PayMongo checkout. %1$s</string>
+    <string name="paymongo_return_missing">The app returned from PayMongo, but no pending checkout was found. Start checkout again.</string>
+    <string name="paymongo_payment_cancelled">PayMongo checkout was cancelled. You can reopen checkout or start a new payment.</string>
+    <string name="paymongo_status_unknown">unknown</string>
     <string name="orders_load_failed">Could not load orders right now. %1$s</string>
     <string name="receipt_title">Receipt</string>
     <string name="receipt_subtitle">Order completed successfully.</string>
@@ -401,8 +419,11 @@
     <string name="receipt_customer_label">Customer</string>
     <string name="receipt_time_label">Time</string>
     <string name="receipt_payment_method_label">Payment</string>
+    <string name="receipt_payment_reference_label">Reference</string>
     <string name="receipt_cash_received_label">Cash received</string>
+    <string name="receipt_amount_paid_label">Amount paid</string>
     <string name="receipt_change_label">Change</string>
+    <string name="receipt_balance_label">Balance</string>
     <string name="receipt_done">Done</string>
     <string name="receipt_walk_in_customer">Walk-in Customer</string>
 

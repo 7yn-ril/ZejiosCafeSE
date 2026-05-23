@@ -460,7 +460,12 @@ object ReportsAggregator {
     }
 
     private fun String.toDisplayToken(): String {
-        return trim()
+        val normalized = trim().lowercase(Locale.US)
+        if (normalized == "gcash") return "GCash"
+        if (normalized == "maya") return "Maya"
+        if (normalized == "paymongo") return "PayMongo"
+        if (normalized == "qrph" || normalized == "qr_ph") return "QR Ph"
+        return normalized
             .split("_", "-", " ")
             .filter(String::isNotBlank)
             .joinToString(" ") { token ->

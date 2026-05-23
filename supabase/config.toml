@@ -1,0 +1,2 @@
+[functions.paymongo-checkout]
+verify_jwt = false

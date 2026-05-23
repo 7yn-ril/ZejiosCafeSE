@@ -66,9 +66,17 @@ object NetworkErrorFormatter {
     }
 
     private fun safeMessage(exception: Throwable): String? {
-        return exception.message
-            ?.takeIf(String::isNotBlank)
-            ?.takeUnless { message -> message.containsSensitiveTransportDetails() }
+        var current: Throwable? = exception
+        var depth = 0
+        while (current != null && depth < MAX_CAUSE_DEPTH) {
+            current.message
+                ?.takeIf(String::isNotBlank)
+                ?.takeUnless { message -> message.containsSensitiveTransportDetails() }
+                ?.let { return it }
+            current = current.cause
+            depth += 1
+        }
+        return null
     }
 
     private fun String.containsSensitiveTransportDetails(): Boolean {
