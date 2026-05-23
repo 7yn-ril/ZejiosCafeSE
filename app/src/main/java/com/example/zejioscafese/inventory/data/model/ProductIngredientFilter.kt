@@ -3,157 +3,125 @@ package com.example.zejioscafese.inventory.data.model
 import com.example.zejioscafese.pos.data.model.Ingredient
 import java.util.Locale
 
+/**
+ * Filters the ingredient spinner in the Add/Edit Product dialog by
+ * `Ingredient.category`. The allowed-categories sets below assume the
+ * `database/split_ingredient_categories.sql` migration has been run —
+ * that migration breaks the old broad buckets (Syrups & Sauces, Proteins,
+ * Pantry, Produce, Coffee & Tea Bases) into single-domain finer
+ * categories so a Burger never sees a Caramel Syrup and a Coffee never
+ * sees a Longganisa.
+ *
+ * Maintenance contract: when a new *ingredient category* is introduced
+ * via SQL, add a constant for it below and decide which product
+ * categories should surface it. Adding a new ingredient inside an
+ * existing category needs zero code changes.
+ */
 object ProductIngredientFilter {
 
-    private data class Rule(
-        val ingredientIds: Set<String>,
-        val nameKeywords: List<String> = emptyList()
+    // ── Drinks-side ingredient categories ──────────────────────────────
+    private const val CAT_COFFEE_BASES = "Coffee Bases"
+    private const val CAT_TEA_BASES = "Tea Bases"
+    private const val CAT_LEMONADE_BASES = "Lemonade Bases"
+    private const val CAT_SWEET_SYRUPS = "Sweet Syrups"
+    private const val CAT_POWDERS = "Powders & Mixes"
+    private const val CAT_DAIRY = "Dairy"           // drink-side only after the migration
+    private const val CAT_DRINK_PRODUCE = "Drink Produce"
+    private const val CAT_DRINK_PANTRY = "Drink Pantry"
+    private const val CAT_BEVERAGES = "Beverages"
+
+    // ── Food-side ingredient categories ────────────────────────────────
+    private const val CAT_BAKERY = "Bakery & Bread"
+    private const val CAT_BURGER_PROTEINS = "Burger Proteins"
+    private const val CAT_WING_PROTEINS = "Wing Proteins"
+    private const val CAT_RICE_MEAL_PROTEINS = "Rice Meal Proteins"
+    private const val CAT_SIDE_PROTEINS = "Side Proteins"
+    private const val CAT_FOOD_PRODUCE = "Food Produce"
+    private const val CAT_FOOD_DAIRY = "Food Dairy"
+    private const val CAT_FOOD_PANTRY = "Food Pantry"
+    private const val CAT_SAVOURY_SAUCES = "Savoury Sauces"
+    private const val CAT_FROZEN = "Frozen & Sides"
+
+    // ── Product-category → allowed ingredient categories ───────────────
+    // Drinks
+    private val MILK_TEA_ALLOWED = setOf(CAT_TEA_BASES, CAT_POWDERS, CAT_SWEET_SYRUPS, CAT_DAIRY, CAT_DRINK_PANTRY)
+    private val FRUIT_TEA_ALLOWED = setOf(CAT_TEA_BASES, CAT_SWEET_SYRUPS, CAT_DRINK_PANTRY)
+    private val CREMACHEE_ALLOWED = setOf(CAT_TEA_BASES, CAT_DAIRY, CAT_SWEET_SYRUPS, CAT_DRINK_PANTRY)
+    private val COFFEE_ALLOWED = setOf(CAT_COFFEE_BASES, CAT_DAIRY, CAT_SWEET_SYRUPS, CAT_POWDERS, CAT_DRINK_PANTRY)
+    private val NON_COFFEE_ALLOWED = setOf(CAT_POWDERS, CAT_DAIRY, CAT_SWEET_SYRUPS, CAT_DRINK_PANTRY)
+    private val BREVE_ALLOWED = setOf(CAT_COFFEE_BASES, CAT_DAIRY, CAT_SWEET_SYRUPS, CAT_DRINK_PANTRY)
+    private val FRAPPE_ALLOWED = setOf(CAT_COFFEE_BASES, CAT_DAIRY, CAT_SWEET_SYRUPS, CAT_POWDERS, CAT_DRINK_PANTRY)
+    private val NON_COFFEE_FRAPPE_ALLOWED = setOf(CAT_POWDERS, CAT_DAIRY, CAT_SWEET_SYRUPS, CAT_DRINK_PANTRY)
+    private val LEMONADE_ALLOWED = setOf(CAT_LEMONADE_BASES, CAT_SWEET_SYRUPS, CAT_DRINK_PANTRY)
+    private val SMOOTHIE_ALLOWED = setOf(CAT_DRINK_PRODUCE, CAT_POWDERS, CAT_DAIRY, CAT_SWEET_SYRUPS, CAT_DRINK_PANTRY, CAT_BEVERAGES)
+    private val PITCHER_ALLOWED = setOf(CAT_TEA_BASES, CAT_LEMONADE_BASES, CAT_SWEET_SYRUPS, CAT_DRINK_PANTRY, CAT_BEVERAGES)
+
+    // Food
+    private val BURGERS_ALLOWED = setOf(CAT_BAKERY, CAT_BURGER_PROTEINS, CAT_FOOD_PRODUCE, CAT_FOOD_DAIRY, CAT_SAVOURY_SAUCES)
+    private val WINGS_ALLOWED = setOf(CAT_WING_PROTEINS, CAT_SAVOURY_SAUCES)
+    private val RICE_MEAL_ALLOWED = setOf(CAT_RICE_MEAL_PROTEINS, CAT_BURGER_PROTEINS, CAT_FOOD_DAIRY, CAT_SAVOURY_SAUCES, CAT_FOOD_PANTRY, CAT_FOOD_PRODUCE)
+    private val PASTA_ALLOWED = setOf(CAT_FOOD_PANTRY, CAT_BURGER_PROTEINS, CAT_FOOD_DAIRY, CAT_SAVOURY_SAUCES)
+    private val SIDES_ALLOWED = setOf(CAT_FROZEN, CAT_SIDE_PROTEINS, CAT_SAVOURY_SAUCES, CAT_FOOD_DAIRY, CAT_BAKERY)
+
+    private val allowedCategoriesByProductCategory: Map<String, Set<String>> = mapOf(
+        "burgers" to BURGERS_ALLOWED,
+        "milktea" to MILK_TEA_ALLOWED,
+        "fruittea" to FRUIT_TEA_ALLOWED,
+        "cremachee" to CREMACHEE_ALLOWED,
+        "coffee" to COFFEE_ALLOWED,
+        "noncoffee" to NON_COFFEE_ALLOWED,
+        "brevecoffee" to BREVE_ALLOWED,
+        "specialdrinks" to COFFEE_ALLOWED,
+        "specialdrink" to COFFEE_ALLOWED,
+        "coffeefrappes" to FRAPPE_ALLOWED,
+        "coffeefrappe" to FRAPPE_ALLOWED,
+        "noncoffeefrappes" to NON_COFFEE_FRAPPE_ALLOWED,
+        "noncoffeefrappe" to NON_COFFEE_FRAPPE_ALLOWED,
+        "frappes" to FRAPPE_ALLOWED,
+        "frappe" to FRAPPE_ALLOWED,
+        "frappuccino" to FRAPPE_ALLOWED,
+        "lemonades" to LEMONADE_ALLOWED,
+        "lemonade" to LEMONADE_ALLOWED,
+        "smoothies" to SMOOTHIE_ALLOWED,
+        "smoothie" to SMOOTHIE_ALLOWED,
+        "wings" to WINGS_ALLOWED,
+        "ricemeals" to RICE_MEAL_ALLOWED,
+        "ricemeal" to RICE_MEAL_ALLOWED,
+        "pasta" to PASTA_ALLOWED,
+        "appetizersandsides" to SIDES_ALLOWED,
+        "appetizers" to SIDES_ALLOWED,
+        "sides" to SIDES_ALLOWED,
+        "pitcherdrinks" to PITCHER_ALLOWED,
+        "pitcher" to PITCHER_ALLOWED
     )
 
-    private val BURGERS_RULE = Rule(
-        ingredientIds = setOf(
-            "ING-041", "ING-042", "ING-043", "ING-044", "ING-045", "ING-046",
-            "ING-047", "ING-048", "ING-049", "ING-050", "ING-051"
-        ),
-        nameKeywords = listOf("bun", "patty", "burger", "lettuce", "tomato slice", "bacon slice", "mayo")
-    )
-
-    private val MILK_TEA_RULE = Rule(
-        ingredientIds = setOf(
-            "ING-002", "ING-039", "ING-019", "ING-020", "ING-021", "ING-022", "ING-023",
-            "ING-024", "ING-025", "ING-026", "ING-027", "ING-028", "ING-007", "ING-040",
-            "ING-037", "ING-038"
-        ),
-        nameKeywords = listOf("tea base", "milk tea", "creamer", "tapioca", "pearl", "nata", "wintermelon", "okinawa", "taro", "brown sugar")
-    )
-
-    private val FRUIT_TEA_RULE = Rule(
-        ingredientIds = setOf("ING-002", "ING-030", "ING-031", "ING-032", "ING-033", "ING-040"),
-        nameKeywords = listOf("tea base", "fruit", "lychee", "strawberry", "blueberry", "apple")
-    )
-
-    private val CREMACHEE_RULE = Rule(
-        ingredientIds = setOf("ING-002", "ING-007", "ING-030", "ING-031", "ING-032", "ING-033", "ING-040"),
-        nameKeywords = listOf("tea base", "cream cheese", "fruit", "lychee", "strawberry", "blueberry")
-    )
-
-    private val COFFEE_RULE = Rule(
-        ingredientIds = setOf(
-            "ING-001", "ING-082", "ING-040", "ING-003", "ING-006", "ING-011", "ING-013",
-            "ING-014", "ING-015", "ING-016", "ING-024", "ING-008", "ING-012", "ING-017", "ING-018"
-        ),
-        nameKeywords = listOf("espresso", "coffee", "latte", "mocha", "whole milk", "condensed milk", "caramel syrup", "almond syrup")
-    )
-
-    private val NON_COFFEE_RULE = Rule(
-        ingredientIds = setOf("ING-003", "ING-004", "ING-024", "ING-031", "ING-032", "ING-040"),
-        nameKeywords = listOf("matcha", "whole milk", "oat milk")
-    )
-
-    private val BREVE_RULE = Rule(
-        ingredientIds = setOf("ING-001", "ING-005", "ING-006", "ING-010", "ING-011", "ING-013", "ING-040", "ING-003", "ING-018"),
-        nameKeywords = listOf("breve", "espresso", "half-and-half", "condensed milk", "vanilla syrup")
-    )
-
-    private val COFFEE_FRAPPE_RULE = Rule(
-        ingredientIds = setOf("ING-001", "ING-003", "ING-009", "ING-010", "ING-011", "ING-013", "ING-014", "ING-017", "ING-040"),
-        nameKeywords = listOf("frappe", "espresso", "whipped cream", "ice", "mocha")
-    )
-
-    private val NON_COFFEE_FRAPPE_RULE = Rule(
-        ingredientIds = setOf("ING-003", "ING-009", "ING-014", "ING-021", "ING-024", "ING-031", "ING-032", "ING-034", "ING-040"),
-        nameKeywords = listOf("frappe", "matcha", "whipped cream", "ice", "strawberry syrup", "blueberry syrup")
-    )
-
-    private val LEMONADE_RULE = Rule(
-        ingredientIds = setOf("ING-029", "ING-030", "ING-031", "ING-033", "ING-040", "ING-076"),
-        nameKeywords = listOf("lemonade", "lemon", "cucumber syrup")
-    )
-
-    private val SMOOTHIE_RULE = Rule(
-        ingredientIds = setOf("ING-003", "ING-021", "ING-035", "ING-036", "ING-040"),
-        nameKeywords = listOf("banana", "smoothie", "peanut butter")
-    )
-
-    private val RICE_MEAL_RULE = Rule(
-        ingredientIds = setOf(
-            "ING-042", "ING-047", "ING-049", "ING-066", "ING-067", "ING-068",
-            "ING-069", "ING-070", "ING-071", "ING-072", "ING-073"
-        ),
-        nameKeywords = listOf("rice serving", "longa", "sisig", "tapa", "tocino", "hungarian", "fish fillet", "chicken poppers", "egg")
-    )
-
-    private val WINGS_RULE = Rule(
-        ingredientIds = setOf("ING-060", "ING-061", "ING-062", "ING-063"),
-        nameKeywords = listOf("chicken wing", "buffalo sauce", "teriyaki", "honey garlic")
-    )
-
-    private val PASTA_RULE = Rule(
-        ingredientIds = setOf("ING-047", "ING-048", "ING-064", "ING-065"),
-        nameKeywords = listOf("pasta", "fettuccine", "carbonara", "noodle")
-    )
-
-    private val SIDES_RULE = Rule(
-        ingredientIds = setOf(
-            "ING-050", "ING-052", "ING-053", "ING-054", "ING-055", "ING-056",
-            "ING-057", "ING-058", "ING-059", "ING-073", "ING-074", "ING-079"
-        ),
-        nameKeywords = listOf("fries", "mojos", "nacho", "siomai", "calamari", "popper", "finger", "quesadilla", "tortilla", "ground beef", "cheese sauce", "dip sauce", "toyomansi")
-    )
-
-    private val PITCHER_RULE = Rule(
-        ingredientIds = setOf("ING-029", "ING-040", "ING-076", "ING-077", "ING-078", "ING-082"),
-        nameKeywords = listOf("iced tea base", "lemonade base", "cucumber syrup", "four seasons", "water")
-    )
-
-    private val rulesByNormalizedProductCategory: Map<String, Rule> = mapOf(
-        "burgers" to BURGERS_RULE,
-        "milktea" to MILK_TEA_RULE,
-        "fruittea" to FRUIT_TEA_RULE,
-        "cremachee" to CREMACHEE_RULE,
-        "coffee" to COFFEE_RULE,
-        "noncoffee" to NON_COFFEE_RULE,
-        "brevecoffee" to BREVE_RULE,
-        "specialdrinks" to COFFEE_RULE,
-        "specialdrink" to COFFEE_RULE,
-        "coffeefrappes" to COFFEE_FRAPPE_RULE,
-        "coffeefrappe" to COFFEE_FRAPPE_RULE,
-        "noncoffeefrappes" to NON_COFFEE_FRAPPE_RULE,
-        "noncoffeefrappe" to NON_COFFEE_FRAPPE_RULE,
-        "frappes" to COFFEE_FRAPPE_RULE,
-        "frappe" to COFFEE_FRAPPE_RULE,
-        "frappuccino" to COFFEE_FRAPPE_RULE,
-        "lemonades" to LEMONADE_RULE,
-        "lemonade" to LEMONADE_RULE,
-        "smoothies" to SMOOTHIE_RULE,
-        "smoothie" to SMOOTHIE_RULE,
-        "wings" to WINGS_RULE,
-        "ricemeals" to RICE_MEAL_RULE,
-        "ricemeal" to RICE_MEAL_RULE,
-        "pasta" to PASTA_RULE,
-        "appetizersandsides" to SIDES_RULE,
-        "appetizers" to SIDES_RULE,
-        "sides" to SIDES_RULE,
-        "pitcherdrinks" to PITCHER_RULE,
-        "pitcher" to PITCHER_RULE
-    )
-
+    /**
+     * Returns the subset of [ingredients] whose category is in the
+     * product category's allowlist, alphabetized. Combo Meals and any
+     * brand-new product category fall through to "show everything" so
+     * staff never sees an empty spinner.
+     *
+     * The caller is responsible for re-injecting any ingredients that
+     * were saved on an existing recipe but don't match the allowlist —
+     * see InventoryFragment.rebuildIngredientOptionsForCategory.
+     */
     fun filterForProductCategory(
         productCategoryName: String?,
         ingredients: List<Ingredient>
     ): List<Ingredient> {
         if (ingredients.isEmpty()) return ingredients
-
-        val rule = rulesByNormalizedProductCategory[normalize(productCategoryName)]
-            ?: return ingredients
-
-        val filtered = ingredients.filter { ingredient ->
-            ingredient.id in rule.ingredientIds || rule.nameKeywords.any { keyword ->
-                ingredient.name.contains(keyword, ignoreCase = true)
-            }
+        val allowed = allowedCategoriesByProductCategory[normalize(productCategoryName)]
+            ?: return ingredients.sortedBy { it.name.lowercase(Locale.US) }
+        val matching = ingredients.filter { it.category in allowed }
+        // Fail open: if the allowlist somehow matches nothing in the
+        // current ingredient inventory (e.g. migration hasn't been run
+        // yet on this Supabase project), surface everything rather than
+        // an empty spinner.
+        return if (matching.isEmpty()) {
+            ingredients.sortedBy { it.name.lowercase(Locale.US) }
+        } else {
+            matching.sortedBy { it.name.lowercase(Locale.US) }
         }
-
-        return if (filtered.isEmpty()) ingredients else filtered
     }
 
     private fun normalize(value: String?): String {

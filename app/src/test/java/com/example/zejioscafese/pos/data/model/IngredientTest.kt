@@ -42,14 +42,41 @@ class IngredientTest {
         assertTrue(ingredient(unit = "  ml  ").isLiquid)
 
     @ParameterizedTest
-    @ValueSource(strings = ["g", "gram", "grams", "kg", "L", "shot"])
-    fun isLiquid_legacyMeasuredUnits_returnsTrue(unit: String) =
+    @ValueSource(strings = ["L", "liter", "litre", "shot", "shots"])
+    fun isLiquid_liquidMeasuredUnits_returnsTrue(unit: String) =
         assertTrue(ingredient(unit = unit).isLiquid)
+
+    @ParameterizedTest
+    @ValueSource(strings = ["g", "gram", "grams", "kg"])
+    fun isLiquid_weightUnits_returnsFalse(unit: String) =
+        // Weight units normalize to grams now, not mL. They're still
+        // bulk-measured (see isBulk), but not liquids.
+        assertFalse(ingredient(unit = unit).isLiquid)
 
     @ParameterizedTest
     @ValueSource(strings = ["pcs", "pc", "piece", "pieces", "bottle", "serving", "oz", ""])
     fun isLiquid_unitNotMl_returnsFalse(unit: String) =
         assertFalse(ingredient(unit = unit).isLiquid)
+
+    // ── isBulk ────────────────────────────────────────────────────────────────
+
+    @ParameterizedTest
+    @ValueSource(strings = ["mL", "ML", "L", "shot", "g", "gram", "grams", "kg"])
+    fun isBulk_measuredUnits_returnsTrue(unit: String) =
+        assertTrue(ingredient(unit = unit).isBulk)
+
+    @ParameterizedTest
+    @ValueSource(strings = ["pcs", "pc", "piece", "bottle", "serving", ""])
+    fun isBulk_pieceUnits_returnsFalse(unit: String) =
+        assertFalse(ingredient(unit = unit).isBulk)
+
+    @Test
+    fun totalServings_gramsWithValidServingSize_returnsStockDividedByServing() {
+        // Grams now go through the same per-serving math as mL —
+        // 500g of tapioca pearls at 50g per drink = 10 servings.
+        val ing = ingredient(unit = "g", currentStock = 500.0, mlPerServing = 50.0)
+        assertEquals(10.0, ing.totalServings)
+    }
 
     // ── totalServings ─────────────────────────────────────────────────────────
 

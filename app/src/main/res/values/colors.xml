@@ -58,6 +58,18 @@
     <color name="chart_bar">#876051</color>
     <color name="chart_bar_light">#D8CAC2</color>
 
+    <!-- Donut + bar chart palette. 8 hand-picked hues with enough hue
+         separation that adjacent slices stay readable on the donut. Used
+         for the Reports breakdowns; do not reuse for category chips. -->
+    <color name="chart_palette_1">#5D4037</color>
+    <color name="chart_palette_2">#D97706</color>
+    <color name="chart_palette_3">#2E7D32</color>
+    <color name="chart_palette_4">#1565C0</color>
+    <color name="chart_palette_5">#8E24AA</color>
+    <color name="chart_palette_6">#C2185B</color>
+    <color name="chart_palette_7">#00838F</color>
+    <color name="chart_palette_8">#F9A825</color>
+
     <color name="dashboard_shell_bg">#F4EFEB</color>
     <color name="dashboard_hero_start">#F4EDE8</color>
     <color name="dashboard_hero_end">#E8DDD5</color>

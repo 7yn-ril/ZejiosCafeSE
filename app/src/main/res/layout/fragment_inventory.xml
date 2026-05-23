@@ -505,7 +505,7 @@
                             android:ellipsize="end"
                             android:maxLines="1"
                             android:paddingEnd="16dp"
-                            android:text="Price per Piece"
+                            android:text="Price per Unit"
                             android:textColor="@color/pos_text_secondary"
                             android:textSize="11sp"
                             android:textStyle="bold" />

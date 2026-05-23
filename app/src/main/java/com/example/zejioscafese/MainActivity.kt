@@ -105,6 +105,8 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -212,6 +214,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private var orderSearchQuery: String = ""
     private var isOrdersLoading: Boolean = false
     private var lastOrdersLoadedAtMs: Long = 0L
+    private var ordersRefreshJob: Job? = null
     private var ordersPage: Int = 0
     private var orderSort: OrderSort = OrderSort.DEFAULT
     // CHANGE: Orders — toggleable filters layered on top of the existing
@@ -352,6 +355,16 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         outState.putInt(STATE_CURRENT_SECTION, currentSection.ordinal)
         outState.putBoolean(STATE_CHECKOUT_EXPANDED, isCheckoutExpanded)
         outState.putBoolean(STATE_SIDEBAR_EXPANDED, isSidebarExpanded)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        startOrdersAutoRefresh()
+    }
+
+    override fun onStop() {
+        stopOrdersAutoRefresh()
+        super.onStop()
     }
 
     private fun setupRecyclerViews() {
@@ -842,6 +855,24 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             true
         }
         popup.show()
+    }
+
+    private fun startOrdersAutoRefresh() {
+        if (ordersRefreshJob?.isActive == true) {
+            return
+        }
+
+        ordersRefreshJob = lifecycleScope.launch {
+            while (true) {
+                delay(ORDERS_REFRESH_INTERVAL_MS)
+                loadOrdersFromSupabase(showError = false, force = true)
+            }
+        }
+    }
+
+    private fun stopOrdersAutoRefresh() {
+        ordersRefreshJob?.cancel()
+        ordersRefreshJob = null
     }
 
     private fun loadOrdersFromSupabase(

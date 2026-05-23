@@ -13,8 +13,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.zejioscafese.R
 import com.example.zejioscafese.pos.data.model.Ingredient
 import com.example.zejioscafese.pos.data.model.IngredientStockStatus
+import com.example.zejioscafese.pos.data.model.IngredientUnits
 import java.util.Locale
-import kotlin.math.floor
 
 class IngredientAdapter(
     private val onEditClick: (Ingredient) -> Unit,
@@ -47,22 +47,27 @@ class IngredientAdapter(
         // UI CHANGE: per-row Edit/Restock buttons collapsed into a kebab menu.
         private val btnRowActions: ImageButton = itemView.findViewById(R.id.btnRowActions)
 
-        // UI CHANGE: bind() now renders the seven required columns and never
-        // exposes raw legacy units. mL ingredients are surfaced via their
-        // backend-computed servings figures so the user only ever sees
-        // "{N} piece" / "PHP X / piece".
+        // bind() renders the seven required columns using each ingredient's
+        // actual unit (pcs / mL / g) so a sauce bottle no longer reads as
+        // "2000 piece" and a tapioca bag doesn't read as "5000 piece".
+        // The Total Value math is invariant: stock × cost-per-unit always
+        // yields the right PHP, regardless of unit, because cost-per-unit
+        // is stored in the same unit as the stock count.
         fun bind(ingredient: Ingredient) {
             tvName.text = ingredient.name
             tvCategory.text = ingredient.category
 
-            val servingsRemaining = pieceCountForStock(ingredient)
-            val amountPerServing = amountPerServingInPieces(ingredient)
-            val pricePerPiece = pricePerPiece(ingredient)
-            val totalValue = servingsRemaining * pricePerPiece
+            val unitLabel = displayUnit(ingredient)
+            val perServingAmount = ingredient.mlPerServing?.takeIf { it > 0.0 } ?: 1.0
+            val totalValue = ingredient.currentStock * ingredient.costPerUnit
 
-            tvStock.text = formatPieces(servingsRemaining)
-            tvServings.text = formatPieces(amountPerServing)
-            tvCostPerUnit.text = String.format(Locale.getDefault(), "PHP %,.2f", pricePerPiece)
+            tvStock.text = formatWithUnit(ingredient.currentStock, unitLabel)
+            tvServings.text = formatWithUnit(perServingAmount, unitLabel)
+            tvCostPerUnit.text = itemView.context.getString(
+                R.string.inventory_value_price_per_unit,
+                ingredient.costPerUnit,
+                unitLabel
+            )
             tvTotalValue.text = String.format(Locale.getDefault(), "PHP %,.2f", totalValue)
 
             applyStockStatusBadge(ingredient.stockStatus)
@@ -106,44 +111,30 @@ class IngredientAdapter(
             }
         }
 
-        // For liquids we display the backend-computed total servings; for
-        // anything else the raw stock count is already in pieces/units we
-        // can label as "piece".
-        private fun pieceCountForStock(ingredient: Ingredient): Double {
-            return ingredient.totalServings ?: ingredient.currentStock
+        // Display-friendly unit label. Resolves to "pcs" / "mL" / "g" via
+        // normalize() so any odd unit string in the DB (e.g. "ML", "ml",
+        // "shot") still shows as one of the three canonical labels.
+        private fun displayUnit(ingredient: Ingredient): String {
+            return IngredientUnits.normalize(ingredient.unit)
         }
 
-        // Reference rules: solids show their amount-per-serving (stored in
-        // mlPerServing for both types so the existing schema stays put).
-        // Liquids show "servings per bottle" = floor(mlPerBottle / mlPerServing).
-        private fun amountPerServingInPieces(ingredient: Ingredient): Double {
-            if (ingredient.isLiquid) {
-                val perBottle = ingredient.mlPerBottle ?: 0.0
-                val perServing = ingredient.mlPerServing ?: 0.0
-                if (perBottle > 0.0 && perServing > 0.0) {
-                    return floor(perBottle / perServing)
-                }
-                return 0.0
-            }
-            return ingredient.mlPerServing?.takeIf { it > 0.0 } ?: 1.0
+        private fun formatWithUnit(value: Double, unit: String): String {
+            return itemView.context.getString(
+                R.string.inventory_value_with_unit,
+                formatNumber(value),
+                unit
+            )
         }
 
-        // mL ingredients store cost as PHP/mL, so we re-derive the per-serving (per
-        // piece) cost. Solids already price by piece.
-        private fun pricePerPiece(ingredient: Ingredient): Double {
-            return ingredient.costPerServing ?: ingredient.costPerUnit
-        }
-
-        private fun formatPieces(value: Double): String {
+        private fun formatNumber(value: Double): String {
             val rounded = value.coerceAtLeast(0.0)
-            val displayValue = if (rounded % 1.0 == 0.0) {
+            return if (rounded % 1.0 == 0.0) {
                 rounded.toLong().toString()
             } else {
                 String.format(Locale.getDefault(), "%.1f", rounded)
                     .trimEnd('0')
                     .trimEnd('.')
             }
-            return itemView.context.getString(R.string.inventory_value_pieces, displayValue)
         }
     }
 

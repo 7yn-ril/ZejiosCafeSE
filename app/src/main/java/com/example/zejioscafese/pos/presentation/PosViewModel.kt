@@ -621,7 +621,12 @@ class PosViewModel(
     }
 
     private fun updateQuantity(product: Product, delta: Int) {
-        val currentProduct = allProducts.firstOrNull { it.id == product.id } ?: product
+        val cachedProduct = allProducts.firstOrNull { it.id == product.id }
+        val currentProduct = when {
+            delta > 0 && product.stockLeft <= 0 -> product
+            cachedProduct != null -> cachedProduct
+            else -> product
+        }
         val stockLimit = currentProduct.stockLeft.coerceAtLeast(0)
 
         if (delta > 0) {

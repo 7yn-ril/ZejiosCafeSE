@@ -235,21 +235,51 @@ class InventoryFragment : Fragment() {
         }
         container.removeAllViews()
 
+        val deletedCount = viewModel.deletedProductCount()
+
         categories.forEach { category ->
+            val isDeletedChip = category == InventoryViewModel.DELETED_CATEGORY
+            val chipLabel = if (isDeletedChip && deletedCount > 0) {
+                "$category ($deletedCount)"
+            } else {
+                category
+            }
+
             val chip = TextView(requireContext()).apply {
-                text = category
+                text = chipLabel
                 textSize = 13f
 
                 val isSelected = category == selectedChipCategory
                 setBackgroundResource(
                     if (isSelected) R.drawable.bg_chip_selected else R.drawable.bg_chip_unselected
                 )
-                setTextColor(
-                    ContextCompat.getColor(
+                // Tint the Deleted chip warning-amber so it's obvious it's
+                // a special filter for hidden products, not just another
+                // category. When selected, the brown selected-chip style
+                // already provides high contrast — keep the tint only on
+                // the unselected state.
+                if (isDeletedChip) {
+                    val tintColor = ContextCompat.getColor(
                         requireContext(),
-                        if (isSelected) R.color.chip_selected_text else R.color.pos_text_primary
+                        if (isSelected) R.color.pos_warning else R.color.pos_warning
                     )
-                )
+                    backgroundTintList =
+                        android.content.res.ColorStateList.valueOf(tintColor)
+                    setTextColor(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            R.color.white
+                        )
+                    )
+                } else {
+                    backgroundTintList = null
+                    setTextColor(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            if (isSelected) R.color.chip_selected_text else R.color.pos_text_primary
+                        )
+                    )
+                }
                 setPadding(dpToPx(14), dpToPx(6), dpToPx(14), dpToPx(6))
 
                 val params = LinearLayout.LayoutParams(
@@ -590,7 +620,10 @@ class InventoryFragment : Fragment() {
 
     private fun showRestockDialog(ingredient: Ingredient) {
         val ctx = requireContext()
-        if (ingredient.isLiquid) {
+        // Both mL and grams ingredients restock by container (bottle /
+        // bag) when mlPerBottle is configured. Only pcs ingredients use
+        // the simple "Quantity to add" dialog.
+        if (ingredient.isBulk) {
             showLiquidRestockDialog(ingredient)
             return
         }
@@ -747,7 +780,7 @@ class InventoryFragment : Fragment() {
             displayCostForEditor(ingredient),
             android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
         ).apply {
-            hint = "For mL: cost per serving; for pcs: cost per piece"
+            hint = "For mL/g: cost per serving; for pcs: cost per piece"
         }
 
         val liquidSection = LinearLayout(ctx).apply {
@@ -768,7 +801,7 @@ class InventoryFragment : Fragment() {
         )
 
         fun applyUnitVisibility() {
-            liquidSection.visibility = if (selectedUnit(unitSpinner) == IngredientUnits.ML) {
+            liquidSection.visibility = if (IngredientUnits.isBulk(selectedUnit(unitSpinner))) {
                 View.VISIBLE
             } else {
                 View.GONE
@@ -801,11 +834,11 @@ class InventoryFragment : Fragment() {
                     val updatedMlPerBottle = unitValue(updatedUnit, etMlPerBottle)
 
                     when {
-                        updatedUnit == IngredientUnits.ML && updatedMlPerServing == null -> {
+                        IngredientUnits.isBulk(updatedUnit) && updatedMlPerServing == null -> {
                             etMlPerServing.error = getString(R.string.inventory_field_required)
                         }
 
-                        updatedUnit == IngredientUnits.ML && updatedMlPerBottle == null -> {
+                        IngredientUnits.isBulk(updatedUnit) && updatedMlPerBottle == null -> {
                             etMlPerBottle.error = getString(R.string.inventory_field_required)
                         }
 
@@ -844,7 +877,7 @@ class InventoryFragment : Fragment() {
     }
 
     private fun displayCostForEditor(ingredient: Ingredient): String {
-        if (ingredient.isLiquid && ingredient.mlPerServing == null) return ""
+        if (ingredient.isBulk && ingredient.mlPerServing == null) return ""
         val displayCost = ingredient.costPerServing ?: ingredient.costPerUnit
         return trimDecimal(displayCost)
     }
@@ -862,8 +895,19 @@ class InventoryFragment : Fragment() {
     }
 
     private fun unitValue(unit: String, field: EditText): Double? {
-        if (!IngredientUnits.isMl(unit)) return null
+        if (!IngredientUnits.isBulk(unit)) return null
         return field.text.toString().toDoubleOrNull()?.takeIf { it > 0.0 }
+    }
+
+    private fun quantityHintForIngredient(ingredient: Ingredient?): String {
+        val normalizedUnit = ingredient?.unit?.let(IngredientUnits::normalize)
+        return getString(
+            when (normalizedUnit) {
+                IngredientUnits.ML -> R.string.inventory_field_required_quantity_ml
+                IngredientUnits.G -> R.string.inventory_field_required_quantity_g
+                else -> R.string.inventory_field_required_quantity_pcs
+            }
+        )
     }
 
     private fun costPerUnitFromEditor(
@@ -874,7 +918,7 @@ class InventoryFragment : Fragment() {
     ): Double {
         val cost = costInput ?: return fallbackCostPerUnit
         val servingSize = mlPerServing?.takeIf { it > 0.0 }
-        return if (IngredientUnits.isMl(unit) && servingSize != null) {
+        return if (IngredientUnits.isBulk(unit) && servingSize != null) {
             cost / servingSize
         } else {
             cost
@@ -901,19 +945,51 @@ class InventoryFragment : Fragment() {
             ""
         )
         val categoryOptions = viewModel.getIngredientCategoriesForEditor()
-        val defaultIndex = categoryOptions.indexOf("Pantry").coerceAtLeast(0)
+        // Pantry was removed from DEFAULT_INGREDIENT_CATEGORIES when the
+        // split migration ran; just default to the first category (the
+        // alphabetical sort makes it Bakery & Bread).
+        val defaultIndex = 0
         val categorySpinner = createLabeledSpinner(
             container = container,
             label = getString(R.string.inventory_field_category),
             options = categoryOptions,
             selectedIndex = defaultIndex
         )
+        val initialCategory = categoryOptions.getOrNull(defaultIndex).orEmpty()
+        val initialDefaultUnit = IngredientUnits.defaultUnitForCategory(initialCategory)
         val unitSpinner = createLabeledSpinner(
             container = container,
-            label = "Unit",
+            label = "Unit (set by category)",
             options = IngredientUnits.options,
-            selectedIndex = unitOptionIndex(IngredientUnits.PCS)
+            selectedIndex = unitOptionIndex(initialDefaultUnit)
         )
+        // The unit is fully derived from the selected category — there's
+        // no scenario in the Add flow where the staff should override
+        // it. Locking the spinner keeps the data consistent (e.g. you
+        // can't accidentally save a "Beef Patty" under Burger Proteins
+        // with unit g). If an exception is genuinely needed later
+        // (e.g. Ground Beef inside Side Proteins should be grams), the
+        // Edit Ingredient dialog still allows changing the unit
+        // post-save.
+        unitSpinner.isEnabled = false
+        categorySpinner.onItemSelectedListener =
+            object : android.widget.AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(
+                    parent: android.widget.AdapterView<*>?,
+                    view: View?,
+                    position: Int,
+                    id: Long
+                ) {
+                    val selectedCategory = categoryOptions.getOrNull(position).orEmpty()
+                    val suggestedUnit = IngredientUnits.defaultUnitForCategory(selectedCategory)
+                    val suggestedIndex = unitOptionIndex(suggestedUnit)
+                    if (unitSpinner.selectedItemPosition != suggestedIndex) {
+                        unitSpinner.setSelection(suggestedIndex)
+                    }
+                }
+
+                override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
+            }
         val etPricePerPiece = createLabeledField(
             container,
             getString(R.string.inventory_field_price_per_piece),
@@ -945,7 +1021,7 @@ class InventoryFragment : Fragment() {
         )
 
         fun applyUnitVisibility() {
-            liquidSection.visibility = if (selectedUnit(unitSpinner) == IngredientUnits.ML) {
+            liquidSection.visibility = if (IngredientUnits.isBulk(selectedUnit(unitSpinner))) {
                 View.VISIBLE
             } else {
                 View.GONE
@@ -989,34 +1065,34 @@ class InventoryFragment : Fragment() {
                     val selectedCategory = categoryOptions
                         .getOrNull(categorySpinner.selectedItemPosition) ?: "Pantry"
                     val unit = selectedUnit(unitSpinner)
-                    val isMl = unit == IngredientUnits.ML
+                    val isBulk = IngredientUnits.isBulk(unit)
                     val pricePerPiece = etPricePerPiece.text.toString().toDoubleOrNull() ?: 0.0
                     val currentStock = etCurrentStockPieces.text.toString().toDoubleOrNull() ?: 0.0
 
-                    val mlPerServing = if (isMl) {
+                    val mlPerServing = if (isBulk) {
                         etMlPerServing.text.toString().toDoubleOrNull()?.takeIf { it > 0.0 }
                     } else {
                         null
                     }
-                    val mlPerBottle = if (isMl) {
+                    val mlPerBottle = if (isBulk) {
                         etMlPerBottle.text.toString().toDoubleOrNull()?.takeIf { it > 0.0 }
                     } else {
                         null
                     }
 
                     when {
-                        isMl && mlPerServing == null -> {
+                        isBulk && mlPerServing == null -> {
                             etMlPerServing.error = getString(R.string.inventory_field_required)
                             return@setOnClickListener
                         }
 
-                        isMl && mlPerBottle == null -> {
+                        isBulk && mlPerBottle == null -> {
                             etMlPerBottle.error = getString(R.string.inventory_field_required)
                             return@setOnClickListener
                         }
                     }
 
-                    val storedCostPerUnit = if (isMl && mlPerServing != null && mlPerServing > 0.0) {
+                    val storedCostPerUnit = if (isBulk && mlPerServing != null && mlPerServing > 0.0) {
                         pricePerPiece / mlPerServing
                     } else {
                         pricePerPiece
@@ -1229,14 +1305,21 @@ class InventoryFragment : Fragment() {
         }
         container.addView(priceLabel)
 
-        val priceDisplay = TextView(ctx).apply {
+        // Suggested price stays helper-only. Staff either enter a price
+        // themselves or explicitly choose "Use suggested" from validation.
+        val priceInput = EditText(ctx).apply {
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or
+                android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
             textSize = 16f
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(ContextCompat.getColor(ctx, R.color.pos_text_primary))
             setBackgroundResource(R.drawable.bg_input_field)
             setPadding(dpToPx(12), dpToPx(12), dpToPx(12), dpToPx(12))
+            product?.price?.takeIf { it > 0.0 }?.let { existingPrice ->
+                setText(String.format(Locale.getDefault(), "%.2f", existingPrice))
+            }
         }
-        container.addView(priceDisplay)
+        container.addView(priceInput)
 
         val priceBreakdown = TextView(ctx).apply {
             textSize = 11f
@@ -1288,17 +1371,16 @@ class InventoryFragment : Fragment() {
 
         fun refreshPriceDisplay() {
             val cost = computeRecipeCost()
-            val price = cost * RecipePricing.MARKUP_MULTIPLIER
-            priceDisplay.text = String.format(Locale.getDefault(), "PHP %,.2f", price)
-            priceBreakdown.text = if (cost > 0.0) {
-                String.format(
-                    Locale.getDefault(),
-                    "Recipe cost PHP %,.2f × %.0f markup",
+            val suggested = RecipePricing.roundCurrency(cost * RecipePricing.MARKUP_MULTIPLIER)
+            priceBreakdown.text = if (suggested > 0.0) {
+                getString(
+                    R.string.inventory_field_price_suggested_helper,
+                    suggested,
                     cost,
                     RecipePricing.MARKUP_MULTIPLIER
                 )
             } else {
-                "Add ingredients to compute price"
+                getString(R.string.inventory_field_price_suggested_empty)
             }
         }
 
@@ -1320,6 +1402,24 @@ class InventoryFragment : Fragment() {
 
             val ingredientSpinner = Spinner(ctx)
             applyIngredientOptionsToSpinner(ingredientSpinner, currentIngredientOptions)
+
+            val ingredientParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT)
+            ingredientParams.weight = 1f
+            row.addView(ingredientSpinner, ingredientParams)
+
+            val initialIngredient = initial?.let { req ->
+                currentIngredientOptions.firstOrNull { it.id == req.ingredientId }
+            } ?: currentIngredientOptions.firstOrNull()
+            val quantityInput = EditText(ctx).apply {
+                hint = quantityHintForIngredient(initialIngredient)
+                inputType = android.text.InputType.TYPE_CLASS_NUMBER or
+                    android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+                setText(initial?.requiredQuantity?.toString().orEmpty())
+                setPadding(dpToPx(12), dpToPx(10), dpToPx(12), dpToPx(10))
+                setBackgroundResource(R.drawable.bg_input_field)
+                doAfterTextChanged { refreshPriceDisplay() }
+            }
+
             ingredientSpinner.onItemSelectedListener =
                 object : android.widget.AdapterView.OnItemSelectedListener {
                     override fun onItemSelected(
@@ -1328,25 +1428,14 @@ class InventoryFragment : Fragment() {
                         position: Int,
                         id: Long
                     ) {
+                        quantityInput.hint = quantityHintForIngredient(
+                            currentIngredientOptions.getOrNull(position)
+                        )
                         refreshPriceDisplay()
                     }
 
                     override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
                 }
-
-            val ingredientParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT)
-            ingredientParams.weight = 1f
-            row.addView(ingredientSpinner, ingredientParams)
-
-            val quantityInput = EditText(ctx).apply {
-                hint = getString(R.string.inventory_field_required_quantity)
-                inputType = android.text.InputType.TYPE_CLASS_NUMBER or
-                    android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-                setText(initial?.requiredQuantity?.toString().orEmpty())
-                setPadding(dpToPx(12), dpToPx(10), dpToPx(12), dpToPx(10))
-                setBackgroundResource(R.drawable.bg_input_field)
-                doAfterTextChanged { refreshPriceDisplay() }
-            }
             val quantityParams = LinearLayout.LayoutParams(dpToPx(120), LinearLayout.LayoutParams.WRAP_CONTENT)
             quantityParams.marginStart = dpToPx(8)
             row.addView(quantityInput, quantityParams)
@@ -1402,6 +1491,11 @@ class InventoryFragment : Fragment() {
             val previousSelectionIdByRow = rowHolders.map { holder ->
                 currentIngredientOptions.getOrNull(holder.ingredientSpinner.selectedItemPosition)?.id
             }
+            // Re-inject any ingredient that's currently selected in a row
+            // or referenced by a saved recipe but didn't survive the
+            // category allowlist. Without this, switching the product
+            // category dropdown would silently wipe a hand-picked
+            // ingredient from an in-progress edit.
             val rowSelectedIds = previousSelectionIdByRow.filterNotNull().toSet()
             val mustIncludeIds = extraIngredientIds + rowSelectedIds
 
@@ -1533,7 +1627,32 @@ class InventoryFragment : Fragment() {
                         ?: 0.0
                     ingredient.requiredQuantity * unitCost
                 }
-                val computedPrice = recipeCost * RecipePricing.MARKUP_MULTIPLIER
+                val suggestedPrice = RecipePricing.roundCurrency(
+                    recipeCost * RecipePricing.MARKUP_MULTIPLIER
+                )
+                val enteredPrice = priceInput.text.toString().toDoubleOrNull()
+                    ?.let(RecipePricing::roundCurrency)
+                    ?: 0.0
+
+                fun saveDraft(finalPrice: Double) {
+                    val draft = ProductEditorDraft(
+                        productId = product?.productId,
+                        productVariantId = product?.id,
+                        categoryId = selectedCategory!!.id,
+                        productName = productName,
+                        variantName = variantName,
+                        price = finalPrice,
+                        ingredients = groupedIngredients,
+                        imageUrl = imageUrl,
+                        createDefaultBeverageSizes = product == null && isBeverageCategory
+                    )
+                    if (product == null) {
+                        viewModel.addProduct(draft)
+                    } else {
+                        viewModel.updateProduct(draft)
+                    }
+                    dialog.dismiss()
+                }
 
                 when {
                     selectedCategory == null -> {
@@ -1555,33 +1674,41 @@ class InventoryFragment : Fragment() {
                         )
                     }
 
-                    computedPrice <= 0.0 -> {
-                        showWarningDialog(
-                            requireContext(),
-                            "Set a per-unit cost on the recipe ingredients first so the price can be computed."
-                        )
+                    enteredPrice <= 0.0 -> {
+                        priceInput.error = getString(R.string.inventory_validation_price_required)
+                        priceInput.requestFocus()
                     }
 
-                    else -> {
-                        val draft = ProductEditorDraft(
-                            productId = product?.productId,
-                            productVariantId = product?.id,
-                            categoryId = selectedCategory.id,
-                            productName = productName,
-                            variantName = variantName,
-                            price = computedPrice,
-                            ingredients = groupedIngredients,
-                            imageUrl = imageUrl,
-                            createDefaultBeverageSizes = product == null && isBeverageCategory
-                        )
-
-                        if (product == null) {
-                            viewModel.addProduct(draft)
-                        } else {
-                            viewModel.updateProduct(draft)
-                        }
-                        dialog.dismiss()
+                    // CHANGE: Price is now staff-editable. The recipe-cost-based
+                    // suggested price is informational; if the entered price is
+                    // below it, confirm before committing instead of silently
+                    // saving a money-losing product.
+                    suggestedPrice > 0.0 && enteredPrice < suggestedPrice -> {
+                        AlertDialog.Builder(ctx)
+                            .setTitle(R.string.inventory_field_price_below_suggested_title)
+                            .setMessage(
+                                getString(
+                                    R.string.inventory_field_price_below_suggested_message,
+                                    enteredPrice,
+                                    productName,
+                                    suggestedPrice
+                                )
+                            )
+                            .setPositiveButton(R.string.inventory_price_continue_anyway) { d, _ ->
+                                d.dismiss()
+                                saveDraft(enteredPrice)
+                            }
+                            .setNegativeButton(R.string.inventory_price_use_suggested) { d, _ ->
+                                d.dismiss()
+                                priceInput.setText(
+                                    String.format(Locale.getDefault(), "%.2f", suggestedPrice)
+                                )
+                                priceInput.requestFocus()
+                            }
+                            .showStyledDialog(ctx)
                     }
+
+                    else -> saveDraft(enteredPrice)
                 }
             }
         }

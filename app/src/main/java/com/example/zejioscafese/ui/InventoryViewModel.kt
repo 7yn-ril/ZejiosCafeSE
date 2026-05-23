@@ -92,7 +92,6 @@ class InventoryViewModel(
     private var refreshJob: Job? = null
     private var lastSuccessfulRefreshAt: Long = 0L
     private var categoryOrderRanks: Map<String, Int> = emptyMap()
-    private var pendingPriceCorrections: Map<String, Double> = emptyMap()
     private var pendingRecipeScaling: List<RecipeScalingUpdate> = emptyList()
 
     private val _sortDirection = MutableLiveData(sortDirection)
@@ -148,6 +147,10 @@ class InventoryViewModel(
 
     fun setSortMode(mode: SortMode) {
         sortMode = mode
+        if (mode == SortMode.VALUE) {
+            sortDirection = SortDirection.DESCENDING
+            _sortDirection.value = sortDirection
+        }
         applyFilters(resetActivePage = true)
     }
 
@@ -354,7 +357,7 @@ class InventoryViewModel(
                 .map(ProducibleProduct::category)
         }
 
-        val baseCategories = listOf(ALL_CATEGORY) + categories
+        val sortedCategories = categories
             .filter(String::isNotBlank)
             .distinct()
             .sortedWith(
@@ -364,11 +367,21 @@ class InventoryViewModel(
         val hasDeletedProducts = (_screenMode.value ?: ScreenMode.INGREDIENTS) == ScreenMode.PRODUCTION &&
             allProducibleProducts.any { !it.isActive }
 
+        // Place Deleted immediately after All when any inactive products
+        // exist. Putting it at the end (the old behavior) buried it under
+        // the long category list on tablets, so staff never found their
+        // hidden products to restore them.
         return if (hasDeletedProducts) {
-            baseCategories + DELETED_CATEGORY
+            listOf(ALL_CATEGORY, DELETED_CATEGORY) + sortedCategories
         } else {
-            baseCategories
+            listOf(ALL_CATEGORY) + sortedCategories
         }
+    }
+
+    /** Number of soft-deleted products visible in the Products tab. */
+    fun deletedProductCount(): Int {
+        if ((_screenMode.value ?: ScreenMode.INGREDIENTS) != ScreenMode.PRODUCTION) return 0
+        return allProducibleProducts.count { !it.isActive }
     }
 
     fun getIngredientOptionsForEditor(): List<Ingredient> {
@@ -445,19 +458,7 @@ class InventoryViewModel(
             }
             val rawProducibleProductsScaled = producibleProductsWithAvailability
 
-            val priceCorrections = computePriceCorrections(
-                products = rawProducibleProductsScaled,
-                recipeLinksByVariant = scaledRecipeLinksByVariant,
-                ingredientDirectory = ingredientDirectory
-            )
-            pendingPriceCorrections = priceCorrections
-            val producibleProducts = if (priceCorrections.isEmpty()) {
-                rawProducibleProductsScaled
-            } else {
-                rawProducibleProductsScaled.map { product ->
-                    priceCorrections[product.id]?.let { product.copy(price = it) } ?: product
-                }
-            }
+            val producibleProducts = rawProducibleProductsScaled
             val variantCounts = variantCountsDeferred.await()
 
             InventorySnapshot(
@@ -509,7 +510,6 @@ class InventoryViewModel(
         lastSuccessfulRefreshAt = System.currentTimeMillis()
 
         flushPendingRecipeScaling()
-        flushPendingPriceCorrections()
     }
 
     private fun flushPendingRecipeScaling() {
@@ -528,35 +528,6 @@ class InventoryViewModel(
                 }
             }
         }
-    }
-
-    private fun flushPendingPriceCorrections() {
-        val corrections = pendingPriceCorrections
-        if (corrections.isEmpty()) return
-        pendingPriceCorrections = emptyMap()
-
-        viewModelScope.launch {
-            corrections.forEach { (variantId, newPrice) ->
-                runCatching {
-                    inventoryRepository.updateProductVariantPrice(variantId, newPrice)
-                }
-            }
-        }
-    }
-
-    private fun computePriceCorrections(
-        products: List<ProducibleProduct>,
-        recipeLinksByVariant: Map<String, List<ProductRecipeLinkDto>>,
-        ingredientDirectory: Map<String, Ingredient>
-    ): Map<String, Double> {
-        return products.mapNotNull { product ->
-            val links = recipeLinksByVariant[product.id].orEmpty()
-            if (links.isEmpty()) return@mapNotNull null
-            val expectedPrice = RecipePricing.computePriceFromLinks(links, ingredientDirectory)
-            if (expectedPrice <= 0.0) return@mapNotNull null
-            if (abs(product.price - expectedPrice) < 0.01) return@mapNotNull null
-            product.id to expectedPrice
-        }.toMap()
     }
 
     private fun sizeOzForVariant(variantName: String): Double? {
@@ -805,7 +776,7 @@ class InventoryViewModel(
             System.currentTimeMillis() - lastSuccessfulRefreshAt >= maxAgeMs
     }
 
-    private companion object {
+    companion object {
         const val ALL_CATEGORY = "All"
         const val DELETED_CATEGORY = "Deleted"
         const val INGREDIENT_ID_PREFIX = "ING-"
@@ -813,16 +784,34 @@ class InventoryViewModel(
         const val INVENTORY_REFRESH_INTERVAL_MS = 60_000L
         const val RESTOCK_QUANTITY_ERROR = "Restock quantity must be greater than zero."
         const val BEVERAGE_BASE_SIZE_OZ = 16.0
+        // Default ingredient categories shown in the Add Ingredient
+        // dialog. Mirrors the finer split established by
+        // database/split_ingredient_categories.sql so every category
+        // here matches a single product domain (drinks vs food, sweet
+        // vs savoury, etc.) and has a deterministic default unit via
+        // IngredientUnits.defaultUnitForCategory.
         val DEFAULT_INGREDIENT_CATEGORIES = listOf(
+            // Drinks
             "Beverages",
+            "Coffee Bases",
             "Dairy",
-            "Dry Goods",
-            "Frozen & Sides",
-            "Pantry",
+            "Drink Pantry",
+            "Drink Produce",
+            "Lemonade Bases",
             "Powders & Mixes",
-            "Produce",
-            "Proteins",
-            "Syrups & Sauces"
+            "Sweet Syrups",
+            "Tea Bases",
+            // Food
+            "Bakery & Bread",
+            "Burger Proteins",
+            "Food Dairy",
+            "Food Pantry",
+            "Food Produce",
+            "Frozen & Sides",
+            "Rice Meal Proteins",
+            "Savoury Sauces",
+            "Side Proteins",
+            "Wing Proteins"
         )
     }
 

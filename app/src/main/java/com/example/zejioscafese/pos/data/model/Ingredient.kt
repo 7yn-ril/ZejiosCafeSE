@@ -24,23 +24,30 @@ data class Ingredient(
             else -> IngredientStockStatus.IN_STOCK
         }
 
-    // True for ingredients measured in mL. The serving math only applies to these.
+    // True for ingredients measured in mL. Retained for any UI that
+    // specifically wants liquids (e.g. a "Pour ingredient" workflow).
     val isLiquid: Boolean
         get() = IngredientUnits.isMl(unit)
 
+    // True for ingredients measured by bulk quantity (mL or grams).
+    // The per-serving / per-restock math applies to both — only pcs
+    // ingredients skip it.
+    val isBulk: Boolean
+        get() = IngredientUnits.isBulk(unit)
+
     // Total servings the current stock can cover. Returns null when
-    // mlPerServing isn't configured or the ingredient isn't liquid.
+    // mlPerServing isn't configured or the ingredient isn't bulk.
     val totalServings: Double?
         get() {
             val servingSize = mlPerServing?.takeIf { it > 0.0 } ?: return null
-            return if (isLiquid) currentStock / servingSize else null
+            return if (isBulk) currentStock / servingSize else null
         }
 
     // PHP cost of a single serving.
     val costPerServing: Double?
         get() {
             val servingSize = mlPerServing?.takeIf { it > 0.0 } ?: return null
-            return if (isLiquid) costPerUnit * servingSize else null
+            return if (isBulk) costPerUnit * servingSize else null
         }
 }
 

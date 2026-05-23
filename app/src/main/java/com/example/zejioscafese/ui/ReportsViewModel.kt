@@ -9,8 +9,12 @@ import com.example.zejioscafese.R
 import com.example.zejioscafese.core.network.NetworkErrorFormatter
 import com.example.zejioscafese.pos.data.model.CategorySalesRecord
 import com.example.zejioscafese.pos.data.model.ProductSalesRecord
+import com.example.zejioscafese.reports.data.ReportsAggregator
+import com.example.zejioscafese.reports.data.model.ProductGroupFilter
 import com.example.zejioscafese.reports.data.model.ReportTransaction
+import com.example.zejioscafese.reports.data.model.ReportsDataset
 import com.example.zejioscafese.reports.data.model.SalesTimelinePoint
+import com.example.zejioscafese.reports.data.model.TypeBreakdown
 import com.example.zejioscafese.reports.data.repository.ReportsRepository
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
@@ -45,7 +49,7 @@ class ReportsViewModel(
         MONTHLY(
             labelRes = R.string.reports_range_monthly,
             subtitleRes = R.string.reports_granularity_monthly_subtitle,
-            timelineGranularity = ReportsRepository.TimelineGranularity.DAILY
+            timelineGranularity = ReportsRepository.TimelineGranularity.MONTHLY
         ),
         YEARLY(
             labelRes = R.string.reports_range_yearly,
@@ -57,14 +61,29 @@ class ReportsViewModel(
     private val _selectedRange = MutableLiveData(DateRange.DAILY)
     val selectedRange: LiveData<DateRange> = _selectedRange
 
+    private val _productGroupFilter = MutableLiveData(ProductGroupFilter.ALL)
+    val productGroupFilter: LiveData<ProductGroupFilter> = _productGroupFilter
+
+    private val _selectedBucketLabel = MutableLiveData<String?>(null)
+    val selectedBucketLabel: LiveData<String?> = _selectedBucketLabel
+
     private val _salesByDateRange = MutableLiveData<List<SalesTimelinePoint>>(emptyList())
     val salesByDateRange: LiveData<List<SalesTimelinePoint>> = _salesByDateRange
+
+    private val _chartReferenceMax = MutableLiveData(0.0)
+    val chartReferenceMax: LiveData<Double> = _chartReferenceMax
 
     private val _salesByCategory = MutableLiveData<List<CategorySalesRecord>>(emptyList())
     val salesByCategory: LiveData<List<CategorySalesRecord>> = _salesByCategory
 
     private val _salesByProduct = MutableLiveData<List<ProductSalesRecord>>(emptyList())
     val salesByProduct: LiveData<List<ProductSalesRecord>> = _salesByProduct
+
+    private val _salesByOrderType = MutableLiveData<List<TypeBreakdown>>(emptyList())
+    val salesByOrderType: LiveData<List<TypeBreakdown>> = _salesByOrderType
+
+    private val _salesByPaymentMethod = MutableLiveData<List<TypeBreakdown>>(emptyList())
+    val salesByPaymentMethod: LiveData<List<TypeBreakdown>> = _salesByPaymentMethod
 
     private val _totalRevenue = MutableLiveData(0.0)
     val totalRevenue: LiveData<Double> = _totalRevenue
@@ -83,8 +102,13 @@ class ReportsViewModel(
 
     private val _reportError = MutableLiveData<String?>(null)
     val reportError: LiveData<String?> = _reportError
+
     private var refreshJob: Job? = null
     private var lastSuccessfulRefreshAt: Long = 0L
+
+    // Most recently fetched raw dataset. Kept around so bucket/filter
+    // changes can re-aggregate without re-hitting Supabase.
+    private var cachedDataset: ReportsDataset? = null
 
     init {
         refreshReports(force = true)
@@ -124,8 +148,11 @@ class ReportsViewModel(
                     )
 
                     DateRange.MONTHLY -> ReportsRepository.ReportDateWindow(
-                        startDate = today.withDayOfMonth(1),
-                        endDate = today,
+                        // Calendar-year window: Jan 1 through Dec 31 of
+                        // the current year. Future months render as
+                        // empty bars and fill in as the year progresses.
+                        startDate = today.withDayOfYear(1),
+                        endDate = today.withMonth(12).withDayOfMonth(31),
                         timelineGranularity = selected.timelineGranularity
                     )
 
@@ -136,15 +163,23 @@ class ReportsViewModel(
                     )
                 }
 
-                val snapshot = reportsRepository.fetchReportsSnapshot(dateWindow)
-                _salesByDateRange.value = snapshot.salesByDateRange
-                _salesByCategory.value = snapshot.salesByCategory
-                _salesByProduct.value = snapshot.salesByProduct
-                _totalRevenue.value = snapshot.totalRevenue
-                _totalOrders.value = snapshot.totalOrders
-                _avgOrderValue.value = snapshot.averageOrderValue
-                _bestProduct.value = snapshot.bestProduct
-                _transactions.value = snapshot.transactions
+                val dataset = reportsRepository.fetchReportsDataset(dateWindow)
+                cachedDataset = dataset
+
+                // Pick a default bucket for this range: today (or the
+                // current period's bucket). The user can drill into other
+                // buckets by tapping bars in the chart.
+                val provisionalLabels = ReportsAggregator.aggregate(
+                    dataset = dataset,
+                    selectedBucketLabel = null,
+                    productGroupFilter = _productGroupFilter.value ?: ProductGroupFilter.ALL
+                ).bucketLabels
+                _selectedBucketLabel.value = ReportsAggregator.defaultBucketLabel(
+                    bucketLabels = provisionalLabels,
+                    granularity = dataset.timelineGranularity
+                )
+
+                publishCurrentAggregation()
                 _reportError.value = null
                 lastSuccessfulRefreshAt = System.currentTimeMillis()
             } catch (exception: Exception) {
@@ -171,11 +206,65 @@ class ReportsViewModel(
         }
 
         _selectedRange.value = range
+        // Wipe the cached bucket selection — the next refresh will pick a
+        // fresh default for the new range.
+        _selectedBucketLabel.value = null
         refreshReports(force = true)
+    }
+
+    fun setSelectedBucketLabel(label: String?) {
+        if (_selectedBucketLabel.value == label) return
+        _selectedBucketLabel.value = label
+        publishCurrentAggregation()
+    }
+
+    fun setProductGroupFilter(filter: ProductGroupFilter) {
+        if (_productGroupFilter.value == filter) return
+        _productGroupFilter.value = filter
+
+        // Re-pick the default bucket for the new filter so a stale label
+        // (e.g. for an hour that no longer has any orders under this
+        // filter) doesn't leave the screen empty.
+        val dataset = cachedDataset
+        if (dataset != null) {
+            val newLabels = ReportsAggregator.aggregate(
+                dataset = dataset,
+                selectedBucketLabel = null,
+                productGroupFilter = filter
+            ).bucketLabels
+            val current = _selectedBucketLabel.value
+            if (current == null || current !in newLabels) {
+                _selectedBucketLabel.value = ReportsAggregator.defaultBucketLabel(
+                    bucketLabels = newLabels,
+                    granularity = dataset.timelineGranularity
+                )
+            }
+        }
+        publishCurrentAggregation()
     }
 
     fun onReportErrorConsumed() {
         _reportError.value = null
+    }
+
+    private fun publishCurrentAggregation() {
+        val dataset = cachedDataset ?: return
+        val result = ReportsAggregator.aggregate(
+            dataset = dataset,
+            selectedBucketLabel = _selectedBucketLabel.value,
+            productGroupFilter = _productGroupFilter.value ?: ProductGroupFilter.ALL
+        )
+        _salesByDateRange.value = result.salesByDateRange
+        _chartReferenceMax.value = result.referenceMaxSales
+        _salesByCategory.value = result.salesByCategory
+        _salesByProduct.value = result.salesByProduct
+        _salesByOrderType.value = result.salesByOrderType
+        _salesByPaymentMethod.value = result.salesByPaymentMethod
+        _totalRevenue.value = result.totalRevenue
+        _totalOrders.value = result.totalOrders
+        _avgOrderValue.value = result.averageOrderValue
+        _bestProduct.value = result.bestProduct
+        _transactions.value = result.transactions
     }
 
     private fun shouldRefresh(maxAgeMs: Long = REPORT_REFRESH_INTERVAL_MS): Boolean {

@@ -15,7 +15,17 @@
       "Bash(./gradlew :app:testDebugUnitTest --tests \"com.example.zejioscafese.pos.presentation.PosViewModelTest\" -Dorg.gradle.jvmargs=\"-Xmx512m\")",
       "Bash(./gradlew.bat compileDebugKotlin --quiet)",
       "Bash(./gradlew.bat compileDebugKotlin --rerun-tasks)",
-      "Bash(./gradlew :app:compileDebugKotlin --console=plain)"
+      "Bash(./gradlew :app:compileDebugKotlin --console=plain)",
+      "Bash(./gradlew.bat :app:compileDebugKotlin)",
+      "Bash(./gradlew.bat :app:testDebugUnitTest --tests \"com.example.zejioscafese.ui.ReportsViewModelTest\")",
+      "Bash(./gradlew.bat :app:assembleDebug)",
+      "Bash(./gradlew.bat :app:compileDebugKotlin :app:testDebugUnitTest --tests \"com.example.zejioscafese.ui.ReportsViewModelTest\")",
+      "Bash(./gradlew.bat :app:compileDebugKotlin :app:testDebugUnitTest)",
+      "Bash(xargs grep -l \"<failure\\\\|<error\")",
+      "Bash(./gradlew.bat :app:testDebugUnitTest)",
+      "Bash(grep -nB1 -A2 \"product_variant_stock_view\\\\|product_is_active\" \"c:/Users/Lenovo-Pc/OneDrive/3rd Year \\(2nd Semester\\)/CIT238 \\(Mobile Applications Development\\) - Christopher Mateo/Final_Project/ZejiosCafeSE/database/fix_product_variant_stock_view_actual_stock.sql\")",
+      "Bash(grep -nB2 \"coalesce\\(p.product_is_active\" \"c:/Users/Lenovo-Pc/OneDrive/3rd Year \\(2nd Semester\\)/CIT238 \\(Mobile Applications Development\\) - Christopher Mateo/Final_Project/ZejiosCafeSE/database/fix_beverage_sizes_and_packaging.sql\")",
+      "Bash(grep -nE \"create or replace view.*as$|^as$\" \"c:/Users/Lenovo-Pc/OneDrive/3rd Year \\(2nd Semester\\)/CIT238 \\(Mobile Applications Development\\) - Christopher Mateo/Final_Project/ZejiosCafeSE/database/fix_beverage_sizes_and_packaging.sql\")"
     ]
   }
 }

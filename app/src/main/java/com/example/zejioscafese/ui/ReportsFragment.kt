@@ -22,8 +22,10 @@ import com.example.zejioscafese.R
 import com.example.zejioscafese.databinding.FragmentReportsBinding
 import com.example.zejioscafese.pos.data.model.CategorySalesRecord
 import com.example.zejioscafese.pos.data.model.ProductSalesRecord
+import com.example.zejioscafese.reports.data.model.ProductGroupFilter
 import com.example.zejioscafese.reports.data.model.ReportTransaction
 import com.example.zejioscafese.reports.data.model.SalesTimelinePoint
+import com.example.zejioscafese.reports.data.model.TypeBreakdown
 import com.example.zejioscafese.ui.showErrorDialog
 import com.example.zejioscafese.ui.showInfoDialog
 import com.example.zejioscafese.ui.showStyledDialog
@@ -63,27 +65,22 @@ class ReportsFragment : Fragment() {
         saveExcelReport(uri, export)
     }
 
-    private val categoryColors by lazy {
-        mapOf(
-            "Milk Tea" to ContextCompat.getColor(requireContext(), R.color.cat_drinks),
-            "Coffee" to ContextCompat.getColor(requireContext(), R.color.pos_primary),
-            "Non-Coffee" to ContextCompat.getColor(requireContext(), R.color.cat_specials),
-            "Burgers" to ContextCompat.getColor(requireContext(), R.color.cat_meals),
-            "Wings" to ContextCompat.getColor(requireContext(), R.color.cat_snacks),
-            "Rice Meals" to ContextCompat.getColor(requireContext(), R.color.cat_meals),
-            "Appetizers & Sides" to ContextCompat.getColor(requireContext(), R.color.cat_desserts),
-            "Combo Meals" to ContextCompat.getColor(requireContext(), R.color.pos_secondary)
-        )
-    }
-    private val fallbackCategoryPalette by lazy {
+    // Hue-separated palette for every chart on the Reports page. We
+    // assign by index (sorted position) instead of mapping category
+    // names to colors — the old name-map had multiple categories
+    // collapsing onto the same hex value, which is why Coffee and Milk
+    // Tea looked identical on the donut.
+    private val chartPalette by lazy {
         listOf(
-            ContextCompat.getColor(requireContext(), R.color.cat_drinks),
-            ContextCompat.getColor(requireContext(), R.color.cat_meals),
-            ContextCompat.getColor(requireContext(), R.color.cat_desserts),
-            ContextCompat.getColor(requireContext(), R.color.cat_snacks),
-            ContextCompat.getColor(requireContext(), R.color.cat_specials),
-            ContextCompat.getColor(requireContext(), R.color.pos_secondary)
-        )
+            R.color.chart_palette_1,
+            R.color.chart_palette_2,
+            R.color.chart_palette_3,
+            R.color.chart_palette_4,
+            R.color.chart_palette_5,
+            R.color.chart_palette_6,
+            R.color.chart_palette_7,
+            R.color.chart_palette_8
+        ).map { ContextCompat.getColor(requireContext(), it) }
     }
 
     override fun onCreateView(
@@ -99,13 +96,21 @@ class ReportsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         setupDateRangeButtons()
+        setupProductGroupFilter()
+        setupRevenueChart()
         setupExportButton()
         observeViewModel()
     }
 
     override fun onResume() {
         super.onResume()
-        viewModel.refreshReportsIfStale()
+        // Force a refresh on every visit so newly-completed orders show
+        // up immediately. The 60s staleness gate used to swallow this:
+        // if the user completed an order in Orders and switched back to
+        // Reports within a minute, the page kept showing pre-checkout
+        // numbers. Forcing here is cheap (one query batch) and matches
+        // the user's mental model of "navigate to see fresh data".
+        viewModel.refreshReports(force = true)
     }
 
     private fun setupDateRangeButtons() {
@@ -120,6 +125,25 @@ class ReportsFragment : Fragment() {
                 else -> ReportsViewModel.DateRange.DAILY
             }
             viewModel.setDateRange(range)
+        }
+    }
+
+    private fun setupProductGroupFilter() {
+        binding.toggleProductGroupFilter.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            val filter = when (checkedId) {
+                R.id.btnFilterFood -> ProductGroupFilter.FOOD
+                R.id.btnFilterDrinks -> ProductGroupFilter.DRINKS
+                else -> ProductGroupFilter.ALL
+            }
+            viewModel.setProductGroupFilter(filter)
+        }
+    }
+
+    private fun setupRevenueChart() {
+        // Tapping a bar drills the KPIs + breakdowns to that single bucket.
+        binding.chartRevenueTrend.setOnBarClickListener { point ->
+            viewModel.setSelectedBucketLabel(point.label)
         }
     }
 
@@ -426,8 +450,41 @@ class ReportsFragment : Fragment() {
             binding.chartRevenueTrend.setData(salesData)
         }
 
+        viewModel.chartReferenceMax.observe(viewLifecycleOwner) { referenceMax ->
+            binding.chartRevenueTrend.setReferenceMax(referenceMax)
+        }
+
+        viewModel.selectedBucketLabel.observe(viewLifecycleOwner) { label ->
+            binding.chartRevenueTrend.setSelectedLabel(label)
+            binding.tvSelectedBucketLabel.text = if (label.isNullOrBlank()) {
+                getString(R.string.reports_selected_bucket_default)
+            } else {
+                getString(R.string.reports_selected_bucket_format, label)
+            }
+        }
+
+        viewModel.productGroupFilter.observe(viewLifecycleOwner) { filter ->
+            updateProductGroupFilterUI(filter)
+        }
+
         viewModel.salesByCategory.observe(viewLifecycleOwner) { categories ->
             buildCategoryBreakdown(categories)
+        }
+
+        viewModel.salesByOrderType.observe(viewLifecycleOwner) { breakdown ->
+            renderTypeBreakdown(
+                bar = binding.orderTypeBar,
+                legend = binding.orderTypeLegend,
+                rows = breakdown
+            )
+        }
+
+        viewModel.salesByPaymentMethod.observe(viewLifecycleOwner) { breakdown ->
+            renderTypeBreakdown(
+                bar = binding.paymentMethodBar,
+                legend = binding.paymentMethodLegend,
+                rows = breakdown
+            )
         }
 
         viewModel.salesByProduct.observe(viewLifecycleOwner) { products ->
@@ -510,13 +567,64 @@ class ReportsFragment : Fragment() {
         button.strokeColor = if (selected) selectedStroke else unselectedStroke
     }
 
+    private fun updateProductGroupFilterUI(filter: ProductGroupFilter) {
+        val targetButtonId = when (filter) {
+            ProductGroupFilter.FOOD -> R.id.btnFilterFood
+            ProductGroupFilter.DRINKS -> R.id.btnFilterDrinks
+            ProductGroupFilter.ALL -> R.id.btnFilterAll
+        }
+        if (binding.toggleProductGroupFilter.checkedButtonId != targetButtonId) {
+            binding.toggleProductGroupFilter.check(targetButtonId)
+        }
+
+        val selectedBackground = ColorStateList.valueOf(
+            ContextCompat.getColor(requireContext(), R.color.pos_primary)
+        )
+        val unselectedBackground = ColorStateList.valueOf(
+            ContextCompat.getColor(requireContext(), R.color.pos_surface)
+        )
+        val selectedTextColor = ContextCompat.getColor(requireContext(), R.color.white)
+        val unselectedTextColor = ContextCompat.getColor(requireContext(), R.color.pos_text_secondary)
+        val selectedStroke = ColorStateList.valueOf(
+            ContextCompat.getColor(requireContext(), R.color.pos_primary)
+        )
+        val unselectedStroke = ColorStateList.valueOf(
+            ContextCompat.getColor(requireContext(), R.color.pos_border)
+        )
+
+        listOf(
+            binding.btnFilterAll,
+            binding.btnFilterFood,
+            binding.btnFilterDrinks
+        ).forEach { button ->
+            styleDateRangeButton(
+                button = button,
+                selected = button.id == targetButtonId,
+                selectedBackground = selectedBackground,
+                unselectedBackground = unselectedBackground,
+                selectedTextColor = selectedTextColor,
+                unselectedTextColor = unselectedTextColor,
+                selectedStroke = selectedStroke,
+                unselectedStroke = unselectedStroke
+            )
+        }
+    }
+
+    private fun categoryColorFor(@Suppress("UNUSED_PARAMETER") name: String, index: Int): Int {
+        // Slice color is purely positional now — categories sort by
+        // revenue, so the same #1 category always gets palette[0].
+        return chartPalette[index % chartPalette.size]
+    }
+
     private fun buildCategoryBreakdown(categories: List<CategorySalesRecord>) {
-        val container = binding.categoryBreakdownContainer
-        container.removeAllViews()
         val ctx = requireContext()
+        val donut = binding.categoryDonutChart
+        val legendContainer = binding.categoryBreakdownContainer
+        legendContainer.removeAllViews()
 
         if (categories.isEmpty()) {
-            container.addView(
+            donut.setSlices(emptyList(), getString(R.string.reports_empty_categories_short))
+            legendContainer.addView(
                 TextView(ctx).apply {
                     text = getString(R.string.reports_empty_categories)
                     textSize = 13f
@@ -526,68 +634,66 @@ class ReportsFragment : Fragment() {
             return
         }
 
-        val maxRevenue = (categories.maxOfOrNull { it.totalRevenue } ?: 0.0).coerceAtLeast(1.0)
+        val totalRevenue = categories.sumOf(CategorySalesRecord::totalRevenue)
+        val slices = categories.mapIndexed { index, record ->
+            CategoryDonutChartView.Slice(
+                label = record.categoryName,
+                value = record.totalRevenue,
+                color = categoryColorFor(record.categoryName, index)
+            )
+        }
+        donut.setSlices(slices, CategoryDonutChartView.formatCenterTotal(totalRevenue))
 
         categories.forEachIndexed { index, record ->
-            val rowLayout = LinearLayout(ctx).apply {
-                orientation = LinearLayout.VERTICAL
+            val row = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
                 setPadding(0, dpToPx(6), 0, dpToPx(6))
             }
 
-            // Label row
-            val labelRow = LinearLayout(ctx).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = android.view.Gravity.CENTER_VERTICAL
+            val swatch = View(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(dpToPx(10), dpToPx(10))
+                background = ContextCompat.getDrawable(ctx, R.drawable.bg_stock_bar_fill)
+                backgroundTintList = ColorStateList.valueOf(
+                    categoryColorFor(record.categoryName, index)
+                )
             }
+            row.addView(swatch)
 
             val nameLabel = TextView(ctx).apply {
                 text = record.categoryName
                 textSize = 13f
                 setTextColor(ContextCompat.getColor(ctx, R.color.pos_text_primary))
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                layoutParams = LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1f
+                ).apply { marginStart = dpToPx(8) }
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
             }
-            labelRow.addView(nameLabel)
+            row.addView(nameLabel)
 
             val statsLabel = TextView(ctx).apply {
-                text = String.format(Locale.getDefault(), "PHP %,.2f  ·  %.1f%%", record.totalRevenue, record.percentageOfTotal)
+                text = String.format(
+                    Locale.getDefault(),
+                    "PHP %,.2f  ·  %.1f%%",
+                    record.totalRevenue,
+                    record.percentageOfTotal
+                )
                 textSize = 12f
                 setTextColor(ContextCompat.getColor(ctx, R.color.pos_text_secondary))
             }
-            labelRow.addView(statsLabel)
-            rowLayout.addView(labelRow)
+            row.addView(statsLabel)
 
-            // Bar
-            val barTrack = FrameLayout(ctx).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(10)
-                ).apply { topMargin = dpToPx(4) }
-                setBackgroundResource(R.drawable.bg_stock_bar_track)
-            }
-
-            val barFill = View(ctx).apply {
-                val ratio = (record.totalRevenue / maxRevenue).coerceIn(0.0, 1.0)
-                layoutParams = FrameLayout.LayoutParams(0, FrameLayout.LayoutParams.MATCH_PARENT)
-                setBackgroundResource(R.drawable.bg_stock_bar_fill)
-                val color = categoryColors[record.categoryName]
-                    ?: fallbackCategoryPalette[index % fallbackCategoryPalette.size]
-                backgroundTintList = android.content.res.ColorStateList.valueOf(color)
-
-                post {
-                    val params = layoutParams as FrameLayout.LayoutParams
-                    params.width = (barTrack.width * ratio).toInt()
-                    layoutParams = params
-                }
-            }
-            barTrack.addView(barFill)
-            rowLayout.addView(barTrack)
-            container.addView(rowLayout)
+            legendContainer.addView(row)
         }
     }
 
     private fun buildProductBreakdown(products: List<ProductSalesRecord>) {
+        val ctx = requireContext()
         val container = binding.productBreakdownContainer
         container.removeAllViews()
-        val ctx = requireContext()
 
         if (products.isEmpty()) {
             container.addView(
@@ -600,33 +706,80 @@ class ReportsFragment : Fragment() {
             return
         }
 
-        val maxRevenue = (products.maxOfOrNull { it.totalRevenue } ?: 0.0).coerceAtLeast(1.0)
+        val ranked = products.take(LEADERBOARD_LIMIT)
+        val maxRevenue = ranked.maxOf(ProductSalesRecord::totalRevenue).coerceAtLeast(1.0)
 
-        products.forEachIndexed { index, record ->
-            val rowLayout = LinearLayout(ctx).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(0, dpToPx(6), 0, dpToPx(6))
-            }
+        ranked.forEachIndexed { index, record ->
+            container.addView(buildProductBarRow(ctx, index + 1, record, maxRevenue))
+        }
+    }
 
-            val labelRow = LinearLayout(ctx).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = android.view.Gravity.CENTER_VERTICAL
-            }
+    /**
+     * Polished horizontal-bar row for a single top-product entry. Layout:
+     *   - Bold rank number on the far left.
+     *   - Two stacked text lines (name + stats) above the fill bar.
+     *   - Track + colored fill underneath. Width is proportional to the
+     *     top product's revenue so the leader always reads as 100%.
+     */
+    private fun buildProductBarRow(
+        ctx: android.content.Context,
+        rank: Int,
+        record: ProductSalesRecord,
+        maxRevenue: Double
+    ): View {
+        val row = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = if (rank == 1) 0 else dpToPx(14) }
+        }
 
-            val nameLabel = TextView(ctx).apply {
+        val rankView = TextView(ctx).apply {
+            text = rank.toString()
+            textSize = 18f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setTextColor(ContextCompat.getColor(ctx, R.color.pos_text_secondary))
+            gravity = android.view.Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(dpToPx(28), LinearLayout.LayoutParams.WRAP_CONTENT)
+        }
+        row.addView(rankView)
+
+        val content = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f
+            ).apply { marginStart = dpToPx(8) }
+        }
+
+        val labelRow = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+        }
+
+        labelRow.addView(
+            TextView(ctx).apply {
                 text = record.productName
-                textSize = 13f
+                textSize = 14f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
                 setTextColor(ContextCompat.getColor(ctx, R.color.pos_text_primary))
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                layoutParams = LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1f
+                )
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
             }
-            labelRow.addView(nameLabel)
+        )
 
-            val statsLabel = TextView(ctx).apply {
-                text = String.format(
-                    Locale.getDefault(),
-                    "PHP %,.2f  ·  %d sold  ·  %.1f%%",
+        labelRow.addView(
+            TextView(ctx).apply {
+                text = getString(
+                    R.string.reports_product_row_stats_format,
                     record.totalRevenue,
                     record.itemsSold,
                     record.percentageOfTotal
@@ -634,33 +787,123 @@ class ReportsFragment : Fragment() {
                 textSize = 12f
                 setTextColor(ContextCompat.getColor(ctx, R.color.pos_text_secondary))
             }
-            labelRow.addView(statsLabel)
-            rowLayout.addView(labelRow)
+        )
 
-            val barTrack = FrameLayout(ctx).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(10)
-                ).apply { topMargin = dpToPx(4) }
-                setBackgroundResource(R.drawable.bg_stock_bar_track)
-            }
+        content.addView(labelRow)
 
-            val barFill = View(ctx).apply {
-                val ratio = (record.totalRevenue / maxRevenue).coerceIn(0.0, 1.0)
-                layoutParams = FrameLayout.LayoutParams(0, FrameLayout.LayoutParams.MATCH_PARENT)
-                setBackgroundResource(R.drawable.bg_stock_bar_fill)
-                val color = fallbackCategoryPalette[index % fallbackCategoryPalette.size]
-                backgroundTintList = ColorStateList.valueOf(color)
-
-                post {
-                    val params = layoutParams as FrameLayout.LayoutParams
-                    params.width = (barTrack.width * ratio).toInt()
-                    layoutParams = params
-                }
-            }
-            barTrack.addView(barFill)
-            rowLayout.addView(barTrack)
-            container.addView(rowLayout)
+        val barTrack = FrameLayout(ctx).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dpToPx(8)
+            ).apply { topMargin = dpToPx(6) }
+            setBackgroundResource(R.drawable.bg_stock_bar_track)
         }
+
+        val barFill = View(ctx).apply {
+            // Width = proportion against the #1 product's revenue, so #1
+            // always reads as a full bar and the rest fall in line.
+            val ratio = (record.totalRevenue / maxRevenue).coerceIn(0.0, 1.0)
+            layoutParams = FrameLayout.LayoutParams(0, FrameLayout.LayoutParams.MATCH_PARENT)
+            setBackgroundResource(R.drawable.bg_stock_bar_fill)
+            backgroundTintList = ColorStateList.valueOf(productBarColor(rank))
+            post {
+                val params = layoutParams as FrameLayout.LayoutParams
+                params.width = (barTrack.width * ratio).toInt()
+                layoutParams = params
+            }
+        }
+        barTrack.addView(barFill)
+        content.addView(barTrack)
+
+        row.addView(content)
+        return row
+    }
+
+    private fun productBarColor(rank: Int): Int {
+        // Same palette as the donut so the visual story is consistent
+        // across the two cards. rank is 1-based, so subtract one.
+        return chartPalette[(rank - 1) % chartPalette.size]
+    }
+
+    /**
+     * Renders a Order-Type / Payment-Method mini summary: a thin
+     * proportional segmented bar, plus a vertical legend of "Label · count
+     * (pct%)" rows underneath. The bar uses LinearLayout weights so
+     * proportions stay correct as the parent column flexes.
+     */
+    private fun renderTypeBreakdown(
+        bar: LinearLayout,
+        legend: LinearLayout,
+        rows: List<TypeBreakdown>
+    ) {
+        val ctx = requireContext()
+        bar.removeAllViews()
+        legend.removeAllViews()
+
+        if (rows.isEmpty()) {
+            legend.addView(
+                TextView(ctx).apply {
+                    text = getString(R.string.reports_breakdown_empty)
+                    textSize = 11f
+                    setTextColor(ContextCompat.getColor(ctx, R.color.pos_text_secondary))
+                }
+            )
+            return
+        }
+
+        rows.forEachIndexed { index, item ->
+            val color = breakdownColor(index)
+            val segment = View(ctx).apply {
+                setBackgroundColor(color)
+                layoutParams = LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    item.percentage.toFloat().coerceAtLeast(0.001f)
+                )
+            }
+            bar.addView(segment)
+
+            val legendRow = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { if (index > 0) topMargin = dpToPx(4) }
+            }
+
+            val swatch = View(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(dpToPx(8), dpToPx(8))
+                background = ContextCompat.getDrawable(ctx, R.drawable.bg_stock_bar_fill)
+                backgroundTintList = ColorStateList.valueOf(color)
+            }
+            legendRow.addView(swatch)
+
+            val text = TextView(ctx).apply {
+                text = getString(
+                    R.string.reports_breakdown_row_format,
+                    item.label,
+                    item.count,
+                    item.percentage
+                )
+                textSize = 12f
+                setTextColor(ContextCompat.getColor(ctx, R.color.pos_text_primary))
+                layoutParams = LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1f
+                ).apply { marginStart = dpToPx(8) }
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            }
+            legendRow.addView(text)
+
+            legend.addView(legendRow)
+        }
+    }
+
+    private fun breakdownColor(index: Int): Int {
+        return chartPalette[index % chartPalette.size]
     }
 
     private fun dpToPx(dp: Int): Int {
@@ -705,6 +948,7 @@ class ReportsFragment : Fragment() {
         const val STYLE_CURRENCY = "Currency"
         const val STYLE_PERCENT = "Percent"
         const val EXPORT_CACHE_DIR = "report_exports"
+        const val LEADERBOARD_LIMIT = 10
         val EXPORT_FILE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
         val EXPORT_DISPLAY_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
     }

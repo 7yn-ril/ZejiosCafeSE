@@ -482,8 +482,12 @@ class InventoryRepository(
     ) {
         val timestamp = currentTimestamp()
         val normalizedUnit = IngredientUnits.normalize(ingredient.unit)
-        val isMl = IngredientUnits.isMl(normalizedUnit)
-        if (isMl && includeServingColumn && includeBottleColumn) {
+        // Bulk = mL or grams. Both share the per-serving / per-bottle math
+        // and therefore both need those columns populated. Only the
+        // beverage cup-size scaling path stays mL-only (grams scoops
+        // don't scale by cup size).
+        val isBulk = IngredientUnits.isBulk(normalizedUnit)
+        if (isBulk && includeServingColumn && includeBottleColumn) {
             supabaseClient
                 .from(INGREDIENTS_TABLE)
                 .insert(
@@ -500,7 +504,7 @@ class InventoryRepository(
                         ingredientMlPerBottle = ingredient.mlPerBottle
                     )
                 )
-        } else if (isMl && includeServingColumn) {
+        } else if (isBulk && includeServingColumn) {
             supabaseClient
                 .from(INGREDIENTS_TABLE)
                 .insert(
@@ -540,7 +544,7 @@ class InventoryRepository(
         includeBottleColumn: Boolean
     ) {
         val normalizedUnit = IngredientUnits.normalize(ingredient.unit)
-        val isMl = IngredientUnits.isMl(normalizedUnit)
+        val isBulk = IngredientUnits.isBulk(normalizedUnit)
         supabaseClient
             .from(INGREDIENTS_TABLE)
             .update(
@@ -551,13 +555,13 @@ class InventoryRepository(
                     set("ingredient_current_stock", ingredient.currentStock)
                     set("ingredient_minimum_stock", ingredient.minimumStock)
                     set("ingredient_cost_per_unit", ingredient.costPerUnit)
-                    if (isMl && includeServingColumn) {
+                    if (isBulk && includeServingColumn) {
                         set(
                             INGREDIENT_ML_PER_SERVING_COLUMN,
                             ingredient.mlPerServing
                         )
                     }
-                    if (isMl && includeBottleColumn) {
+                    if (isBulk && includeBottleColumn) {
                         set(
                             INGREDIENT_ML_PER_BOTTLE_COLUMN,
                             ingredient.mlPerBottle

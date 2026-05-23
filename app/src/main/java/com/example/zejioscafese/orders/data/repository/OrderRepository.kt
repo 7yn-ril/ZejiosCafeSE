@@ -163,6 +163,11 @@ class OrderRepository(
                 val subtotal = row.orderSubtotal ?: lineItems.sumOf(CafeOrderLine::lineTotal)
                 val tax = row.orderTax ?: 0.0
                 val inferredDiscount = (subtotal + tax - row.orderTotal).coerceAtLeast(0.0)
+                val discountAmount = row.orderDiscountAmount?.coerceAtLeast(0.0) ?: inferredDiscount
+                val discountLabel = row.orderDiscountLabel
+                    ?.trim()
+                    ?.takeIf { it.isNotBlank() && discountAmount > 0.0 }
+                    ?: if (discountAmount > 0.0) "Discount" else null
                 val customerName = row.orderCustomerName
                     ?.trim()
                     ?.takeIf(String::isNotBlank)
@@ -197,8 +202,8 @@ class OrderRepository(
                     subtotal = subtotal,
                     tax = tax,
                     lineItems = lineItems,
-                    discountLabel = if (inferredDiscount > 0.0) "Discount" else null,
-                    discountAmount = inferredDiscount
+                    discountLabel = discountLabel,
+                    discountAmount = discountAmount
                 )
             }
         }
@@ -626,6 +631,10 @@ class OrderRepository(
         val orderSubtotal: Double? = null,
         @SerialName("order_tax")
         val orderTax: Double? = null,
+        @SerialName("order_discount_label")
+        val orderDiscountLabel: String? = null,
+        @SerialName("order_discount_amount")
+        val orderDiscountAmount: Double? = null,
         @SerialName("order_total")
         val orderTotal: Double,
         @SerialName("order_status")

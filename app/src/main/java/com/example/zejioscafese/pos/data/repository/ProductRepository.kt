@@ -42,27 +42,20 @@ class ProductRepository(
 
                 val recipeFetch = runCatching {
                     fetchRecipeAvailability(products)
-                }.getOrDefault(RecipeFetchResult(emptyMap(), emptyMap()))
+                }.getOrDefault(RecipeFetchResult(emptyMap()))
                 val recipeAvailability = recipeFetch.availability
-                val priceCorrections = recipeFetch.priceCorrections
 
                 products
                     .map { product ->
-                        val correctedPrice = priceCorrections[product.id]
-                        val pricedProduct = if (correctedPrice != null && correctedPrice != product.price) {
-                            product.copy(price = correctedPrice)
-                        } else {
-                            product
-                        }
-                        val availability = recipeAvailability[pricedProduct.id]
+                        val availability = recipeAvailability[product.id]
                         val stockAwareProduct = availability
                             ?.let {
-                                pricedProduct.copy(
+                                product.copy(
                                     stockLeft = it.availableQuantity,
                                     recipeIngredients = it.requirements
                                 )
                             }
-                            ?: pricedProduct
+                            ?: product
                         val productWithAvailability = stockAwareProduct.copy(
                             unavailableReason = if (stockAwareProduct.isOrderable) {
                                 null
@@ -89,7 +82,7 @@ class ProductRepository(
     private suspend fun fetchRecipeAvailability(products: List<Product>): RecipeFetchResult {
         val productVariantIds = products.map(Product::id).toSet()
         if (productVariantIds.isEmpty()) {
-            return RecipeFetchResult(emptyMap(), emptyMap())
+            return RecipeFetchResult(emptyMap())
         }
 
         val recipeLinks = supabaseClient
@@ -102,7 +95,7 @@ class ProductRepository(
             .filter { it.productVariantId in productVariantIds && it.requiredQuantity > 0.0 }
             .groupBy(VariantIngredientStockDto::productVariantId)
         if (recipeLinks.isEmpty()) {
-            return RecipeFetchResult(emptyMap(), emptyMap())
+            return RecipeFetchResult(emptyMap())
         }
 
         val ingredientStocks = supabaseClient
@@ -142,13 +135,7 @@ class ProductRepository(
                 )
             }
 
-        val priceCorrections = computePriceCorrections(
-            products = products,
-            recipeLinksByVariant = scaledRecipeLinks,
-            ingredientStocks = ingredientStocks
-        )
-
-        return RecipeFetchResult(availability = availability, priceCorrections = priceCorrections)
+        return RecipeFetchResult(availability = availability)
     }
 
     private fun applyBeverageRecipeScaling(
@@ -194,31 +181,6 @@ class ProductRepository(
         val aMap = a.associate { it.ingredientId to it.requiredQuantity }
         val bMap = b.associate { it.ingredientId to it.requiredQuantity }
         return aMap == bMap
-    }
-
-    private fun computePriceCorrections(
-        products: List<Product>,
-        recipeLinksByVariant: Map<String, List<VariantIngredientStockDto>>,
-        ingredientStocks: Map<String, IngredientStockDto>
-    ): Map<String, Double> {
-        return products.mapNotNull { product ->
-            val links = recipeLinksByVariant[product.id].orEmpty()
-            if (links.isEmpty()) return@mapNotNull null
-            val price = computeRecipePrice(links, ingredientStocks)
-            if (price <= 0.0) return@mapNotNull null
-            product.id to price
-        }.toMap()
-    }
-
-    private fun computeRecipePrice(
-        links: List<VariantIngredientStockDto>,
-        ingredientStocks: Map<String, IngredientStockDto>
-    ): Double {
-        val cost = links.sumOf { link ->
-            val unitCost = ingredientStocks[link.ingredientId]?.ingredientCostPerUnit ?: 0.0
-            link.requiredQuantity * unitCost
-        }
-        return roundCurrency(cost * MARKUP_MULTIPLIER)
     }
 
     private fun roundCurrency(value: Double): Double = kotlin.math.round(value * 100.0) / 100.0
@@ -329,8 +291,7 @@ class ProductRepository(
     )
 
     private data class RecipeFetchResult(
-        val availability: Map<String, RecipeAvailability>,
-        val priceCorrections: Map<String, Double>
+        val availability: Map<String, RecipeAvailability>
     )
 
     @Serializable
@@ -362,7 +323,6 @@ class ProductRepository(
     private companion object {
         const val INGREDIENTS_TABLE = "ingredients"
         const val VARIANT_INGREDIENTS_TABLE = "variant_ingredients"
-        const val MARKUP_MULTIPLIER = 3.0
         const val BEVERAGE_BASE_SIZE_OZ = 16.0
     }
 }
