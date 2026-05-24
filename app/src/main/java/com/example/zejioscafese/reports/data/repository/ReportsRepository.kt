@@ -170,6 +170,10 @@ class ReportsRepository(
 
         val normalizedPaymentMethod = orderPaymentMethod.orEmpty().ifBlank { DEFAULT_PAYMENT_METHOD }
             .lowercase(Locale.US)
+        val normalizedPaymentProvider = orderPaymentProvider
+            ?.trim()
+            ?.takeIf(String::isNotBlank)
+            ?.lowercase(Locale.US)
         val normalizedOrderType = orderType.orEmpty().ifBlank { DEFAULT_ORDER_TYPE }
             .lowercase(Locale.US)
         val tax = orderTax ?: 0.0
@@ -195,6 +199,7 @@ class ReportsRepository(
             discountPercent = orderDiscountPercent,
             discountAmount = discountAmount,
             paymentMethod = normalizedPaymentMethod,
+            paymentProvider = normalizedPaymentProvider,
             orderType = normalizedOrderType
         )
     }
@@ -231,6 +236,8 @@ class ReportsRepository(
         val orderDiscountAmount: Double? = null,
         @SerialName("order_payment_method")
         val orderPaymentMethod: String? = null,
+        @SerialName("order_payment_provider")
+        val orderPaymentProvider: String? = null,
         @SerialName("order_type")
         val orderType: String? = null,
         @SerialName("order_status")

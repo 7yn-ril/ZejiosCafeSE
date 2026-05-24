@@ -140,7 +140,38 @@ async function retrieveCheckoutSession(body: Record<string, unknown>) {
     status,
     paid,
     payment_reference: paymentReference(data, attributes) ?? checkoutSessionId,
+    payment_method_used: paymentMethodUsed(attributes),
+    billing_name: billingName(attributes),
   };
+}
+
+// Returns the customer name that was entered inside the PayMongo
+// hosted checkout. The Android app uses this to overwrite the order's
+// customer name on save — when the cashier didn't type a name in the
+// POS form, the buyer's PayMongo billing name is the better source of
+// truth on the receipt and in reports.
+function billingName(attributes: Record<string, unknown> | undefined) {
+  const firstPayment = firstNestedAttributes(attributes?.payments);
+  const billing = nestedObject(firstPayment?.billing);
+  return stringValue(billing?.name);
+}
+
+// Returns the actual instrument the customer paid with (gcash, maya,
+// card, ...), normalised to the lowercase tokens the Android app stores
+// in order_payment_method. Returns null if PayMongo did not surface a
+// resolvable method, in which case the client falls back to 'paymongo'.
+function paymentMethodUsed(attributes: Record<string, unknown> | undefined) {
+  const firstPayment = firstNestedAttributes(attributes?.payments);
+  // PayMongo exposes the method as either source.type (gcash, paymaya,
+  // grab_pay, ...) or payment_method_used on newer responses. Check both.
+  const rawSource = stringValue(nestedObject(firstPayment?.source)?.type)
+    ?? stringValue(firstPayment?.payment_method_used);
+  if (!rawSource) return null;
+  const normalised = rawSource.trim().toLowerCase();
+  // 'paymaya' is the historical gateway token for Maya; the rest of the
+  // app uses the shorter 'maya'. Keep one canonical token end-to-end.
+  if (normalised === "paymaya") return "maya";
+  return normalised;
 }
 
 async function paymongoFetch(path: string, init: RequestInit) {

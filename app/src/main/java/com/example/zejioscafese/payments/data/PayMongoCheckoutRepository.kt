@@ -36,7 +36,16 @@ data class PayMongoCheckoutStatus(
     val id: String,
     val status: String?,
     val isPaid: Boolean,
-    val paymentReference: String?
+    val paymentReference: String?,
+    // The actual instrument the customer chose inside the PayMongo
+    // hosted checkout (gcash, maya, card, ...). Null when PayMongo did
+    // not surface a resolvable method on the retrieve response — the
+    // caller then stores 'paymongo' as a fallback bucket.
+    val paymentMethodUsed: String?,
+    // Name the buyer typed into the PayMongo billing form. The caller
+    // uses this to overwrite the order's customer name when the cashier
+    // didn't fill one in on the POS side.
+    val billingName: String?
 )
 
 class PayMongoCheckoutRepository {
@@ -90,7 +99,9 @@ class PayMongoCheckoutRepository {
             id = response.requiredString("id"),
             status = response.optionalString("status"),
             isPaid = response["paid"]?.let { it is JsonPrimitive && it.content == "true" } ?: false,
-            paymentReference = response.optionalString("payment_reference")
+            paymentReference = response.optionalString("payment_reference"),
+            paymentMethodUsed = response.optionalString("payment_method_used"),
+            billingName = response.optionalString("billing_name")
         )
     }
 

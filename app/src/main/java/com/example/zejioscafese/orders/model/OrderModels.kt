@@ -1,9 +1,9 @@
 package com.example.zejioscafese.orders.model
 
 // CHANGE: Orders — paymentMethod and orderType added so the Orders list
-// can render the Take Out badge and apply GCash / Take Out filters. The
-// strings mirror the lowercase tokens stored in Supabase ("cash" |
-// "gcash" | ..., "dine_in" | "takeout" | "delivery").
+// can render the Take Out badge and apply PayMongo / Take Out filters.
+// The strings mirror the lowercase tokens stored in Supabase ("cash" |
+// "paymongo" | ..., "dine_in" | "takeout" | "delivery").
 data class CafeOrder(
     val id: String,
     val customerName: String,
@@ -34,7 +34,10 @@ data class CafeOrder(
     val discountAmount: Double = 0.0
 ) {
     val isTakeout: Boolean get() = orderType.equals("takeout", ignoreCase = true)
-    val isGcash: Boolean get() = paymentMethod.equals("gcash", ignoreCase = true)
+    // PayMongo-routed orders carry the actual instrument (gcash / maya
+    // / card) in paymentMethod, so we identify "this went through the
+    // gateway" via the provider tag, not the method.
+    val isPayMongo: Boolean get() = paymentProvider.equals("paymongo", ignoreCase = true)
 }
 
 data class CafeOrderLine(

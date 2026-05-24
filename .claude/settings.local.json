@@ -25,7 +25,10 @@
       "Bash(./gradlew.bat :app:testDebugUnitTest)",
       "Bash(grep -nB1 -A2 \"product_variant_stock_view\\\\|product_is_active\" \"c:/Users/Lenovo-Pc/OneDrive/3rd Year \\(2nd Semester\\)/CIT238 \\(Mobile Applications Development\\) - Christopher Mateo/Final_Project/ZejiosCafeSE/database/fix_product_variant_stock_view_actual_stock.sql\")",
       "Bash(grep -nB2 \"coalesce\\(p.product_is_active\" \"c:/Users/Lenovo-Pc/OneDrive/3rd Year \\(2nd Semester\\)/CIT238 \\(Mobile Applications Development\\) - Christopher Mateo/Final_Project/ZejiosCafeSE/database/fix_beverage_sizes_and_packaging.sql\")",
-      "Bash(grep -nE \"create or replace view.*as$|^as$\" \"c:/Users/Lenovo-Pc/OneDrive/3rd Year \\(2nd Semester\\)/CIT238 \\(Mobile Applications Development\\) - Christopher Mateo/Final_Project/ZejiosCafeSE/database/fix_beverage_sizes_and_packaging.sql\")"
+      "Bash(grep -nE \"create or replace view.*as$|^as$\" \"c:/Users/Lenovo-Pc/OneDrive/3rd Year \\(2nd Semester\\)/CIT238 \\(Mobile Applications Development\\) - Christopher Mateo/Final_Project/ZejiosCafeSE/database/fix_beverage_sizes_and_packaging.sql\")",
+      "Bash(./gradlew compileDebugKotlin)",
+      "Bash(./gradlew testDebugUnitTest --tests \"*CafeOrderTest\" --tests \"*PosViewModelTest\")",
+      "Bash(./gradlew testDebugUnitTest --tests \"*CafeOrderTest\" --tests \"*PosViewModelTest\" --tests \"*ReportsViewModelTest\")"
     ]
   }
 }

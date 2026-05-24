@@ -56,6 +56,7 @@ class ReportsViewModelTest {
                 discountPercent = null,
                 discountAmount = 0.0,
                 paymentMethod = "cash",
+                paymentProvider = null,
                 orderType = "dine_in"
             )
         }

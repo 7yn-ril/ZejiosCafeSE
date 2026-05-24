@@ -24,9 +24,11 @@
         <!-- ─────────────────────────────────────────────────────────────
              Section 0 — Sales tracking KPIs
              Three tiles summarising revenue across non-cancelled orders:
-             total, paid in cash, paid via GCash. Live-updated from the
-             same data the Orders list reads, so the figures stay in sync
-             with whatever filters the user has on.
+             total, paid in cash, and paid via PayMongo (any instrument
+             — GCash / Maya / Card — routed through the gateway).
+             Live-updated from the same data the Orders list reads, so
+             the figures stay in sync with whatever filters the user
+             has on.
              ───────────────────────────────────────────────────────────── -->
         <LinearLayout
             android:layout_width="match_parent"
@@ -167,7 +169,7 @@
                 android:layout_height="1dp" />
 
             <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardOrdersGcashSales"
+                android:id="@+id/cardOrdersPayMongoSales"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -187,7 +189,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/orders_metric_gcash_sales"
+                        android:text="@string/orders_metric_paymongo_sales"
                         android:textAppearance="@style/TextAppearance.ZejiosCafe.CaptionStrong"
                         android:textColor="@color/pos_text_secondary" />
 
@@ -205,7 +207,7 @@
                             app:tint="@color/pos_secondary" />
 
                         <TextView
-                            android:id="@+id/tvOrdersGcashSalesValue"
+                            android:id="@+id/tvOrdersPayMongoSalesValue"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="10dp"
@@ -222,7 +224,7 @@
                         android:ellipsize="end"
                         android:maxLines="2"
                         android:minLines="2"
-                        android:text="@string/orders_metric_gcash_sales_subtitle"
+                        android:text="@string/orders_metric_paymongo_sales_subtitle"
                         android:textAppearance="@style/TextAppearance.ZejiosCafe.Caption"
                         android:textColor="@color/pos_text_secondary" />
                 </LinearLayout>

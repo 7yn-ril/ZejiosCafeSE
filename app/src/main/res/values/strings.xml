@@ -43,8 +43,8 @@
     <string name="orders_metric_total_sales_subtitle">Completed orders only</string>
     <string name="orders_metric_cash_sales">Sales thru Cash</string>
     <string name="orders_metric_cash_sales_subtitle">Cash payments collected</string>
-    <string name="orders_metric_gcash_sales">Sales thru GCash</string>
-    <string name="orders_metric_gcash_sales_subtitle">GCash payments collected</string>
+    <string name="orders_metric_paymongo_sales">Sales thru PayMongo</string>
+    <string name="orders_metric_paymongo_sales_subtitle">Online payments via PayMongo</string>
     <string name="inventory_title">Inventory</string>
     <string name="inventory_subtitle">Stock levels and ingredient status</string>
     <string name="inventory_header_ingredients_title">Items</string>
@@ -71,12 +71,19 @@
     <string name="inventory_field_ml_per_bottle">Per Bottle</string>
     <string name="inventory_field_ml_per_serving">Per Serving</string>
     <string name="inventory_field_required">Required</string>
-    <!-- CHANGE: Payment — confirmation screen label for GCash transactions. -->
+    <!-- CHANGE: Payment — confirmation screen labels. The PayMongo
+         hosted checkout returns the actual instrument the customer
+         picked (gcash / maya / card), so we format the "Paid via X"
+         line for each one. -->
     <string name="receipt_paid_via_gcash">Paid via GCash</string>
+    <string name="receipt_paid_via_maya">Paid via Maya</string>
+    <string name="receipt_paid_via_card">Paid via Card</string>
+    <string name="receipt_paid_via_paymongo">Paid via PayMongo</string>
+    <string name="receipt_paid_via_paymongo_suffix">%1$s (via PayMongo)</string>
     <!-- CHANGE: Orders — Take Out badge + filter labels. -->
     <string name="orders_badge_takeout">Take Out</string>
     <string name="orders_filter_takeout">Take Out Orders</string>
-    <string name="orders_filter_gcash">GCash Orders</string>
+    <string name="orders_filter_paymongo">PayMongo Orders</string>
     <string name="orders_filter_today">Today Only</string>
     <string name="inventory_metric_ingredients_title">Total Ingredients</string>
     <string name="inventory_metric_ingredients_subtitle">Active stock items</string>
@@ -390,7 +397,8 @@
     <string name="checkout_review_title">Review Checkout</string>
     <string name="checkout_review_caption">Confirm the items below, enter the cash received, and save the order.</string>
     <string name="checkout_review_items_title">Items in this order</string>
-    <string name="checkout_customer_name_hint">Customer name for call-out (optional)</string>
+    <string name="checkout_customer_name_hint">Customer name for call-out</string>
+    <string name="checkout_customer_name_required">Customer name is required.</string>
     <string name="checkout_cash_received_hint">Cash received (PHP)</string>
     <string name="checkout_confirm_payment">Confirm Payment</string>
     <string name="checkout_continue_paymongo">Continue to PayMongo</string>

@@ -200,7 +200,7 @@ class OrderRepository(
                     completedAtMillis = row.orderCompletedAt?.toEpochMillis(),
                     // CHANGE: Orders — surface payment method + order type
                     // so the list UI can render the Take Out badge and
-                    // apply the GCash / Take Out filters.
+                    // apply the PayMongo / Take Out filters.
                     paymentMethod = row.orderPaymentMethod.orEmpty().ifBlank { "cash" }.lowercase(Locale.US),
                     paymentProvider = row.orderPaymentProvider,
                     paymentStatus = row.orderPaymentStatus,
@@ -748,7 +748,11 @@ class OrderRepository(
         const val PROCESS_CHECKOUT_RPC = "process_checkout_order"
         const val COMPLETE_ORDER_RPC = "complete_order"
         const val MAX_CAUSE_DEPTH = 5
-        val VALID_PAYMENT_METHODS = setOf("cash", "gcash", "maya", "paymongo")
+        // Cash is in-person; the rest are instruments PayMongo can return
+        // on a paid checkout session. 'paymongo' itself stays as a
+        // fallback bucket for paid sessions where the gateway did not
+        // surface a resolvable method.
+        val VALID_PAYMENT_METHODS = setOf("cash", "gcash", "maya", "card", "paymongo")
         val VALID_ORDER_STATUSES = setOf("pending", "preparing", "completed")
         val VALID_ORDER_TYPES = setOf("dine_in", "takeout", "delivery")
     }

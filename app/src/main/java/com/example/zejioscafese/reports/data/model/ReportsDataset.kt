@@ -38,6 +38,10 @@ data class DatasetOrder(
     val discountPercent: Double?,
     val discountAmount: Double,
     val paymentMethod: String,
+    // Lowercase gateway tag ('paymongo' or null) — separate from
+    // paymentMethod so reports can split "via PayMongo" buckets from
+    // in-person ones even when the customer used the same instrument.
+    val paymentProvider: String?,
     val orderType: String
 )
 

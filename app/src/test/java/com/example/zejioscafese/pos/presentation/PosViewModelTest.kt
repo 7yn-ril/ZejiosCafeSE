@@ -329,8 +329,8 @@ class PosViewModelTest {
     @Test
     fun setPaymentMethod_updatesSelectedPaymentMethod() = runTest {
         advanceUntilIdle()
-        viewModel.setPaymentMethod(PosViewModel.PaymentMethod.GCASH)
-        assertEquals(PosViewModel.PaymentMethod.GCASH, viewModel.selectedPaymentMethod.value)
+        viewModel.setPaymentMethod(PosViewModel.PaymentMethod.PAYMONGO)
+        assertEquals(PosViewModel.PaymentMethod.PAYMONGO, viewModel.selectedPaymentMethod.value)
     }
 
     @Test

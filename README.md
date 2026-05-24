@@ -48,7 +48,7 @@ Key surfaces the Android client expects:
   - `peek_next_order_number` — preview next number for the cart header.
   - Partial-completion paths used when ingredient stock can't cover every line.
 - **Order numbering**: `#POS-1024`, `#POS-1025`, … resolved server-side in `resolve_pos_order_number`.
-- **Orders** carry: `order_status`, `order_type` (`dine_in` | `takeout` | `delivery`), `payment_method` (`cash` | `gcash` | `maya`), `discount_id` + `discount_percent` snapshot, `order_inventory_deducted`, `order_completed_at`, per-item `completed_item_variant_ids` / `deducted_item_variant_ids`.
+- **Orders** carry: `order_status`, `order_type` (`dine_in` | `takeout` | `delivery`), `payment_method` (`cash` | `gcash` | `maya` | `card` | `paymongo`) + `payment_provider` (`paymongo` when gateway-routed, else `null`), `discount_id` + `discount_percent` snapshot, `order_inventory_deducted`, `order_completed_at`, per-item `completed_item_variant_ids` / `deducted_item_variant_ids`. The cashier picks `cash` or `paymongo` in the POS UI; if PayMongo, the actual instrument the customer used inside the hosted checkout (`gcash` / `maya` / `card`) is captured from the gateway response and saved as `payment_method`, with `payment_provider='paymongo'`.
 
 Repositories that wrap Postgrest live in `*/data/repository/`:
 - `OrderRepository`, `ProductRepository`, `CategoryRepository`, `DiscountRepository`

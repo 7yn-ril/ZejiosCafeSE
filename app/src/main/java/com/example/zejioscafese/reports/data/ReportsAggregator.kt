@@ -219,7 +219,7 @@ object ReportsAggregator {
         val salesByPaymentMethod = countBreakdown(
             orders = activeOrders,
             revenueByOrderId = activeRevenueByOrderId,
-            classify = { it.paymentMethod.toDisplayToken().ifBlank { "Cash" } }
+            classify = ::paymentBreakdownLabel
         )
 
         return Result(
@@ -463,6 +463,7 @@ object ReportsAggregator {
         val normalized = trim().lowercase(Locale.US)
         if (normalized == "gcash") return "GCash"
         if (normalized == "maya") return "Maya"
+        if (normalized == "card") return "Card"
         if (normalized == "paymongo") return "PayMongo"
         if (normalized == "qrph" || normalized == "qr_ph") return "QR Ph"
         return normalized
@@ -473,6 +474,22 @@ object ReportsAggregator {
                     if (ch.isLowerCase()) ch.titlecase(Locale.getDefault()) else ch.toString()
                 }
             }
+    }
+
+    // Splits "via PayMongo" out from in-person payments so the reports
+    // legend can show e.g. "GCash (via PayMongo)" alongside "Cash" and
+    // never lumps the gateway-routed flow with any (historical)
+    // in-person instrument of the same name.
+    private fun paymentBreakdownLabel(order: DatasetOrder): String {
+        val method = order.paymentMethod.toDisplayToken().ifBlank { "Cash" }
+        val provider = order.paymentProvider?.trim().orEmpty().lowercase(Locale.US)
+        // The fallback bucket for paid sessions where the gateway did
+        // not surface a resolvable method — already named "PayMongo",
+        // so suffixing it would just read "PayMongo (via PayMongo)".
+        if (provider == "paymongo" && method.equals("PayMongo", ignoreCase = true)) {
+            return method
+        }
+        return if (provider == "paymongo") "$method (via PayMongo)" else method
     }
 
     private const val STANDARD_VARIANT = "standard"
