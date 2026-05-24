@@ -51,7 +51,7 @@ class PosViewModel(
 
     enum class PaymentMethod {
         CASH,
-        MAYA,
+        QRPH,
         PAYMONGO
     }
 

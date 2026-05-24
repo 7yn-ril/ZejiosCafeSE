@@ -48,7 +48,7 @@ Key surfaces the Android client expects:
   - `peek_next_order_number` — preview next number for the cart header.
   - Partial-completion paths used when ingredient stock can't cover every line.
 - **Order numbering**: `#POS-1024`, `#POS-1025`, … resolved server-side in `resolve_pos_order_number`.
-- **Orders** carry: `order_status`, `order_type` (`dine_in` | `takeout` | `delivery`), `payment_method` (`cash` | `gcash` | `maya` | `card` | `paymongo`) + `payment_provider` (`paymongo` when gateway-routed, else `null`), `discount_id` + `discount_percent` snapshot, `order_inventory_deducted`, `order_completed_at`, per-item `completed_item_variant_ids` / `deducted_item_variant_ids`. The cashier picks `cash` or `paymongo` in the POS UI; if PayMongo, the actual instrument the customer used inside the hosted checkout (`gcash` / `maya` / `card`) is captured from the gateway response and saved as `payment_method`, with `payment_provider='paymongo'`.
+- **Orders** carry: `order_status`, `order_type` (`dine_in` | `takeout` | `delivery`), `payment_method` (`cash` | `gcash` | `maya` | `card` | `qrph` | `paymongo`) + `payment_provider` (`paymongo` when gateway-routed, else `null`), `discount_id` + `discount_percent` snapshot, `order_inventory_deducted`, `order_completed_at`, per-item `completed_item_variant_ids` / `deducted_item_variant_ids`. The cashier picks `cash`, dynamic `qrph`, or hosted `paymongo` in the POS checkout dialog. Dynamic QR Ph stores `payment_method='qrph'`; hosted checkout stores the actual instrument returned by PayMongo (`gcash` / `maya` / `card`) when available, with `payment_provider='paymongo'`.
 
 Repositories that wrap Postgrest live in `*/data/repository/`:
 - `OrderRepository`, `ProductRepository`, `CategoryRepository`, `DiscountRepository`
@@ -61,6 +61,7 @@ Every repository call goes through `SupabaseSessionHelper.withJwtRetry { ... }` 
 ## 4. Key business logic worth knowing
 
 - **Cart → Checkout**: `PosViewModel` holds `orderItems`, `subtotal`, `tax`, `total`. Checkout dialog builds a `CheckoutOrderPayload` (lines reference `product_variant_id` + a source-product/variant snapshot for receipt history) and calls `process_checkout_order` RPC.
+- **PayMongo**: QR Ph is the primary in-store digital flow. The Edge Function creates a Payment Intent + QR Ph Payment Method and returns the QR image to the tablet. Hosted Checkout remains as the fallback browser flow. Manual verify still exists, and the function also exposes `/webhook` for PayMongo-signed production confirmation.
 - **Order types**: `DINE_IN`, `TAKE_AWAY`, `DELIVERY` exist in the enum, but **Delivery is hidden** in the cart UI — only Dine-In/Take-Away buttons are rendered.
 - **Discounts** (3 mutually exclusive radio modes in the checkout dialog):
   1. None

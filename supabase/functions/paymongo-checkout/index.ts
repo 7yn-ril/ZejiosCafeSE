@@ -1,9 +1,9 @@
-type CheckoutAction = "create" | "retrieve";
+type PayMongoAction = "create" | "retrieve" | "create_qrph" | "retrieve_payment_intent";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, paymongo-signature",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
 Deno.serve(async (request) => {
@@ -24,13 +24,17 @@ Deno.serve(async (request) => {
   }
 
   try {
+    if (isPayMongoWebhookRequest(request)) {
+      return await handlePayMongoWebhook(request);
+    }
+
     const authError = await postAuthenticationError(request);
     if (authError) {
       return json({ error: authError }, 401);
     }
 
     const body = await request.json();
-    const action = String(body.action ?? "") as CheckoutAction;
+    const action = String(body.action ?? "") as PayMongoAction;
 
     if (action === "create") {
       return json(await createCheckoutSession(body, request));
@@ -38,6 +42,14 @@ Deno.serve(async (request) => {
 
     if (action === "retrieve") {
       return json(await retrieveCheckoutSession(body));
+    }
+
+    if (action === "create_qrph") {
+      return json(await createQrPhPayment(body));
+    }
+
+    if (action === "retrieve_payment_intent") {
+      return json(await retrievePaymentIntent(body));
     }
 
     return json({ error: "Unsupported PayMongo checkout action." }, 400);
@@ -145,6 +157,128 @@ async function retrieveCheckoutSession(body: Record<string, unknown>) {
   };
 }
 
+async function createQrPhPayment(body: Record<string, unknown>) {
+  const orderNumber = cleanText(body.order_number, "POS order");
+  const customerName = cleanText(body.customer_name, "Walk-in Customer");
+  const amountCentavos = numberValue(body.amount_centavos);
+  if (amountCentavos < 100) {
+    throw new Error("QR Ph amount must be at least PHP 1.00.");
+  }
+
+  const lineSummary = checkoutLineSummary(body.line_items);
+  const metadata = {
+    order_number: orderNumber,
+    customer_name: customerName,
+    payment_channel: "qrph",
+  };
+
+  const intentResponse = await paymongoFetch("/v1/payment_intents", {
+    method: "POST",
+    body: JSON.stringify({
+      data: {
+        attributes: {
+          amount: amountCentavos,
+          currency: "PHP",
+          payment_method_allowed: ["qrph"],
+          description: `${orderNumber} - ${customerName}${lineSummary ? ` - ${lineSummary}` : ""}`,
+          metadata,
+        },
+      },
+    }),
+  });
+
+  const intent = nestedObject(intentResponse.data);
+  const intentAttributes = nestedObject(intent?.attributes);
+  const paymentIntentId = stringValue(intent?.id);
+  const clientKey = stringValue(intentAttributes?.client_key);
+  if (!paymentIntentId || !clientKey) {
+    throw new Error("PayMongo did not return a Payment Intent client key.");
+  }
+
+  const methodResponse = await paymongoFetch(
+    "/v1/payment_methods",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        data: {
+          attributes: {
+            type: "qrph",
+            billing: {
+              name: customerName,
+              email: billingEmail(),
+            },
+          },
+        },
+      }),
+    },
+    paymongoClientApiKey(),
+  );
+  const paymentMethod = nestedObject(methodResponse.data);
+  const paymentMethodId = stringValue(paymentMethod?.id);
+  if (!paymentMethodId) {
+    throw new Error("PayMongo did not return a QR Ph Payment Method id.");
+  }
+
+  const attachedResponse = await paymongoFetch(
+    `/v1/payment_intents/${encodeURIComponent(paymentIntentId)}/attach`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        data: {
+          attributes: {
+            payment_method: paymentMethodId,
+            client_key: clientKey,
+          },
+        },
+      }),
+    },
+    paymongoClientApiKey(),
+  );
+
+  const attachedIntent = nestedObject(attachedResponse.data);
+  const attachedAttributes = nestedObject(attachedIntent?.attributes);
+  const qrImageUrl = qrCodeImageUrl(attachedAttributes);
+  if (!qrImageUrl) {
+    throw new Error("PayMongo did not return a QR Ph image.");
+  }
+
+  return {
+    id: stringValue(attachedIntent?.id) ?? paymentIntentId,
+    payment_intent_id: paymentIntentId,
+    payment_method_id: paymentMethodId,
+    qr_image_url: qrImageUrl,
+    test_url: qrTestUrl(attachedAttributes),
+    reference_number: orderNumber,
+    status: checkoutStatus(attachedAttributes),
+  };
+}
+
+async function retrievePaymentIntent(body: Record<string, unknown>) {
+  const paymentIntentId = cleanText(body.payment_intent_id, "");
+  if (!paymentIntentId) {
+    throw new Error("payment_intent_id is required.");
+  }
+
+  const paymongo = await paymongoFetch(
+    `/v1/payment_intents/${encodeURIComponent(paymentIntentId)}`,
+    { method: "GET" },
+  );
+
+  const data = nestedObject(paymongo.data);
+  const attributes = nestedObject(data?.attributes);
+  const status = checkoutStatus(attributes);
+  const paid = isPaid(attributes, status);
+
+  return {
+    id: stringValue(data?.id) ?? paymentIntentId,
+    status,
+    paid,
+    payment_reference: paymentReference(data, attributes) ?? paymentIntentId,
+    payment_method_used: paymentMethodUsed(attributes) ?? "qrph",
+    billing_name: billingName(attributes),
+  };
+}
+
 // Returns the customer name that was entered inside the PayMongo
 // hosted checkout. The Android app uses this to overwrite the order's
 // customer name on save — when the cashier didn't type a name in the
@@ -171,12 +305,259 @@ function paymentMethodUsed(attributes: Record<string, unknown> | undefined) {
   // 'paymaya' is the historical gateway token for Maya; the rest of the
   // app uses the shorter 'maya'. Keep one canonical token end-to-end.
   if (normalised === "paymaya") return "maya";
+  if (normalised === "qr_ph") return "qrph";
   return normalised;
 }
 
-async function paymongoFetch(path: string, init: RequestInit) {
-  const secretKey = Deno.env.get("PAYMONGO_SECRET_KEY")?.trim();
-  if (!secretKey) {
+async function handlePayMongoWebhook(request: Request) {
+  const rawBody = await request.text();
+  let payload: Record<string, unknown>;
+  try {
+    payload = JSON.parse(rawBody);
+  } catch {
+    return json({ error: "Invalid webhook JSON." }, 400);
+  }
+
+  const eventAttributes = nestedAttributes(payload.data);
+  const eventResource = nestedObject(eventAttributes?.data);
+  const livemode = Boolean(nestedObject(eventResource?.attributes)?.livemode ?? eventAttributes?.livemode);
+  const signatureOk = await verifyPayMongoSignature(
+    request.headers.get("Paymongo-Signature"),
+    rawBody,
+    livemode,
+  );
+  if (!signatureOk) {
+    return json({ error: "Webhook signature verification failed." }, 401);
+  }
+
+  try {
+    await applyWebhookPaymentUpdate(payload);
+  } catch (error) {
+    console.error("PayMongo webhook processing failed:", error instanceof Error ? error.message : error);
+    // PayMongo retries non-2xx responses. After signature verification,
+    // acknowledge and let operators inspect logs instead of causing a retry loop.
+  }
+
+  return json({ received: true });
+}
+
+async function applyWebhookPaymentUpdate(payload: Record<string, unknown>) {
+  const eventAttributes = nestedAttributes(payload.data);
+  const eventType = stringValue(eventAttributes?.type);
+  const eventData = nestedObject(eventAttributes?.data);
+  const eventResourceType = stringValue(eventData?.type);
+  const resourceAttributes = nestedObject(eventData?.attributes);
+  if (!eventType || !eventData || !resourceAttributes) return;
+
+  const paymentStatus = webhookPaymentStatus(eventType, resourceAttributes);
+  if (!paymentStatus) return;
+
+  let paymentIntentId = stringValue(resourceAttributes.payment_intent_id)
+    ?? stringValue(nestedObject(resourceAttributes.payment_intent)?.id);
+  const checkoutSessionId = eventResourceType === "checkout_session" ? stringValue(eventData.id) : undefined;
+  let orderNumber = stringValue(nestedObject(resourceAttributes.metadata)?.order_number)
+    ?? stringValue(resourceAttributes.reference_number);
+  let paymentMethod = webhookPaymentMethod(eventType, resourceAttributes);
+  let paymentReference = webhookPaymentReference(eventData, resourceAttributes)
+    ?? paymentIntentId
+    ?? checkoutSessionId;
+
+  if ((!orderNumber || !paymentMethod) && paymentIntentId) {
+    const intent = await fetchPaymentIntentForWebhook(paymentIntentId).catch((error) => {
+      console.error("Unable to enrich webhook Payment Intent:", error instanceof Error ? error.message : error);
+      return null;
+    });
+    const intentAttributes = nestedObject(intent?.attributes);
+    orderNumber = orderNumber
+      ?? stringValue(nestedObject(intentAttributes?.metadata)?.order_number)
+      ?? stringValue(intentAttributes?.reference_number);
+    paymentMethod = paymentMethod ?? paymentMethodUsed(intentAttributes) ?? "qrph";
+    paymentReference = paymentReference ?? stringValue(intent?.id);
+  }
+
+  if (eventType === "qrph.expired" && !paymentIntentId) {
+    paymentIntentId = stringValue(resourceAttributes.payment_intent_id);
+  }
+
+  await updateOrderPaymentFromWebhook({
+    orderNumber,
+    paymentIntentId,
+    checkoutSessionId,
+    paymentReference,
+    paymentMethod,
+    paymentStatus,
+  });
+}
+
+async function fetchPaymentIntentForWebhook(paymentIntentId: string) {
+  const response = await paymongoFetch(
+    `/v1/payment_intents/${encodeURIComponent(paymentIntentId)}`,
+    { method: "GET" },
+  );
+  return nestedObject(response.data);
+}
+
+async function updateOrderPaymentFromWebhook(update: {
+  orderNumber?: string;
+  paymentIntentId?: string;
+  checkoutSessionId?: string;
+  paymentReference?: string;
+  paymentMethod?: string;
+  paymentStatus: string;
+}) {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim()?.replace(/\/$/, "");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim();
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required for PayMongo webhooks.");
+  }
+
+  const body: Record<string, unknown> = {
+    order_payment_provider: "paymongo",
+    order_payment_status: update.paymentStatus,
+  };
+  if (update.paymentReference) body.order_payment_reference = update.paymentReference;
+  if (update.paymentStatus === "paid") {
+    if (update.paymentMethod) body.order_payment_method = normalisePaymentMethod(update.paymentMethod);
+    body.order_status = "preparing";
+  }
+
+  const filters = [
+    update.orderNumber ? { column: "order_number", value: update.orderNumber } : null,
+    update.paymentIntentId ? { column: "order_payment_reference", value: update.paymentIntentId } : null,
+    update.checkoutSessionId ? { column: "order_payment_reference", value: update.checkoutSessionId } : null,
+  ].filter(Boolean) as Array<{ column: string; value: string }>;
+
+  for (const filter of filters) {
+    const url = `${supabaseUrl}/rest/v1/orders?${filter.column}=eq.${encodeURIComponent(filter.value)}`;
+    const response = await fetch(url, {
+      method: "PATCH",
+      headers: {
+        "accept": "application/json",
+        "apikey": serviceRoleKey,
+        "authorization": `Bearer ${serviceRoleKey}`,
+        "content-type": "application/json",
+        "prefer": "return=minimal",
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const detail = await response.text().catch(() => "");
+      throw new Error(`Supabase order payment update failed: HTTP ${response.status} ${detail}`);
+    }
+  }
+}
+
+async function verifyPayMongoSignature(
+  header: string | null,
+  rawBody: string,
+  livemode: boolean,
+) {
+  const secret = Deno.env.get("PAYMONGO_WEBHOOK_SECRET")?.trim();
+  if (!secret) {
+    throw new Error("PAYMONGO_WEBHOOK_SECRET is not configured.");
+  }
+  const parts = parseSignatureHeader(header);
+  const timestamp = parts.t;
+  if (!timestamp) return false;
+
+  const toleranceSeconds = numberValue(Deno.env.get("PAYMONGO_WEBHOOK_TOLERANCE_SECONDS"), 600);
+  const timestampSeconds = Number.parseInt(timestamp, 10);
+  if (
+    Number.isFinite(timestampSeconds) &&
+    toleranceSeconds > 0 &&
+    Math.abs(Math.floor(Date.now() / 1000) - timestampSeconds) > toleranceSeconds
+  ) {
+    return false;
+  }
+
+  const expected = await hmacSha256Hex(secret, `${timestamp}.${rawBody}`);
+  const candidate = livemode ? parts.li : parts.te;
+  return timingSafeEqual(expected, candidate) ||
+    timingSafeEqual(expected, parts.te) ||
+    timingSafeEqual(expected, parts.li);
+}
+
+async function hmacSha256Hex(secret: string, message: string) {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
+  return Array.from(new Uint8Array(signature))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function parseSignatureHeader(header: string | null) {
+  const parts: Record<string, string | undefined> = {};
+  header?.split(",").forEach((segment) => {
+    const [rawKey, ...rawValue] = segment.split("=");
+    const key = rawKey?.trim();
+    if (key) parts[key] = rawValue.join("=").trim();
+  });
+  return parts;
+}
+
+function timingSafeEqual(expected: string | undefined, candidate: string | undefined) {
+  if (!expected || !candidate || expected.length !== candidate.length) return false;
+  let result = 0;
+  for (let index = 0; index < expected.length; index += 1) {
+    result |= expected.charCodeAt(index) ^ candidate.charCodeAt(index);
+  }
+  return result === 0;
+}
+
+function webhookPaymentStatus(eventType: string, attributes: Record<string, unknown>) {
+  if (eventType === "payment.paid" || eventType === "checkout_session.payment.paid") return "paid";
+  if (eventType === "payment.failed") return "failed";
+  if (eventType === "qrph.expired") return "expired";
+  const status = stringValue(attributes.status)?.toLowerCase();
+  if (status && ["paid", "succeeded", "completed"].includes(status)) return "paid";
+  if (status && ["failed", "expired"].includes(status)) return status;
+  return null;
+}
+
+function webhookPaymentMethod(eventType: string, attributes: Record<string, unknown>) {
+  if (eventType === "qrph.expired") return "qrph";
+  return paymentMethodUsed(attributes)
+    ?? stringValue(nestedObject(attributes.source)?.type)
+    ?? stringValue(attributes.payment_method_used);
+}
+
+function webhookPaymentReference(
+  eventData: Record<string, unknown>,
+  attributes: Record<string, unknown>,
+) {
+  return stringValue(eventData.id)
+    ?? stringValue(firstNestedObject(attributes.payments)?.id)
+    ?? stringValue(nestedObject(attributes.payment_intent)?.id)
+    ?? stringValue(attributes.reference_number);
+}
+
+function normalisePaymentMethod(method: string) {
+  const normalised = method.trim().toLowerCase();
+  if (normalised === "paymaya") return "maya";
+  if (normalised === "qr_ph") return "qrph";
+  return normalised;
+}
+
+function paymongoClientApiKey() {
+  return Deno.env.get("PAYMONGO_PUBLIC_KEY")?.trim() ||
+    Deno.env.get("PAYMONGO_SECRET_KEY")?.trim();
+}
+
+function billingEmail() {
+  return Deno.env.get("PAYMONGO_BILLING_EMAIL")?.trim() ||
+    "payments@example.com";
+}
+
+async function paymongoFetch(path: string, init: RequestInit, apiKey?: string) {
+  const resolvedApiKey = apiKey?.trim() || Deno.env.get("PAYMONGO_SECRET_KEY")?.trim();
+  if (!resolvedApiKey) {
     throw new Error("PAYMONGO_SECRET_KEY is not configured in Supabase Edge Function secrets.");
   }
 
@@ -187,7 +568,7 @@ async function paymongoFetch(path: string, init: RequestInit) {
     headers: {
       "accept": "application/json",
       "content-type": "application/json",
-      "authorization": `Basic ${btoa(`${secretKey}:`)}`,
+      "authorization": `Basic ${btoa(`${resolvedApiKey}:`)}`,
       ...(organizationId ? { "Organization-Id": organizationId } : {}),
       ...(init.headers ?? {}),
     },
@@ -236,6 +617,19 @@ function paymentMethodTypes() {
     .filter(Boolean);
 }
 
+function checkoutLineSummary(value: unknown) {
+  return Array.isArray(value)
+    ? value
+        .map((item) => {
+          const line = item as Record<string, unknown>;
+          const name = cleanText(line.name, "Item");
+          const quantity = Math.max(1, numberValue(line.quantity, 1));
+          return `${quantity} x ${name}`;
+        })
+        .join("; ")
+    : "";
+}
+
 function checkoutStatus(attributes: Record<string, unknown> | undefined) {
   const directStatus = stringValue(attributes?.status);
   if (directStatus) return directStatus;
@@ -274,6 +668,22 @@ function paymentReference(
     stringValue(nestedObject(attributes?.payment_intent)?.id) ??
     stringValue(attributes?.reference_number) ??
     stringValue(data?.id);
+}
+
+function qrCodeImageUrl(attributes: Record<string, unknown> | undefined) {
+  return stringValue(nestedObject(nestedObject(attributes?.next_action)?.code)?.image_url);
+}
+
+function qrTestUrl(attributes: Record<string, unknown> | undefined) {
+  const nextAction = nestedObject(attributes?.next_action);
+  return stringValue(nestedObject(nextAction?.code)?.test_url)
+    ?? stringValue(nestedObject(nextAction?.redirect)?.url);
+}
+
+function isPayMongoWebhookRequest(request: Request) {
+  const url = new URL(request.url);
+  return url.searchParams.get("paymongo_webhook") === "1" ||
+    url.pathname.replace(/\/$/, "").endsWith("/webhook");
 }
 
 function checkoutReturnUrl(request: Request, result: "success" | "cancel", orderNumber: string) {

@@ -32,6 +32,15 @@ data class PayMongoCheckoutSession(
     val status: String?
 )
 
+data class PayMongoQrPhPayment(
+    val paymentIntentId: String,
+    val paymentMethodId: String,
+    val qrImageUrl: String,
+    val referenceNumber: String?,
+    val status: String?,
+    val testUrl: String?
+)
+
 data class PayMongoCheckoutStatus(
     val id: String,
     val status: String?,
@@ -92,6 +101,63 @@ class PayMongoCheckoutRepository {
             body = buildJsonObject {
                 put("action", "retrieve")
                 put("checkout_session_id", sessionId)
+            }
+        )
+
+        return PayMongoCheckoutStatus(
+            id = response.requiredString("id"),
+            status = response.optionalString("status"),
+            isPaid = response["paid"]?.let { it is JsonPrimitive && it.content == "true" } ?: false,
+            paymentReference = response.optionalString("payment_reference"),
+            paymentMethodUsed = response.optionalString("payment_method_used"),
+            billingName = response.optionalString("billing_name")
+        )
+    }
+
+    suspend fun createQrPhPayment(
+        orderNumber: String,
+        customerName: String?,
+        amount: Double,
+        lines: List<PayMongoCheckoutLine>
+    ): PayMongoQrPhPayment {
+        val response = invokeFunction(
+            body = buildJsonObject {
+                put("action", "create_qrph")
+                put("order_number", orderNumber)
+                put("customer_name", customerName?.takeIf(String::isNotBlank))
+                put("amount_centavos", amount.toCentavos())
+                put(
+                    "line_items",
+                    buildJsonArray {
+                        lines.forEach { line ->
+                            add(
+                                buildJsonObject {
+                                    put("name", line.name)
+                                    put("quantity", line.quantity.coerceAtLeast(1))
+                                    put("line_total_centavos", line.lineTotal.toCentavos())
+                                }
+                            )
+                        }
+                    }
+                )
+            }
+        )
+
+        return PayMongoQrPhPayment(
+            paymentIntentId = response.requiredString("payment_intent_id"),
+            paymentMethodId = response.requiredString("payment_method_id"),
+            qrImageUrl = response.requiredString("qr_image_url"),
+            referenceNumber = response.optionalString("reference_number"),
+            status = response.optionalString("status"),
+            testUrl = response.optionalString("test_url")
+        )
+    }
+
+    suspend fun retrievePaymentIntent(paymentIntentId: String): PayMongoCheckoutStatus {
+        val response = invokeFunction(
+            body = buildJsonObject {
+                put("action", "retrieve_payment_intent")
+                put("payment_intent_id", paymentIntentId)
             }
         )
 

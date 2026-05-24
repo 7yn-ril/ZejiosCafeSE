@@ -1006,37 +1006,6 @@
                     </LinearLayout>
                 </LinearLayout>
 
-                <!-- Payment method toggle buttons (Cash vs PayMongo). The
-                     actual instrument used inside PayMongo (GCash, Maya,
-                     Card, ...) is captured from the gateway response. -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnCash"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="40dp"
-                        android:layout_weight="1"
-                        android:text="@string/cash"
-                        android:textAllCaps="false"
-                        app:cornerRadius="14dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnPaymongo"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="40dp"
-                        android:layout_marginStart="8dp"
-                        android:layout_weight="1"
-                        android:text="@string/paymongo"
-                        android:textAllCaps="false"
-                        app:cornerRadius="14dp" />
-                </LinearLayout>
-
                 <!-- Clear + Checkout row -->
                 <LinearLayout
                     android:layout_width="match_parent"

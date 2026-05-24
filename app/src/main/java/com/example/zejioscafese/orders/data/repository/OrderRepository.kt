@@ -752,7 +752,7 @@ class OrderRepository(
         // on a paid checkout session. 'paymongo' itself stays as a
         // fallback bucket for paid sessions where the gateway did not
         // surface a resolvable method.
-        val VALID_PAYMENT_METHODS = setOf("cash", "gcash", "maya", "card", "paymongo")
+        val VALID_PAYMENT_METHODS = setOf("cash", "gcash", "maya", "card", "qrph", "paymongo")
         val VALID_ORDER_STATUSES = setOf("pending", "preparing", "completed")
         val VALID_ORDER_TYPES = setOf("dine_in", "takeout", "delivery")
     }

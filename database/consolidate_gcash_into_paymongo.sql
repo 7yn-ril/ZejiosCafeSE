@@ -28,4 +28,4 @@ alter table public.orders
 
 alter table public.orders
     add constraint orders_order_payment_method_check
-    check (lower(order_payment_method) in ('cash', 'gcash', 'maya', 'card', 'paymongo'));
+    check (lower(order_payment_method) in ('cash', 'gcash', 'maya', 'card', 'qrph', 'paymongo'));
