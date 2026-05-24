@@ -1,10 +1,12 @@
 package com.example.zejioscafese.ui
 
 import android.app.Dialog
+import android.app.Activity
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.util.Log
 import android.view.Gravity
 import android.view.WindowManager
 import androidx.annotation.ColorRes
@@ -82,6 +84,18 @@ fun showNoticeDialog(
         dialog.setOnDismissListener { onDismiss() }
     }
 
+    val activity = context as? Activity
+    if (activity?.isFinishing == true || activity?.isDestroyed == true) {
+        return dialog
+    }
+
+    try {
+        dialog.show()
+    } catch (exception: WindowManager.BadTokenException) {
+        Log.w(TAG, "Skipping notice dialog because the Activity window is not available.", exception)
+        return dialog
+    }
+
     dialog.window?.apply {
         setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         // Force explicit pixel width so the project's themed
@@ -96,8 +110,6 @@ fun showNoticeDialog(
         params.height = WindowManager.LayoutParams.WRAP_CONTENT
         attributes = params
     }
-
-    dialog.show()
     return dialog
 }
 
@@ -138,3 +150,5 @@ fun showWarningDialog(
     message: CharSequence,
     title: CharSequence = context.getString(R.string.notice_warning_title)
 ): Dialog = showNoticeDialog(context, title, message, NoticeType.Warning)
+
+private const val TAG = "NoticeDialog"

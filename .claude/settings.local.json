@@ -28,7 +28,17 @@
       "Bash(grep -nE \"create or replace view.*as$|^as$\" \"c:/Users/Lenovo-Pc/OneDrive/3rd Year \\(2nd Semester\\)/CIT238 \\(Mobile Applications Development\\) - Christopher Mateo/Final_Project/ZejiosCafeSE/database/fix_beverage_sizes_and_packaging.sql\")",
       "Bash(./gradlew compileDebugKotlin)",
       "Bash(./gradlew testDebugUnitTest --tests \"*CafeOrderTest\" --tests \"*PosViewModelTest\")",
-      "Bash(./gradlew testDebugUnitTest --tests \"*CafeOrderTest\" --tests \"*PosViewModelTest\" --tests \"*ReportsViewModelTest\")"
+      "Bash(./gradlew testDebugUnitTest --tests \"*CafeOrderTest\" --tests \"*PosViewModelTest\" --tests \"*ReportsViewModelTest\")",
+      "PowerShell(.\\\\gradlew.bat :app:compileDebugKotlin --no-daemon 2>&1)",
+      "PowerShell(.\\\\gradlew.bat :app:testDebugUnitTest --no-daemon 2>&1)",
+      "PowerShell(.\\\\gradlew.bat :app:processDebugResources --no-daemon 2>&1)",
+      "PowerShell($candidates = @\\(\"$env:LOCALAPPDATA\\\\Android\\\\Sdk\\\\platform-tools\\\\adb.exe\", \"$env:ANDROID_HOME\\\\platform-tools\\\\adb.exe\", \"$env:ANDROID_SDK_ROOT\\\\platform-tools\\\\adb.exe\", \"C:\\\\Android\\\\Sdk\\\\platform-tools\\\\adb.exe\"\\); foreach \\($p in $candidates\\) { if \\(Test-Path $p\\) { \"Found: $p\"; & $p devices; break } })",
+      "PowerShell($adb = \"C:\\\\Users\\\\Lenovo-Pc\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\platform-tools\\\\adb.exe\"; & $adb shell pm path com.example.zejioscafese)",
+      "PowerShell($adb = \"C:\\\\Users\\\\Lenovo-Pc\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\platform-tools\\\\adb.exe\"; & $adb shell pidof com.example.zejioscafese; \"---\"; & $adb shell dumpsys activity activities 2>&1 | Select-String -Pattern \"zejioscafese\" | Select-Object -First 5)",
+      "PowerShell($adb = \"C:\\\\Users\\\\Lenovo-Pc\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\platform-tools\\\\adb.exe\"; & $adb logcat -c; & $adb shell am start -n com.example.zejioscafese/.MainActivity 2>&1; Start-Sleep -Seconds 4; & $adb logcat -d -v time -t 800 2>&1 | Select-String -Pattern \"AndroidRuntime|FATAL|zejioscafese\" | Select-Object -Last 60)",
+      "PowerShell(.\\\\gradlew.bat :app:assembleDebug --console=plain --no-daemon 2>&1)",
+      "PowerShell($adb = \"C:\\\\Users\\\\Lenovo-Pc\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\platform-tools\\\\adb.exe\"; $apk = \"app\\\\build\\\\outputs\\\\apk\\\\debug\\\\app-debug.apk\"; if \\(Test-Path $apk\\) { \\(Get-Item $apk\\).LastWriteTime; & $adb install -r $apk } else { \"APK not found\" })",
+      "PowerShell($adb = \"C:\\\\Users\\\\Lenovo-Pc\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\platform-tools\\\\adb.exe\"; & $adb logcat -c; \"Logcat cleared. Now please open Android Studio, press Run, log into the app on the emulator until it crashes, then tell me when done.\")"
     ]
   }
 }

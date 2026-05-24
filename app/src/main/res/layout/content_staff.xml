@@ -186,6 +186,26 @@
                 app:strokeWidth="1dp" />
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnStaffShowDeactivated"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="@dimen/search_height"
+                android:layout_marginStart="10dp"
+                android:checkable="true"
+                android:ellipsize="end"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:maxLines="1"
+                android:text="@string/staff_show_deactivated"
+                android:textAllCaps="false"
+                android:textColor="@color/pos_primary"
+                android:textSize="12sp"
+                app:backgroundTint="@color/white"
+                app:cornerRadius="18dp"
+                app:strokeColor="@color/pos_primary"
+                app:strokeWidth="1dp" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnAddStaff"
                 style="@style/Widget.Material3.Button"
                 android:layout_width="wrap_content"
@@ -209,8 +229,8 @@
 
         <!-- ─────────────────────────────────────────────────────
              Section C — Staff card grid
-             Cards are added dynamically by MainActivity.addStaffCard().
-             The GridLayout wraps cards into rows of three.
+             Cards are rendered dynamically by MainActivity.rebuildStaffGrid()
+             from the Supabase-backed StaffRepository. Wraps into rows of three.
              ───────────────────────────────────────────────────── -->
         <TextView
             android:id="@+id/tvStaffEmptyState"

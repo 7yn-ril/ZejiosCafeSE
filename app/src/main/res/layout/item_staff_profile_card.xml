@@ -86,7 +86,7 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Role chip row -->
+            <!-- Role chip row + optional Inactive badge -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -111,7 +111,51 @@
                     app:drawableStartCompat="@drawable/ic_staff_24"
                     app:drawableTint="@color/pos_secondary"
                     tools:text="Manager" />
+
+                <TextView
+                    android:id="@+id/tvStaffInactiveBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/bg_hint_chip"
+                    android:paddingStart="12dp"
+                    android:paddingTop="6dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="6dp"
+                    android:text="@string/staff_status_inactive"
+                    android:textColor="@color/pos_text_secondary"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
             </LinearLayout>
+
+            <!-- Contact rows: email + phone (hidden if blank) -->
+            <TextView
+                android:id="@+id/tvStaffEmail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/pos_text_secondary"
+                android:textSize="12sp"
+                android:visibility="gone"
+                tools:text="luke@zejios.cafe"
+                tools:visibility="visible" />
+
+            <TextView
+                android:id="@+id/tvStaffPhone"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/pos_text_secondary"
+                android:textSize="12sp"
+                android:visibility="gone"
+                tools:text="+63 917 000 0000"
+                tools:visibility="visible" />
 
             <View
                 android:layout_width="match_parent"
@@ -132,8 +176,11 @@
                     android:layout_width="0dp"
                     android:layout_height="42dp"
                     android:layout_weight="1"
+                    android:ellipsize="end"
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
+                    android:maxLines="1"
+                    android:singleLine="true"
                     android:text="@string/edit"
                     android:textAllCaps="false"
                     android:textColor="@color/pos_secondary"

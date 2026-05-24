@@ -935,10 +935,9 @@
                         android:insetTop="0dp"
                         android:insetBottom="0dp"
                         android:text="@string/clear"
-                                                app:cornerRadius="12dp"
-                                                app:strokeColor="@color/pos_primary" />
                         android:textAllCaps="false"
-                        app:cornerRadius="12dp" />
+                        app:cornerRadius="12dp"
+                        app:strokeColor="@color/pos_primary" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnCheckout"
@@ -952,8 +951,8 @@
                         android:text="@string/checkout"
                         android:textAllCaps="false"
                         android:textStyle="bold"
-                                                android:textColor="@color/white"
-                                                app:backgroundTint="@color/pos_secondary"
+                        android:textColor="@color/white"
+                        app:backgroundTint="@color/pos_secondary"
                         app:cornerRadius="12dp" />
                 </LinearLayout>
             </LinearLayout>

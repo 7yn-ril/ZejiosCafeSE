@@ -86,6 +86,8 @@ import com.example.zejioscafese.pos.ui.CategoryAdapter
 import com.example.zejioscafese.pos.ui.OrderItemAdapter
 import com.example.zejioscafese.pos.ui.ProductAdapter
 import com.example.zejioscafese.pos.ui.MenuBrowseDialogFragment
+import com.example.zejioscafese.staff.data.model.StaffMember
+import com.example.zejioscafese.staff.data.repository.StaffRepository
 import com.example.zejioscafese.ui.InventoryFragment
 import com.example.zejioscafese.ui.NavigationHost
 import com.example.zejioscafese.ui.ReportsFragment
@@ -152,10 +154,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     )
 
     private data class StaffCardViews(
+        val member: StaffMember,
         val rootView: View,
-        val nameView: TextView,
-        val idView: TextView,
-        val roleView: TextView,
         val editButton: MaterialButton,
         val actionsButton: MaterialButton
     )
@@ -281,9 +281,13 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private var filterTodayOnly: Boolean = false
 
     private enum class OrderSort { DEFAULT, DATE_DESC, TOTAL_DESC, TOTAL_ASC, ITEMS_DESC }
+    private val staffRepository = StaffRepository()
+    private val staffMembers = mutableListOf<StaffMember>()
     private val staffCards = mutableListOf<StaffCardViews>()
     private var selectedStaffRole: String? = null
     private var staffSearchQuery: String = ""
+    private var showDeactivatedStaff: Boolean = false
+    private var isStaffLoading: Boolean = false
     private var hasCheckoutItems: Boolean = false
     private var isCheckoutSaving: Boolean = false
     private var pendingCheckoutReceipt: PendingCheckoutReceipt? = null
@@ -3703,18 +3707,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
     private fun setupStaffInteractions() {
         binding.staffContent.btnAddStaff.setOnClickListener {
-            showStaffDialog(card = null)
-        }
-
-        staffCards.clear()
-        binding.staffContent.staffCardsContainer.removeAllViews()
-
-        LocalAppPrefs.loadStaff(this).forEach { saved ->
-            addStaffCard(
-                name = saved.name,
-                employeeId = saved.employeeId,
-                role = saved.role
-            )
+            showStaffDialog(existing = null)
         }
 
         binding.staffContent.etStaffSearch.doAfterTextChanged { text ->
@@ -3726,23 +3719,40 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             showStaffRoleFilterMenu(anchor)
         }
 
+        binding.staffContent.btnStaffShowDeactivated.apply {
+            isChecked = showDeactivatedStaff
+            setOnClickListener {
+                showDeactivatedStaff = !showDeactivatedStaff
+                isChecked = showDeactivatedStaff
+                refreshStaffUi()
+            }
+        }
+
         refreshStaffUi()
     }
 
-    private fun persistStaffCards() {
-        LocalAppPrefs.saveStaff(
-            this,
-            staffCards.map { card ->
-                LocalAppPrefs.StoredStaff(
-                    name = card.nameView.text?.toString().orEmpty(),
-                    employeeId = card.idView.text?.toString()
-                        ?.removePrefix("ID:")
-                        ?.trim()
-                        .orEmpty(),
-                    role = card.roleView.text?.toString().orEmpty()
-                )
+    private fun loadStaffFromRepository(showError: Boolean = currentSection == Section.STAFF) {
+        if (isStaffLoading) return
+        isStaffLoading = true
+        lifecycleScope.launch {
+            val result = runCatching { staffRepository.fetchStaff(includeInactive = true) }
+            isStaffLoading = false
+            result.onSuccess { fetched ->
+                staffMembers.clear()
+                staffMembers.addAll(fetched)
+                refreshStaffUi()
+            }.onFailure { exception ->
+                if (showError) {
+                    showErrorDialog(
+                        this@MainActivity,
+                        NetworkErrorFormatter.toUserMessage(
+                            exception = exception,
+                            fallbackMessage = getString(R.string.staff_load_failed, exception.message.orEmpty())
+                        )
+                    )
+                }
             }
-        )
+        }
     }
 
     private fun setupProfileInteractions() {
@@ -3923,8 +3933,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         binding.ivProfileAvatar.contentDescription = getString(R.string.profile_avatar_for, userProfileState.name)
     }
 
-    private fun showStaffDialog(card: StaffCardViews?) {
-        val isEditMode = card != null
+    private fun showStaffDialog(existing: StaffMember?) {
+        val isEditMode = existing != null
         val dialogView = layoutInflater.inflate(R.layout.dialog_staff_form, null, false)
 
         val tvTitle = dialogView.findViewById<TextView>(R.id.tvStaffDialogTitle)
@@ -3940,11 +3950,38 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         val actvRole = dialogView.findViewById<com.google.android.material.textfield.MaterialAutoCompleteTextView>(
             R.id.actvStaffDialogRole
         )
+        val tilEmail = dialogView.findViewById<com.google.android.material.textfield.TextInputLayout>(
+            R.id.tilStaffDialogEmail
+        )
+        val etEmail = dialogView.findViewById<com.google.android.material.textfield.TextInputEditText>(
+            R.id.etStaffDialogEmail
+        )
+        val etPhone = dialogView.findViewById<com.google.android.material.textfield.TextInputEditText>(
+            R.id.etStaffDialogPhone
+        )
+        val etAddress = dialogView.findViewById<com.google.android.material.textfield.TextInputEditText>(
+            R.id.etStaffDialogAddress
+        )
+        val etBirthdate = dialogView.findViewById<com.google.android.material.textfield.TextInputEditText>(
+            R.id.etStaffDialogBirthdate
+        )
+        val actvGender = dialogView.findViewById<com.google.android.material.textfield.MaterialAutoCompleteTextView>(
+            R.id.actvStaffDialogGender
+        )
+        val etEmergencyName = dialogView.findViewById<com.google.android.material.textfield.TextInputEditText>(
+            R.id.etStaffDialogEmergencyName
+        )
+        val etEmergencyPhone = dialogView.findViewById<com.google.android.material.textfield.TextInputEditText>(
+            R.id.etStaffDialogEmergencyPhone
+        )
+        val actvEmergencyRelationship = dialogView.findViewById<com.google.android.material.textfield.MaterialAutoCompleteTextView>(
+            R.id.actvStaffDialogEmergencyRelationship
+        )
 
         tvTitle.setText(if (isEditMode) R.string.staff_dialog_edit_title else R.string.staff_dialog_add_title)
         tvSubtitle.setText(if (isEditMode) R.string.staff_dialog_edit_subtitle else R.string.staff_dialog_add_subtitle)
 
-        val initialName = card?.nameView?.text?.toString().orEmpty()
+        val initialName = existing?.fullName.orEmpty()
         etName.setText(initialName)
         tvInitials.text = staffInitialsFromName(initialName)
         etName.doAfterTextChanged { text ->
@@ -3952,11 +3989,42 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             if (!text.isNullOrBlank()) tilName.error = null
         }
 
-        val autoEmployeeId = if (isEditMode) {
-            card?.idView?.text?.toString()?.removePrefix("ID:")?.trim().orEmpty()
-        } else {
-            generateNextStaffEmployeeId()
+        etEmail.setText(existing?.email.orEmpty())
+        etEmail.doAfterTextChanged { tilEmail.error = null }
+        etPhone.setText(existing?.phone.orEmpty())
+
+        etAddress.setText(existing?.address.orEmpty())
+
+        // Birthdate: read-only text field whose tap opens a DatePickerDialog.
+        // The selected LocalDate is held in a single-element holder so the
+        // save handler can read it without re-parsing the displayed text.
+        val birthdateHolder = arrayOf<LocalDate?>(existing?.birthdate)
+        etBirthdate.setText(birthdateHolder[0]?.let(::formatBirthdateForDisplay).orEmpty())
+        val openBirthdatePicker = View.OnClickListener {
+            val seed = birthdateHolder[0] ?: LocalDate.now().minusYears(20)
+            DatePickerDialog(
+                this,
+                { _, year, month, dayOfMonth ->
+                    val picked = LocalDate.of(year, month + 1, dayOfMonth)
+                    birthdateHolder[0] = picked
+                    etBirthdate.setText(formatBirthdateForDisplay(picked))
+                },
+                seed.year,
+                seed.monthValue - 1,
+                seed.dayOfMonth
+            ).apply {
+                datePicker.maxDate = System.currentTimeMillis()
+            }.show()
         }
+        etBirthdate.setOnClickListener(openBirthdatePicker)
+        dialogView.findViewById<com.google.android.material.textfield.TextInputLayout>(
+            R.id.tilStaffDialogBirthdate
+        )?.setStartIconOnClickListener(openBirthdatePicker)
+
+        etEmergencyName.setText(existing?.emergencyContactName.orEmpty())
+        etEmergencyPhone.setText(existing?.emergencyContactPhone.orEmpty())
+
+        val autoEmployeeId = existing?.employeeId ?: previewNextEmployeeId()
         tvEmployeeId.text = autoEmployeeId
 
         val roleOptions = listOf(
@@ -3970,60 +4038,163 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             roleOptions
         )
         actvRole.setAdapter(roleAdapter)
-        val currentRole = card?.roleView?.text?.toString()?.trim()
+        val currentRole = existing?.role?.trim()
         val initialRole = roleOptions.firstOrNull { it.equals(currentRole, ignoreCase = true) }
+            ?: currentRole?.takeIf { it.isNotBlank() }
             ?: roleOptions.first()
         actvRole.setText(initialRole, false)
 
+        val genderOptions = listOf(
+            getString(R.string.staff_gender_male),
+            getString(R.string.staff_gender_female),
+            getString(R.string.staff_gender_other),
+            getString(R.string.staff_gender_prefer_not_to_say)
+        )
+        actvGender.setAdapter(
+            android.widget.ArrayAdapter(this, android.R.layout.simple_list_item_1, genderOptions)
+        )
+        val currentGender = existing?.gender?.trim()
+        if (!currentGender.isNullOrBlank()) {
+            val matched = genderOptions.firstOrNull { it.equals(currentGender, ignoreCase = true) }
+            actvGender.setText(matched ?: currentGender, false)
+        }
+
+        val relationshipOptions = listOf(
+            getString(R.string.staff_relationship_parent),
+            getString(R.string.staff_relationship_spouse),
+            getString(R.string.staff_relationship_sibling),
+            getString(R.string.staff_relationship_child),
+            getString(R.string.staff_relationship_relative),
+            getString(R.string.staff_relationship_friend),
+            getString(R.string.staff_relationship_guardian)
+        )
+        actvEmergencyRelationship.setAdapter(
+            android.widget.ArrayAdapter(this, android.R.layout.simple_list_item_1, relationshipOptions)
+        )
+        val currentRelationship = existing?.emergencyContactRelationship?.trim()
+        if (!currentRelationship.isNullOrBlank()) {
+            val matched = relationshipOptions.firstOrNull { it.equals(currentRelationship, ignoreCase = true) }
+            actvEmergencyRelationship.setText(matched ?: currentRelationship, false)
+        }
+
+        val cancelButton = dialogView.findViewById<MaterialButton>(R.id.btnStaffDialogCancel)
+        val saveButton = dialogView.findViewById<MaterialButton>(R.id.btnStaffDialogSave)
+        saveButton.setText(
+            if (isEditMode) R.string.staff_dialog_save_action else R.string.staff_dialog_add_action
+        )
+
         val dialog = MaterialAlertDialogBuilder(this)
             .setView(dialogView)
-            .setPositiveButton(
-                getString(
-                    if (isEditMode) R.string.staff_dialog_save_action else R.string.staff_dialog_add_action
-                ),
-                null
-            )
-            .setNegativeButton(android.R.string.cancel, null)
             .create()
 
-        dialog.setOnShowListener {
-            dialog.applyZejiosCafeButtonStyling(this)
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val name = etName.text.toString().trim()
-                if (name.isBlank()) {
-                    tilName.error = getString(R.string.staff_name_required)
-                    return@setOnClickListener
+        cancelButton.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        saveButton.setOnClickListener {
+            val name = etName.text.toString().trim()
+            if (name.isBlank()) {
+                tilName.error = getString(R.string.staff_name_required)
+                return@setOnClickListener
+            }
+            val emailRaw = etEmail.text.toString().trim()
+            if (emailRaw.isNotEmpty() && (!emailRaw.contains("@") || !emailRaw.contains("."))) {
+                tilEmail.error = getString(R.string.staff_email_invalid)
+                return@setOnClickListener
+            }
+            val phoneRaw = etPhone.text.toString().trim()
+            val selectedRole = actvRole.text?.toString()?.trim()
+                ?.takeIf { it.isNotBlank() }
+                ?: roleOptions.first()
+
+            val addressRaw = etAddress.text.toString().trim().takeIf { it.isNotEmpty() }
+            val birthdate = birthdateHolder[0]
+            val genderRaw = actvGender.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+            val emergencyName = etEmergencyName.text.toString().trim().takeIf { it.isNotEmpty() }
+            val emergencyPhone = etEmergencyPhone.text.toString().trim().takeIf { it.isNotEmpty() }
+            val emergencyRelationship = actvEmergencyRelationship.text?.toString()?.trim()
+                ?.takeIf { it.isNotEmpty() }
+
+            saveButton.isEnabled = false
+            lifecycleScope.launch {
+                val result = runCatching {
+                    if (isEditMode) {
+                        staffRepository.updateStaff(
+                            staffId = existing!!.id,
+                            fullName = name,
+                            role = selectedRole,
+                            email = emailRaw.takeIf { it.isNotEmpty() },
+                            phone = phoneRaw.takeIf { it.isNotEmpty() },
+                            address = addressRaw,
+                            birthdate = birthdate,
+                            gender = genderRaw,
+                            emergencyContactName = emergencyName,
+                            emergencyContactPhone = emergencyPhone,
+                            emergencyContactRelationship = emergencyRelationship
+                        )
+                    } else {
+                        staffRepository.createStaff(
+                            fullName = name,
+                            role = selectedRole,
+                            email = emailRaw.takeIf { it.isNotEmpty() },
+                            phone = phoneRaw.takeIf { it.isNotEmpty() },
+                            existingEmployeeIds = staffMembers.map(StaffMember::employeeId),
+                            existingIds = staffMembers.map(StaffMember::id),
+                            address = addressRaw,
+                            birthdate = birthdate,
+                            gender = genderRaw,
+                            emergencyContactName = emergencyName,
+                            emergencyContactPhone = emergencyPhone,
+                            emergencyContactRelationship = emergencyRelationship
+                        )
+                    }
                 }
-
-                val selectedRole = actvRole.text?.toString()?.trim()
-                    ?.takeIf { it.isNotBlank() && roleOptions.any { opt -> opt.equals(it, ignoreCase = true) } }
-                    ?: roleOptions.first()
-
-                if (isEditMode) {
-                    val staffCard = card ?: return@setOnClickListener
-                    staffCard.nameView.text = name
-                    staffCard.roleView.text = selectedRole
-                    updateStaffCardAvatar(staffCard)
-
-                    showSuccessDialog(this, getString(R.string.staff_updated_message, name))
-                } else {
-                    val newEmployeeId = normalizeStaffEmployeeId(autoEmployeeId)
-                    addStaffCard(
-                        name = name,
-                        employeeId = newEmployeeId,
-                        role = selectedRole
+                saveButton.isEnabled = true
+                result.onSuccess { saved ->
+                    val index = staffMembers.indexOfFirst { it.id == saved.id }
+                    if (index >= 0) staffMembers[index] = saved else staffMembers.add(saved)
+                    refreshStaffUi()
+                    dialog.dismiss()
+                    showSuccessDialog(
+                        this@MainActivity,
+                        getString(
+                            if (isEditMode) R.string.staff_updated_message else R.string.staff_added_message,
+                            saved.fullName
+                        )
                     )
-
-                    showSuccessDialog(this, getString(R.string.staff_added_message, name))
+                }.onFailure { exception ->
+                    showErrorDialog(
+                        this@MainActivity,
+                        NetworkErrorFormatter.toUserMessage(
+                            exception = exception,
+                            fallbackMessage = getString(R.string.staff_save_failed, exception.message.orEmpty())
+                        )
+                    )
                 }
-
-                persistStaffCards()
-                refreshStaffUi()
-                dialog.dismiss()
             }
         }
 
+        dialog.setOnShowListener {
+            val metrics = resources.displayMetrics
+            val dialogWidth = (metrics.widthPixels * 0.92f).toInt().coerceAtMost(dpToPx(720))
+            val dialogHeight = (metrics.heightPixels * 0.90f).toInt()
+            dialog.window?.setLayout(dialogWidth, dialogHeight)
+        }
+
         dialog.show()
+    }
+
+    private fun formatBirthdateForDisplay(date: LocalDate): String =
+        date.format(DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.getDefault()))
+
+    private fun previewNextEmployeeId(): String {
+        val pattern = Regex("EMP[_-](\\d+)", RegexOption.IGNORE_CASE)
+        val nextNumber = staffMembers
+            .mapNotNull { pattern.find(it.employeeId)?.groupValues?.getOrNull(1)?.toIntOrNull() }
+            .maxOrNull()
+            ?.plus(1)
+            ?: 1
+        return formatEmployeeId(nextNumber)
     }
 
     private fun staffInitialsFromName(rawName: String): String {
@@ -4034,51 +4205,67 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         return (first + second).ifBlank { "?" }
     }
 
-    private fun updateStaffCardAvatar(card: StaffCardViews) {
-        val initialsView = card.rootView.findViewById<TextView>(R.id.tvStaffCardInitials)
-        initialsView?.text = staffInitialsFromName(card.nameView.text.toString())
-    }
-
-    private fun addStaffCard(
-        name: String,
-        employeeId: String,
-        role: String
-    ) {
-        val cardRoot = layoutInflater.inflate(
-            R.layout.item_staff_profile_card,
-            binding.staffContent.staffCardsContainer,
-            false
-        )
-
-        val nameView = cardRoot.findViewById<TextView>(R.id.tvStaffName)
-        val idView = cardRoot.findViewById<TextView>(R.id.tvStaffId)
-        val roleView = cardRoot.findViewById<TextView>(R.id.tvStaffRole)
-        val initialsView = cardRoot.findViewById<TextView>(R.id.tvStaffCardInitials)
-        val editButton = cardRoot.findViewById<MaterialButton>(R.id.btnEditStaff)
-        val actionsButton = cardRoot.findViewById<MaterialButton>(R.id.btnStaffActions)
-
-        nameView.text = name
-        idView.text = getString(R.string.staff_id_format, employeeId)
-        roleView.text = role
-        initialsView.text = staffInitialsFromName(name)
-
-        val newCard = StaffCardViews(
-            rootView = cardRoot,
-            nameView = nameView,
-            idView = idView,
-            roleView = roleView,
-            editButton = editButton,
-            actionsButton = actionsButton
-        )
-
-        bindStaffCardInteractions(newCard)
-        staffCards.add(newCard)
-        rebuildStaffGrid()
+    private fun formatEmployeeId(number: Int): String {
+        return "#EMP_%03d".format(number)
     }
 
     private fun rebuildStaffGrid() {
         val container = binding.staffContent.staffCardsContainer
         container.removeAllViews()
+        staffCards.clear()
+
+        val visibleMembers = visibleStaffMembers()
+
+        visibleMembers.forEach { member ->
+            val cardRoot = layoutInflater.inflate(
+                R.layout.item_staff_profile_card,
+                container,
+                false
+            )
+
+            val nameView = cardRoot.findViewById<TextView>(R.id.tvStaffName)
+            val idView = cardRoot.findViewById<TextView>(R.id.tvStaffId)
+            val roleView = cardRoot.findViewById<TextView>(R.id.tvStaffRole)
+            val initialsView = cardRoot.findViewById<TextView>(R.id.tvStaffCardInitials)
+            val emailView = cardRoot.findViewById<TextView>(R.id.tvStaffEmail)
+            val phoneView = cardRoot.findViewById<TextView>(R.id.tvStaffPhone)
+            val inactiveBadge = cardRoot.findViewById<TextView>(R.id.tvStaffInactiveBadge)
+            val editButton = cardRoot.findViewById<MaterialButton>(R.id.btnEditStaff)
+            val actionsButton = cardRoot.findViewById<MaterialButton>(R.id.btnStaffActions)
+
+            nameView.text = member.fullName
+            idView.text = getString(R.string.staff_id_format, member.employeeId)
+            roleView.text = member.role
+            initialsView.text = staffInitialsFromName(member.fullName)
+
+            emailView.visibility = if (member.email.isNullOrBlank()) View.GONE else View.VISIBLE
+            emailView.text = member.email.orEmpty()
+            phoneView.visibility = if (member.phone.isNullOrBlank()) View.GONE else View.VISIBLE
+            phoneView.text = member.phone.orEmpty()
+
+            inactiveBadge.visibility = if (member.isActive) View.GONE else View.VISIBLE
+            cardRoot.alpha = if (member.isActive) 1f else 0.6f
+
+            if (member.isActive) {
+                editButton.setText(R.string.edit)
+                editButton.setOnClickListener { showStaffDialog(member) }
+            } else {
+                editButton.setText(R.string.staff_button_restore)
+                editButton.setOnClickListener { confirmRestoreStaff(member) }
+            }
+            actionsButton.setOnClickListener { anchor ->
+                showStaffActionsMenu(member, anchor)
+            }
+
+            staffCards.add(
+                StaffCardViews(
+                    member = member,
+                    rootView = cardRoot,
+                    editButton = editButton,
+                    actionsButton = actionsButton
+                )
+            )
+        }
 
         val rowGap = dpToPx(12)
         val colGap = dpToPx(12)
@@ -4117,51 +4304,36 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         }
     }
 
-    private fun normalizeStaffEmployeeId(value: String): String {
-        var normalized = value.trim()
-        if (normalized.startsWith("ID:", ignoreCase = true)) {
-            normalized = normalized.substringAfter(':').trim()
-        }
-
-        normalized = normalized.removePrefix("#")
-        val digits = Regex("(\\d+)").find(normalized)?.groupValues?.getOrNull(1)
-        val number = digits?.toIntOrNull() ?: return "#EMP_001"
-
-        return formatEmployeeId(number)
-    }
-
-    private fun formatEmployeeId(number: Int): String {
-        return "#EMP_%03d".format(number)
-    }
-
-    private fun generateNextStaffEmployeeId(): String {
-        val nextNumber = staffCards
-            .mapNotNull { card ->
-                Regex("EMP[_-](\\d+)", RegexOption.IGNORE_CASE)
-                    .find(card.idView.text.toString())
-                    ?.groupValues
-                    ?.getOrNull(1)
-                    ?.toIntOrNull()
+    private fun visibleStaffMembers(): List<StaffMember> {
+        val normalizedQuery = staffSearchQuery.trim().lowercase(Locale.getDefault())
+        return staffMembers
+            .asSequence()
+            .filter { showDeactivatedStaff || it.isActive }
+            .filter { member ->
+                selectedStaffRole.isNullOrBlank() ||
+                    member.role.equals(selectedStaffRole, ignoreCase = true)
             }
-            .maxOrNull()
-            ?.plus(1)
-            ?: 1
-
-        return formatEmployeeId(nextNumber)
-    }
-
-    private fun bindStaffCardInteractions(card: StaffCardViews) {
-        card.editButton.setOnClickListener {
-            showStaffDialog(card)
-        }
-        card.actionsButton.setOnClickListener { anchor ->
-            showStaffActionsMenu(card, anchor)
-        }
+            .filter { member ->
+                if (normalizedQuery.isBlank()) return@filter true
+                val haystack = listOf(
+                    member.fullName,
+                    member.employeeId,
+                    member.role,
+                    member.email.orEmpty(),
+                    member.phone.orEmpty()
+                ).joinToString(" ").lowercase(Locale.getDefault())
+                haystack.contains(normalizedQuery)
+            }
+            .sortedWith(
+                compareByDescending<StaffMember> { it.isActive }
+                    .thenBy { it.employeeId }
+            )
+            .toList()
     }
 
     private fun showStaffRoleFilterMenu(anchor: View) {
-        val roles = staffCards
-            .map { it.roleView.text.toString().trim() }
+        val roles = staffMembers
+            .map { it.role.trim() }
             .filter { it.isNotBlank() }
             .distinct()
             .sorted()
@@ -4173,62 +4345,140 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             }
             setOnMenuItemClickListener { item ->
                 selectedStaffRole = if (item.itemId == 0) null else item.title.toString()
-                applyStaffFilters()
+                refreshStaffUi()
                 true
             }
         }.show()
     }
 
-    private fun showStaffActionsMenu(card: StaffCardViews, anchor: View) {
+    private fun showStaffActionsMenu(member: StaffMember, anchor: View) {
         PopupMenu(this, anchor).apply {
             menu.add(0, 1, 0, getString(R.string.staff_action_view_summary))
-            menu.add(0, 2, 1, getString(R.string.staff_action_remove))
+            if (member.isActive) {
+                menu.add(0, 2, 1, getString(R.string.staff_action_remove))
+            } else {
+                menu.add(0, 3, 1, getString(R.string.staff_action_restore))
+            }
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
-                    1 -> showStaffSummaryDialog(card)
-                    2 -> showRemoveStaffDialog(card)
+                    1 -> showStaffSummaryDialog(member)
+                    2 -> confirmDeactivateStaff(member)
+                    3 -> confirmRestoreStaff(member)
                 }
                 true
             }
         }.show()
     }
 
-    private fun showStaffSummaryDialog(card: StaffCardViews) {
+    private fun showStaffSummaryDialog(member: StaffMember) {
         val summary = buildString {
-            appendLine(getString(R.string.staff_field_employee_id) + ": " + card.idView.text)
-            append(getString(R.string.staff_field_role) + ": " + card.roleView.text)
-        }
+            appendLine(getString(R.string.staff_field_employee_id) + ": " + member.employeeId)
+            appendLine(getString(R.string.staff_field_role) + ": " + member.role)
+            if (!member.email.isNullOrBlank()) {
+                appendLine(getString(R.string.staff_field_email) + ": " + member.email)
+            }
+            if (!member.phone.isNullOrBlank()) {
+                appendLine(getString(R.string.staff_field_phone) + ": " + member.phone)
+            }
+            if (!member.address.isNullOrBlank()) {
+                appendLine(getString(R.string.staff_field_address) + ": " + member.address)
+            }
+            if (member.birthdate != null) {
+                appendLine(
+                    getString(R.string.staff_field_birthdate) + ": " +
+                        formatBirthdateForDisplay(member.birthdate)
+                )
+            }
+            if (!member.gender.isNullOrBlank()) {
+                appendLine(getString(R.string.staff_field_gender) + ": " + member.gender)
+            }
+            val hasEmergency = !member.emergencyContactName.isNullOrBlank() ||
+                !member.emergencyContactPhone.isNullOrBlank() ||
+                !member.emergencyContactRelationship.isNullOrBlank()
+            if (hasEmergency) {
+                appendLine()
+                appendLine(getString(R.string.staff_section_emergency))
+                if (!member.emergencyContactName.isNullOrBlank()) {
+                    appendLine("  " + getString(R.string.staff_field_emergency_name) + ": " + member.emergencyContactName)
+                }
+                if (!member.emergencyContactPhone.isNullOrBlank()) {
+                    appendLine("  " + getString(R.string.staff_field_emergency_phone) + ": " + member.emergencyContactPhone)
+                }
+                if (!member.emergencyContactRelationship.isNullOrBlank()) {
+                    appendLine("  " + getString(R.string.staff_field_emergency_relationship) + ": " + member.emergencyContactRelationship)
+                }
+            }
+            if (!member.isActive) {
+                appendLine()
+                append(getString(R.string.staff_status_inactive))
+            }
+        }.trimEnd()
 
         MaterialAlertDialogBuilder(this)
-            .setTitle(card.nameView.text)
+            .setTitle(member.fullName)
             .setMessage(summary)
             .setPositiveButton(getString(R.string.edit)) { _, _ ->
-                showStaffDialog(card)
+                showStaffDialog(member)
             }
             .setNegativeButton(android.R.string.cancel, null)
             .showStyledDialog(this)
     }
 
-    private fun showRemoveStaffDialog(card: StaffCardViews) {
+    private fun confirmDeactivateStaff(member: StaffMember) {
         MaterialAlertDialogBuilder(this)
             .setTitle(getString(R.string.staff_remove_dialog_title))
-            .setMessage(getString(R.string.staff_remove_dialog_message, card.nameView.text))
+            .setMessage(getString(R.string.staff_remove_dialog_message, member.fullName))
             .setPositiveButton(getString(R.string.staff_remove_dialog_confirm)) { _, _ ->
-                (card.rootView.parent as? ViewGroup)?.removeView(card.rootView)
-                staffCards.remove(card)
-                persistStaffCards()
-                rebuildStaffGrid()
-                refreshStaffUi()
-                showSuccessDialog(
-                    this,
-                    getString(R.string.staff_removed_message, card.nameView.text)
-                )
+                lifecycleScope.launch {
+                    val result = runCatching { staffRepository.softDeleteStaff(member.id) }
+                    result.onSuccess {
+                        val index = staffMembers.indexOfFirst { it.id == member.id }
+                        if (index >= 0) staffMembers[index] = member.copy(isActive = false)
+                        refreshStaffUi()
+                        showSuccessDialog(
+                            this@MainActivity,
+                            getString(R.string.staff_removed_message, member.fullName)
+                        )
+                    }.onFailure { exception ->
+                        showErrorDialog(
+                            this@MainActivity,
+                            NetworkErrorFormatter.toUserMessage(
+                                exception = exception,
+                                fallbackMessage = getString(R.string.staff_delete_failed, exception.message.orEmpty())
+                            )
+                        )
+                    }
+                }
             }
             .setNegativeButton(android.R.string.cancel, null)
             .showStyledDialog(this)
+    }
+
+    private fun confirmRestoreStaff(member: StaffMember) {
+        lifecycleScope.launch {
+            val result = runCatching { staffRepository.restoreStaff(member.id) }
+            result.onSuccess {
+                val index = staffMembers.indexOfFirst { it.id == member.id }
+                if (index >= 0) staffMembers[index] = member.copy(isActive = true)
+                refreshStaffUi()
+                showSuccessDialog(
+                    this@MainActivity,
+                    getString(R.string.staff_restored_message, member.fullName)
+                )
+            }.onFailure { exception ->
+                showErrorDialog(
+                    this@MainActivity,
+                    NetworkErrorFormatter.toUserMessage(
+                        exception = exception,
+                        fallbackMessage = getString(R.string.staff_restore_failed, exception.message.orEmpty())
+                    )
+                )
+            }
+        }
     }
 
     private fun refreshStaffUi() {
+        rebuildStaffGrid()
         updateStaffMetrics()
         applyStaffFilters()
         updateStaffEmptyState()
@@ -4242,40 +4492,25 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     }
 
     private fun applyStaffFilters() {
-        val normalizedQuery = staffSearchQuery.trim().lowercase(Locale.getDefault())
-        val visibleCount = staffCards.count { card ->
-            val matches = matchesStaffFilters(card, normalizedQuery)
-            card.rootView.visibility = if (matches) View.VISIBLE else View.GONE
-            matches
-        }
+        val visibleCount = staffCards.size
+        val totalCount = staffMembers.count { showDeactivatedStaff || it.isActive }
 
         if (currentSection == Section.STAFF) {
+            val hasFilters = staffSearchQuery.isNotBlank() || !selectedStaffRole.isNullOrBlank()
             binding.tvTopSubtitle.text =
-                if (normalizedQuery.isBlank() && selectedStaffRole.isNullOrBlank()) {
+                if (!hasFilters) {
                     getString(R.string.staff_subtitle)
                 } else {
-                    getString(R.string.staff_results_summary, visibleCount, staffCards.size)
+                    getString(R.string.staff_results_summary, visibleCount, totalCount)
                 }
         }
 
         binding.staffContent.btnStaffRoleFilter.text = selectedStaffRole ?: getString(R.string.all_roles)
-    }
-
-    private fun matchesStaffFilters(card: StaffCardViews, normalizedQuery: String): Boolean {
-        val matchesRole = selectedStaffRole.isNullOrBlank() ||
-            card.roleView.text.toString().equals(selectedStaffRole, ignoreCase = true)
-        val searchableText = listOf(
-            card.nameView.text,
-            card.idView.text,
-            card.roleView.text
-        ).joinToString(" ").lowercase(Locale.getDefault())
-        val matchesQuery = normalizedQuery.isBlank() || searchableText.contains(normalizedQuery)
-
-        return matchesRole && matchesQuery
+        binding.staffContent.btnStaffShowDeactivated.isChecked = showDeactivatedStaff
     }
 
     private fun updateStaffMetrics() {
-        binding.staffContent.tvStaffMetricTotal.text = staffCards.size.toString()
+        binding.staffContent.tvStaffMetricTotal.text = staffMembers.count { it.isActive }.toString()
     }
 
     private fun showNotificationCenterDialog() {
@@ -4860,6 +5095,10 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
         if (showOrders) {
             loadOrdersFromSupabase(showError = false)
+        }
+
+        if (showStaff && previousSection != Section.STAFF) {
+            loadStaffFromRepository(showError = true)
         }
 
         if (!showPos) {
