@@ -170,6 +170,8 @@ class ReportsFragment : Fragment() {
             timeline = viewModel.salesByDateRange.value.orEmpty(),
             categories = viewModel.salesByCategory.value.orEmpty(),
             products = viewModel.salesByProduct.value.orEmpty(),
+            orderTypes = viewModel.salesByOrderType.value.orEmpty(),
+            paymentMethods = viewModel.salesByPaymentMethod.value.orEmpty(),
             transactions = viewModel.transactions.value.orEmpty()
         )
 
@@ -325,6 +327,16 @@ class ReportsFragment : Fragment() {
             )
         }
 
+        val orderTypeRows = breakdownRows(
+            labelHeader = "Order Type",
+            rows = data.orderTypes
+        )
+
+        val paymentMethodRows = breakdownRows(
+            labelHeader = "Payment Method",
+            rows = data.paymentMethods
+        )
+
         val transactionRows = listOf(
             listOf(
                 textCell("Order ID", STYLE_HEADER),
@@ -374,8 +386,28 @@ class ReportsFragment : Fragment() {
             appendWorksheet("Revenue Trend", trendRows)
             appendWorksheet("Categories", categoryRows)
             appendWorksheet("Products", productRows)
+            appendWorksheet("Order Types", orderTypeRows)
+            appendWorksheet("Payment Methods", paymentMethodRows)
             appendWorksheet("Transactions", transactionRows)
             appendLine("</Workbook>")
+        }
+    }
+
+    private fun breakdownRows(labelHeader: String, rows: List<TypeBreakdown>): List<List<ExcelCell>> {
+        return listOf(
+            listOf(
+                textCell(labelHeader, STYLE_HEADER),
+                textCell("Orders", STYLE_HEADER),
+                textCell("Revenue", STYLE_HEADER),
+                textCell("Percent of Orders", STYLE_HEADER)
+            )
+        ) + rows.map { row ->
+            listOf(
+                textCell(row.label),
+                numberCell(row.count),
+                numberCell(row.revenue, STYLE_CURRENCY),
+                numberCell(row.percentage, STYLE_PERCENT)
+            )
         }
     }
 
@@ -616,6 +648,22 @@ class ReportsFragment : Fragment() {
         return chartPalette[index % chartPalette.size]
     }
 
+    // Caps the donut + legend at 6 entries: top 5 by revenue plus a merged
+    // "Other (N)" bucket. Categories arrive pre-sorted descending by
+    // revenue, so the long tail is just whatever sits past index 4.
+    private fun capCategoriesForDonut(categories: List<CategorySalesRecord>): List<CategorySalesRecord> {
+        if (categories.size <= DONUT_CATEGORY_LIMIT) return categories
+        val visible = categories.take(DONUT_CATEGORY_LIMIT - 1)
+        val tail = categories.drop(DONUT_CATEGORY_LIMIT - 1)
+        val mergedBucket = CategorySalesRecord(
+            categoryName = getString(R.string.reports_category_other_bucket, tail.size),
+            totalRevenue = tail.sumOf(CategorySalesRecord::totalRevenue),
+            itemsSold = tail.sumOf(CategorySalesRecord::itemsSold),
+            percentageOfTotal = tail.sumOf(CategorySalesRecord::percentageOfTotal)
+        )
+        return visible + mergedBucket
+    }
+
     private fun buildCategoryBreakdown(categories: List<CategorySalesRecord>) {
         val ctx = requireContext()
         val donut = binding.categoryDonutChart
@@ -635,7 +683,8 @@ class ReportsFragment : Fragment() {
         }
 
         val totalRevenue = categories.sumOf(CategorySalesRecord::totalRevenue)
-        val slices = categories.mapIndexed { index, record ->
+        val displayCategories = capCategoriesForDonut(categories)
+        val slices = displayCategories.mapIndexed { index, record ->
             CategoryDonutChartView.Slice(
                 label = record.categoryName,
                 value = record.totalRevenue,
@@ -644,7 +693,7 @@ class ReportsFragment : Fragment() {
         }
         donut.setSlices(slices, CategoryDonutChartView.formatCenterTotal(totalRevenue))
 
-        categories.forEachIndexed { index, record ->
+        displayCategories.forEachIndexed { index, record ->
             val row = LinearLayout(ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = android.view.Gravity.CENTER_VERTICAL
@@ -925,6 +974,8 @@ class ReportsFragment : Fragment() {
         val timeline: List<SalesTimelinePoint>,
         val categories: List<CategorySalesRecord>,
         val products: List<ProductSalesRecord>,
+        val orderTypes: List<TypeBreakdown>,
+        val paymentMethods: List<TypeBreakdown>,
         val transactions: List<ReportTransaction>
     )
 
@@ -949,6 +1000,7 @@ class ReportsFragment : Fragment() {
         const val STYLE_PERCENT = "Percent"
         const val EXPORT_CACHE_DIR = "report_exports"
         const val LEADERBOARD_LIMIT = 10
+        const val DONUT_CATEGORY_LIMIT = 6
         val EXPORT_FILE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
         val EXPORT_DISPLAY_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
     }

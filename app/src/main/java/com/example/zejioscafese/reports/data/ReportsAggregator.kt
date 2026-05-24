@@ -191,7 +191,7 @@ object ReportsAggregator {
                     status = order.statusDisplay,
                     date = order.createdAt.format(TRANSACTION_DATE_FORMATTER),
                     orderType = order.orderType.toDisplayToken(),
-                    paymentMethod = order.paymentMethod.toDisplayToken(),
+                    paymentMethod = order.paymentReportLabel(),
                     itemCount = orderItems.sumOf(DatasetOrderItem::quantity),
                     subtotal = if (isFiltered) effectiveSubtotal else order.subtotal,
                     discountLabel = order.discountLabel,
@@ -461,11 +461,9 @@ object ReportsAggregator {
 
     private fun String.toDisplayToken(): String {
         val normalized = trim().lowercase(Locale.US)
-        if (normalized == "gcash") return "GCash"
-        if (normalized == "maya") return "Maya"
+        if (normalized.isQrPhToken()) return "QR Ph"
         if (normalized == "card") return "Card"
         if (normalized == "paymongo") return "PayMongo"
-        if (normalized == "qrph" || normalized == "qr_ph") return "QR Ph"
         return normalized
             .split("_", "-", " ")
             .filter(String::isNotBlank)
@@ -476,20 +474,24 @@ object ReportsAggregator {
             }
     }
 
-    // Splits "via PayMongo" out from in-person payments so the reports
-    // legend can show e.g. "GCash (via PayMongo)" alongside "Cash" and
-    // never lumps the gateway-routed flow with any (historical)
-    // in-person instrument of the same name.
+    // Legacy gateway rows used to store gcash/maya as the instrument.
+    // The counter workflow is now dynamic QR Ph, so reports collapse
+    // those old e-wallet tokens into the QR Ph bucket.
     private fun paymentBreakdownLabel(order: DatasetOrder): String {
-        val method = order.paymentMethod.toDisplayToken().ifBlank { "Cash" }
-        val provider = order.paymentProvider?.trim().orEmpty().lowercase(Locale.US)
-        // The fallback bucket for paid sessions where the gateway did
-        // not surface a resolvable method — already named "PayMongo",
-        // so suffixing it would just read "PayMongo (via PayMongo)".
-        if (provider == "paymongo" && method.equals("PayMongo", ignoreCase = true)) {
-            return method
+        return order.paymentReportLabel().ifBlank { "Cash" }
+    }
+
+    private fun DatasetOrder.paymentReportLabel(): String {
+        val normalizedMethod = paymentMethod.trim().lowercase(Locale.US)
+        return if (normalizedMethod.isQrPhToken()) {
+            "QR Ph"
+        } else {
+            paymentMethod.toDisplayToken()
         }
-        return if (provider == "paymongo") "$method (via PayMongo)" else method
+    }
+
+    private fun String.isQrPhToken(): Boolean {
+        return this in setOf("qrph", "qr_ph", "gcash", "maya", "paymaya")
     }
 
     private const val STANDARD_VARIANT = "standard"

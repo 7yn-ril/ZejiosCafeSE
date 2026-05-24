@@ -1,7 +1,7 @@
 package com.example.zejioscafese.orders.model
 
 // CHANGE: Orders — paymentMethod and orderType added so the Orders list
-// can render the Take Out badge and apply PayMongo / Take Out filters.
+// can render the Take Out badge and apply QR Ph / Take Out filters.
 // The strings mirror the lowercase tokens stored in Supabase ("cash" |
 // "paymongo" | ..., "dine_in" | "takeout" | "delivery").
 data class CafeOrder(
@@ -38,6 +38,8 @@ data class CafeOrder(
     // / card) in paymentMethod, so we identify "this went through the
     // gateway" via the provider tag, not the method.
     val isPayMongo: Boolean get() = paymentProvider.equals("paymongo", ignoreCase = true)
+    val isQrPhPayment: Boolean
+        get() = paymentMethod.lowercase() in setOf("qrph", "qr_ph", "gcash", "maya", "paymaya")
 }
 
 data class CafeOrderLine(

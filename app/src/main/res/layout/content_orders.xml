@@ -24,8 +24,7 @@
         <!-- ─────────────────────────────────────────────────────────────
              Section 0 — Sales tracking KPIs
              Three tiles summarising revenue across non-cancelled orders:
-             total, paid in cash, and paid via PayMongo (any instrument
-             — GCash / Maya / Card — routed through the gateway).
+             total, paid in cash, and paid via QR Ph.
              Live-updated from the same data the Orders list reads, so
              the figures stay in sync with whatever filters the user
              has on.

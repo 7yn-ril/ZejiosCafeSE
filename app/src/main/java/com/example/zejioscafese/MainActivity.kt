@@ -22,6 +22,8 @@ import android.util.Base64
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.JavascriptInterface
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -289,7 +291,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     // CHANGE: Orders — toggleable filters layered on top of the existing
     // status chips and search box. Both are independent: the user can
     // combine "Preparing" + "PayMongo" + "Take Out" in one view.
-    private var filterPayMongoOnly: Boolean = false
+    private var filterQrPhOnly: Boolean = false
     private var filterTakeoutOnly: Boolean = false
     private var filterTodayOnly: Boolean = false
 
@@ -314,6 +316,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     // the deep-link return — otherwise it sits stacked behind the
     // receipt with stale Verify/Open buttons.
     private var payMongoCheckoutDialog: AlertDialog? = null
+    private val qrPhTestPageStatuses = mutableMapOf<String, String>()
     private var dashboardSnapshot: DashboardSnapshot = DashboardSnapshot.empty()
     private var selectedDashboardPeriod: DashboardPeriod = DashboardPeriod.DAILY
     private var hasRenderedDashboardChart: Boolean = false
@@ -359,6 +362,10 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         private const val PAYMONGO_FLOW_CHECKOUT = "checkout"
         private const val PAYMONGO_FLOW_QRPH = "qrph"
         private const val QRPH_TEST_PAGE_POLL_INTERVAL_MS = 700L
+        private const val QRPH_TEST_PAGE_TEXT_SCRIPT =
+            "(function(){return (document.body && (document.body.innerText || document.body.textContent)) || (document.documentElement && (document.documentElement.innerText || document.documentElement.textContent)) || '';})()"
+        private const val QRPH_TEST_PAGE_CLICK_SCRIPT =
+            "(function(){if(window.__zejiosQrPhListenerInstalled){return 'installed';}window.__zejiosQrPhListenerInstalled=true;function textOf(el){var out=[];var node=el;var count=0;while(node&&count<5){out.push(node.innerText||node.textContent||node.value||(node.getAttribute&&node.getAttribute('aria-label'))||'');node=node.parentElement;count++;}return out.join(' ').toLowerCase();}function actionFrom(text){if(text.indexOf('authorize')>=0){return 'authorize';}if(text.indexOf('fail')>=0){return 'failed';}if(text.indexOf('expire')>=0){return 'expired';}return null;}function notify(event){var action=actionFrom(textOf(event.target));if(action&&window.ZejiosQrPhBridge&&window.ZejiosQrPhBridge.onQrPhTestAction){window.ZejiosQrPhBridge.onQrPhTestAction(action);}}document.addEventListener('click',notify,true);document.addEventListener('touchstart',notify,true);document.addEventListener('submit',notify,true);return 'installed';})()"
         private const val TAG = "MainActivity"
     }
 
@@ -907,8 +914,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     // we render the instrument plainly and rely on isPayMongo elsewhere.
     private fun formatPaymentMethod(paymentMethod: String): String {
         return when (paymentMethod.trim().lowercase(Locale.US)) {
-            "gcash" -> getString(R.string.receipt_paid_via_gcash)
-            "maya" -> getString(R.string.receipt_paid_via_maya)
+            "gcash", "maya", "paymaya" -> getString(R.string.receipt_paid_via_qrph)
             "card" -> getString(R.string.receipt_paid_via_card)
             "qrph", "qr_ph" -> getString(R.string.receipt_paid_via_qrph)
             "paymongo" -> getString(R.string.receipt_paid_via_paymongo)
@@ -929,7 +935,7 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         popup.menu.add(0, 4, 4, getString(R.string.orders_sort_items_desc))
         popup.menu.add(0, 6, 5, getString(R.string.orders_filter_paymongo)).apply {
             isCheckable = true
-            isChecked = filterPayMongoOnly
+            isChecked = filterQrPhOnly
         }
         popup.menu.add(0, 7, 6, getString(R.string.orders_filter_takeout)).apply {
             isCheckable = true
@@ -951,11 +957,11 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                     selectedOrderStatus = null
                     orderSearchQuery = ""
                     binding.ordersContent.etOrderSearch.setText("")
-                    filterPayMongoOnly = false
+                    filterQrPhOnly = false
                     filterTakeoutOnly = false
                     filterTodayOnly = false
                 }
-                6 -> filterPayMongoOnly = !filterPayMongoOnly
+                6 -> filterQrPhOnly = !filterQrPhOnly
                 7 -> filterTakeoutOnly = !filterTakeoutOnly
                 8 -> orderSort = OrderSort.DATE_DESC
                 9 -> filterTodayOnly = !filterTodayOnly
@@ -1534,33 +1540,27 @@ class MainActivity : AppCompatActivity(), NavigationHost {
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { topMargin = 6.dp() }
         }
-        // CHANGE: the cashier now picks Cash, QR Ph, or hosted PayMongo.
-        // Hosted checkout still captures its actual instrument from the
-        // gateway response, with provider='paymongo'.
+        // Cashier-facing checkout is now Cash or QR Ph. The hosted
+        // PayMongo path remains in the code as a hidden fallback, but it
+        // is no longer offered on the counter workflow.
+        val initialPaymentMethod = viewModel.selectedPaymentMethod.value
+            ?: PosViewModel.PaymentMethod.CASH
         val rbCash = RadioButton(this).apply {
             id = View.generateViewId()
             text = getString(R.string.cash)
-            isChecked = (viewModel.selectedPaymentMethod.value ?: PosViewModel.PaymentMethod.CASH) == PosViewModel.PaymentMethod.CASH
+            isChecked = initialPaymentMethod != PosViewModel.PaymentMethod.QRPH
             setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
             textSize = 13f
         }
         val rbQrPh = RadioButton(this).apply {
             id = View.generateViewId()
             text = getString(R.string.qrph_checkout_method)
-            isChecked = (viewModel.selectedPaymentMethod.value ?: PosViewModel.PaymentMethod.CASH) == PosViewModel.PaymentMethod.QRPH
-            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
-            textSize = 13f
-        }
-        val rbPaymongo = RadioButton(this).apply {
-            id = View.generateViewId()
-            text = getString(R.string.paymongo_checkout_method)
-            isChecked = (viewModel.selectedPaymentMethod.value ?: PosViewModel.PaymentMethod.CASH) == PosViewModel.PaymentMethod.PAYMONGO
+            isChecked = initialPaymentMethod == PosViewModel.PaymentMethod.QRPH
             setTextColor(ContextCompat.getColor(this@MainActivity, R.color.pos_text_primary))
             textSize = 13f
         }
         paymentMethodGroup.addView(rbCash)
         paymentMethodGroup.addView(rbQrPh)
-        paymentMethodGroup.addView(rbPaymongo)
         content.addView(paymentMethodGroup)
 
         val customerNameInput = createDialogInput(
@@ -1798,7 +1798,6 @@ class MainActivity : AppCompatActivity(), NavigationHost {
         fun selectedPaymentMethod(): PosViewModel.PaymentMethod {
             return when (paymentMethodGroup.checkedRadioButtonId) {
                 rbQrPh.id -> PosViewModel.PaymentMethod.QRPH
-                rbPaymongo.id -> PosViewModel.PaymentMethod.PAYMONGO
                 else -> PosViewModel.PaymentMethod.CASH
             }
         }
@@ -1813,22 +1812,22 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             val finalTotal = total - discount.amount
             val method = selectedPaymentMethod()
             val needsCashTender = !isExternalPayMongoMethod(method)
+            val needsCustomerName = method != PosViewModel.PaymentMethod.PAYMONGO
             val cashReceived = if (needsCashTender) {
                 paymentInput.text?.toString().orEmpty().toCashAmount()
             } else {
                 finalTotal
             }
             val change = cashReceived?.minus(finalTotal)
-            // Customer name is only validated on the cash path. For
-            // PayMongo the buyer types their name into the gateway's
-            // billing form and we backfill it from billing.name on
-            // verify, so an empty POS-side name is expected and fine.
-            val cashNameOk = !needsCashTender ||
+            // Hosted PayMongo gets billing.name from its checkout page.
+            // Cash and QR Ph happen at the counter, so the cashier should
+            // still capture the call-out name in the POS dialog.
+            val customerNameOk = !needsCustomerName ||
                 !customerNameInput.text?.toString().isNullOrBlank()
             val isValid = if (needsCashTender) {
-                cashReceived != null && change != null && change >= 0 && cashNameOk
+                cashReceived != null && change != null && change >= 0 && customerNameOk
             } else {
-                finalTotal >= 0
+                finalTotal >= 0 && customerNameOk
             }
 
             // Keep the ViewModel in sync so discountId/percent ride along to
@@ -1847,8 +1846,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             }
             paymentTenderLabel.visibility = if (needsCashTender) View.VISIBLE else View.GONE
             paymentInput.visibility = if (needsCashTender) View.VISIBLE else View.GONE
-            customerNameLabel.visibility = if (needsCashTender) View.VISIBLE else View.GONE
-            customerNameInput.visibility = if (needsCashTender) View.VISIBLE else View.GONE
+            customerNameLabel.visibility = if (needsCustomerName) View.VISIBLE else View.GONE
+            customerNameInput.visibility = if (needsCustomerName) View.VISIBLE else View.GONE
             confirmButton.text = when (method) {
                 PosViewModel.PaymentMethod.QRPH -> getString(R.string.checkout_generate_qrph)
                 PosViewModel.PaymentMethod.PAYMONGO -> getString(R.string.checkout_continue_paymongo)
@@ -1857,13 +1856,17 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             confirmButton.isEnabled = isValid && !isCheckoutSaving
             paymentHelper.text = if (needsCashTender) {
                 when {
-                    !cashNameOk -> getString(R.string.checkout_customer_name_required)
+                    !customerNameOk -> getString(R.string.checkout_customer_name_required)
                     cashReceived == null -> getString(R.string.checkout_change_due_pending)
                     change == null || change < 0 -> getString(R.string.checkout_cash_required)
                     else -> getString(R.string.checkout_change_due, formatCurrency(change))
                 }
             } else if (method == PosViewModel.PaymentMethod.QRPH) {
-                getString(R.string.checkout_qrph_pending)
+                if (!customerNameOk) {
+                    getString(R.string.checkout_customer_name_required)
+                } else {
+                    getString(R.string.checkout_qrph_pending)
+                }
             } else {
                 getString(R.string.checkout_paymongo_pending)
             }
@@ -2171,9 +2174,42 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun showQrPhTestPage(pending: PendingPayMongoCheckout, testUrl: String) {
-        var verificationStarted = false
         var dialogClosed = false
+        var terminalStatus: String? = null
+        val testStatusKey = pending.qrPhTestStatusKey()
         lateinit var dialog: AlertDialog
+
+        fun updateResultButton(status: String) {
+            if (dialogClosed) return
+            terminalStatus = status
+            qrPhTestPageStatuses[testStatusKey] = status
+            val button = dialog.getButton(AlertDialog.BUTTON_NEGATIVE) ?: return
+            button.setText(R.string.receipt_done)
+            button.setOnClickListener {
+                dialog.dismiss()
+            }
+        }
+
+        fun injectQrPhTestActionBridge(view: WebView) {
+            view.evaluateJavascript(QRPH_TEST_PAGE_CLICK_SCRIPT, null)
+        }
+
+        fun pollQrPhTestPage(view: WebView) {
+            if (dialogClosed || terminalStatus != null) return
+            injectQrPhTestActionBridge(view)
+            view.evaluateJavascript(QRPH_TEST_PAGE_TEXT_SCRIPT) { bodyText ->
+                if (dialogClosed || terminalStatus != null) return@evaluateJavascript
+                val detectedStatus = bodyText.qrPhTerminalStatus()
+                if (detectedStatus != null) {
+                    updateResultButton(detectedStatus)
+                } else {
+                    view.postDelayed(
+                        { pollQrPhTestPage(view) },
+                        QRPH_TEST_PAGE_POLL_INTERVAL_MS
+                    )
+                }
+            }
+        }
 
         val webView = WebView(this).apply {
             layoutParams = LinearLayout.LayoutParams(
@@ -2184,6 +2220,28 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             settings.domStorageEnabled = true
             settings.loadWithOverviewMode = true
             settings.useWideViewPort = true
+            addJavascriptInterface(
+                object {
+                    @JavascriptInterface
+                    fun onQrPhTestAction(action: String) {
+                        runOnUiThread {
+                            updateResultButton(action.qrPhActionStatus())
+                        }
+                    }
+                },
+                "ZejiosQrPhBridge"
+            )
+            webChromeClient = object : WebChromeClient() {
+                override fun onProgressChanged(view: WebView, newProgress: Int) {
+                    super.onProgressChanged(view, newProgress)
+                    if (newProgress >= 30 && !dialogClosed) {
+                        injectQrPhTestActionBridge(view)
+                    }
+                    if (newProgress >= 80) {
+                        pollQrPhTestPage(view)
+                    }
+                }
+            }
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(
                     view: WebView,
@@ -2194,30 +2252,8 @@ class MainActivity : AppCompatActivity(), NavigationHost {
 
                 override fun onPageFinished(view: WebView, url: String?) {
                     super.onPageFinished(view, url)
+                    injectQrPhTestActionBridge(view)
                     pollQrPhTestPage(view)
-                }
-
-                private fun pollQrPhTestPage(view: WebView) {
-                    if (verificationStarted || dialogClosed) return
-                    view.evaluateJavascript("document.body ? document.body.innerText : ''") { bodyText ->
-                        if (dialogClosed) return@evaluateJavascript
-                        if (bodyText.contains("consumed status", ignoreCase = true)) {
-                            verificationStarted = true
-                            dialog.dismiss()
-                            lifecycleScope.launch {
-                                verifyAndSavePayMongoCheckout(
-                                    pending = pending,
-                                    delayBeforeVerify = true,
-                                    showPendingDialog = true
-                                )
-                            }
-                        } else {
-                            view.postDelayed(
-                                { pollQrPhTestPage(view) },
-                                QRPH_TEST_PAGE_POLL_INTERVAL_MS
-                            )
-                        }
-                    }
                 }
             }
         }
@@ -2233,8 +2269,47 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             webView.stopLoading()
             webView.destroy()
         }
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener {
+                dialog.dismiss()
+            }
+            qrPhTestPageStatuses[testStatusKey]?.let { status ->
+                updateResultButton(status)
+            }
+        }
         dialog.show()
         webView.loadUrl(testUrl)
+    }
+
+    private fun PendingPayMongoCheckout.qrPhTestStatusKey(): String {
+        return paymentMethodId ?: sessionId
+    }
+
+    private fun String.qrPhTerminalStatus(): String? {
+        val decodedText = runCatching {
+            paymentPersistenceJson.decodeFromString<String>(this)
+        }.getOrDefault(this)
+        val normalized = decodedText
+            .lowercase(Locale.US)
+            .replace(Regex("\\s+"), " ")
+        return when {
+            Regex("\\bconsumed\\s+status\\b").containsMatchIn(normalized) -> "consumed"
+            Regex("\\bfailed\\s+status\\b").containsMatchIn(normalized) -> "failed"
+            Regex("\\bexpired\\s+status\\b").containsMatchIn(normalized) -> "expired"
+            Regex("\\bcancelled\\s+status\\b").containsMatchIn(normalized) -> "cancelled"
+            Regex("\\bcanceled\\s+status\\b").containsMatchIn(normalized) -> "cancelled"
+            else -> null
+        }
+    }
+
+    private fun String.qrPhActionStatus(): String {
+        val normalized = lowercase(Locale.US)
+        return when {
+            "authorize" in normalized -> "authorize"
+            "fail" in normalized -> "failed"
+            "expire" in normalized -> "expired"
+            else -> normalized
+        }
     }
 
     private fun handlePayMongoReturn(intent: Intent?) {
@@ -2819,11 +2894,11 @@ class MainActivity : AppCompatActivity(), NavigationHost {
             ).joinToString(" ").lowercase(Locale.getDefault()).contains(normalizedQuery)
             // CHANGE: Orders — apply the PayMongo / Take Out / Today toggles
             // in addition to the existing status + search filters.
-            val matchesPayMongo = !filterPayMongoOnly || order.isPayMongo
+            val matchesQrPh = !filterQrPhOnly || order.isQrPhPayment
             val matchesTakeout = !filterTakeoutOnly || order.isTakeout
             val matchesToday = !filterTodayOnly ||
                 (order.createdAtMillis in todayStartMillis until tomorrowStartMillis)
-            matchesStatus && matchesQuery && matchesPayMongo && matchesTakeout && matchesToday
+            matchesStatus && matchesQuery && matchesQrPh && matchesTakeout && matchesToday
         }
 
         val sortedOrders = when (orderSort) {
@@ -2888,18 +2963,14 @@ class MainActivity : AppCompatActivity(), NavigationHost {
     private fun updateOrderSalesMetrics() {
         val countable = orders.filter { it.status == CafeOrderStatus.COMPLETED }
         val totalSales = countable.sumOf { it.total }
-        // PayMongo bucket sums every gateway-routed order regardless of
-        // the underlying instrument (gcash/maya/card/...), which is the
-        // useful "what's coming through the API integration" KPI now
-        // that the cashier no longer picks the instrument by hand.
-        val payMongoSales = countable.filter { it.isPayMongo }.sumOf { it.total }
+        val qrPhSales = countable.filter { it.isQrPhPayment }.sumOf { it.total }
         val cashSales = countable
             .filter { it.paymentMethod.equals("cash", ignoreCase = true) }
             .sumOf { it.total }
 
         binding.ordersContent.tvOrdersTotalSalesValue.text = formatCurrency(totalSales)
         binding.ordersContent.tvOrdersCashSalesValue.text = formatCurrency(cashSales)
-        binding.ordersContent.tvOrdersPayMongoSalesValue.text = formatCurrency(payMongoSales)
+        binding.ordersContent.tvOrdersPayMongoSalesValue.text = formatCurrency(qrPhSales)
     }
 
     private fun CafeOrder.completedSortMillis(): Long {

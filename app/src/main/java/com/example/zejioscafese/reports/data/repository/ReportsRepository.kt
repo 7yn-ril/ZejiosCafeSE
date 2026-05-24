@@ -168,8 +168,10 @@ class ReportsRepository(
         // Only completed orders feed reports — same rule as before.
         if (normalizedStatus != STATUS_COMPLETED) return null
 
-        val normalizedPaymentMethod = orderPaymentMethod.orEmpty().ifBlank { DEFAULT_PAYMENT_METHOD }
+        val normalizedPaymentMethod = orderPaymentMethod.orEmpty()
+            .ifBlank { DEFAULT_PAYMENT_METHOD }
             .lowercase(Locale.US)
+            .toReportPaymentMethod()
         val normalizedPaymentProvider = orderPaymentProvider
             ?.trim()
             ?.takeIf(String::isNotBlank)
@@ -272,4 +274,8 @@ class ReportsRepository(
         const val DEFAULT_PAYMENT_METHOD = "cash"
         const val DEFAULT_ORDER_TYPE = "dine_in"
     }
+}
+
+private fun String.toReportPaymentMethod(): String {
+    return if (this in setOf("gcash", "maya", "paymaya", "qr_ph")) "qrph" else this
 }

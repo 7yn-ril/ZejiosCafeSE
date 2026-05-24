@@ -43,8 +43,8 @@
     <string name="orders_metric_total_sales_subtitle">Completed orders only</string>
     <string name="orders_metric_cash_sales">Sales thru Cash</string>
     <string name="orders_metric_cash_sales_subtitle">Cash payments collected</string>
-    <string name="orders_metric_paymongo_sales">Sales thru PayMongo</string>
-    <string name="orders_metric_paymongo_sales_subtitle">Online payments via PayMongo</string>
+    <string name="orders_metric_paymongo_sales">Sales thru QR Ph</string>
+    <string name="orders_metric_paymongo_sales_subtitle">Dynamic QR payments</string>
     <string name="inventory_title">Inventory</string>
     <string name="inventory_subtitle">Stock levels and ingredient status</string>
     <string name="inventory_header_ingredients_title">Items</string>
@@ -84,7 +84,7 @@
     <!-- CHANGE: Orders — Take Out badge + filter labels. -->
     <string name="orders_badge_takeout">Take Out</string>
     <string name="orders_filter_takeout">Take Out Orders</string>
-    <string name="orders_filter_paymongo">PayMongo Orders</string>
+    <string name="orders_filter_paymongo">QR Ph Orders</string>
     <string name="orders_filter_today">Today Only</string>
     <string name="inventory_metric_ingredients_title">Total Ingredients</string>
     <string name="inventory_metric_ingredients_subtitle">Active stock items</string>
@@ -199,6 +199,7 @@
     <string name="reports_selected_bucket_format">Showing: %1$s</string>
     <string name="reports_donut_center_subtitle">Total</string>
     <string name="reports_empty_categories_short">No data</string>
+    <string name="reports_category_other_bucket">Other (%1$d)</string>
     <string name="reports_leaderboard_rank_format">#%1$d</string>
     <string name="reports_leaderboard_stats_format">PHP %1$,.2f  ·  %2$d sold  ·  %3$.1f%%</string>
     <string name="reports_total_php_label">Total (PHP)</string>
@@ -209,7 +210,7 @@
     <string name="reports_export_refresh">Refresh data</string>
     <string name="reports_export_copied">Report summary copied.</string>
     <string name="reports_export_excel_dialog_title">Export Excel Report</string>
-    <string name="reports_export_excel_dialog_message">Prepare %1$s for the %2$s report. It includes Summary, Revenue Trend, Categories, Products, and detailed Transactions sheets.</string>
+    <string name="reports_export_excel_dialog_message">Prepare %1$s for the %2$s report. It includes Summary, Revenue Trend, Categories, Products, Order Types, Payment Methods, and Transactions sheets.</string>
     <string name="reports_export_excel_download">Download Excel</string>
     <string name="reports_export_excel_cancelled">Export cancelled.</string>
     <string name="reports_export_excel_progress">Saving Excel report...</string>

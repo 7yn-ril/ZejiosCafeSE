@@ -302,10 +302,7 @@ function paymentMethodUsed(attributes: Record<string, unknown> | undefined) {
     ?? stringValue(firstPayment?.payment_method_used);
   if (!rawSource) return null;
   const normalised = rawSource.trim().toLowerCase();
-  // 'paymaya' is the historical gateway token for Maya; the rest of the
-  // app uses the shorter 'maya'. Keep one canonical token end-to-end.
-  if (normalised === "paymaya") return "maya";
-  if (normalised === "qr_ph") return "qrph";
+  if (isQrPhPaymentMethod(normalised)) return "qrph";
   return normalised;
 }
 
@@ -540,9 +537,12 @@ function webhookPaymentReference(
 
 function normalisePaymentMethod(method: string) {
   const normalised = method.trim().toLowerCase();
-  if (normalised === "paymaya") return "maya";
-  if (normalised === "qr_ph") return "qrph";
+  if (isQrPhPaymentMethod(normalised)) return "qrph";
   return normalised;
+}
+
+function isQrPhPaymentMethod(method: string) {
+  return ["qrph", "qr_ph", "gcash", "maya", "paymaya"].includes(method);
 }
 
 function paymongoClientApiKey() {
