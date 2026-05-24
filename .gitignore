@@ -33,3 +33,7 @@
 /tmp_*.xml
 /null
 node_modules/
+package-lock.json
+package-lock.json
+node_modules/.package-lock.json
+node_modules/@supabase/cli-windows-x64/package.json
